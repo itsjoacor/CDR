@@ -1,6 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/react'
+import { Fragment } from 'react'
+
 
 interface RecetaForm {
     sector_productivo: string
@@ -31,8 +34,6 @@ export default function CargarReceta() {
             try {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/recetas/sectores`)
                 const data = await res.json()
-
-                // ✅ Corregido: convertir array de objetos a array de strings
                 const nombres = data.map((s: { nombre: string }) => s.nombre)
                 setSectores(nombres)
             } catch (err) {
@@ -42,7 +43,6 @@ export default function CargarReceta() {
 
         fetchSectores()
     }, [])
-
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target
@@ -74,93 +74,129 @@ export default function CargarReceta() {
     }
 
     return (
-        <div className="max-w-xl mx-auto mt-10 p-6 bg-white text-gray-800 rounded shadow">
-            <h1 className="text-2xl font-bold mb-4">Nueva Receta</h1>
+        <main className="min-h-screen bg-white text-gray-800 px-6 py-12">
+            <div className="max-w-5xl mx-auto">
+                <header className="mb-10">
+                    <h1 className="text-3xl font-bold">🧪 Crear Receta</h1>
+                    <p className="text-gray-600 mt-1">Cargá los datos de producción y validación del CDR.</p>
+                </header>
 
-            {error && <div className="mb-4 text-red-600 bg-red-100 p-2 rounded">{error}</div>}
+                {error && (
+                    <div className="mb-6 p-4 bg-red-100 text-red-700 border border-red-200 rounded-md">
+                        {error}
+                    </div>
+                )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-8">
+                    {/* Sección: Producto */}
+                    <section className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm">
+                        <h2 className="text-xl font-semibold mb-4">📦 Producto Final</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm mb-1 font-medium">Código del Producto</label>
+                                <input
+                                    name="codigo_producto"
+                                    value={form.codigo_producto}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1 font-medium">Descripción del Producto</label>
+                                <input
+                                    name="descripcion_producto"
+                                    value={form.descripcion_producto}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                    required
+                                />
+                            </div>
+                        </div>
+                    </section>
 
-                {/* Select dinámico */}
-                <div>
-                    <label className="block mb-1 text-sm font-medium">Sector Productivo</label>
-                    <select
-                        name="sector_productivo"
-                        value={form.sector_productivo}
-                        onChange={handleChange}
-                        className="w-full border p-2 rounded"
-                        required
-                    >
-                        <option value="">Seleccionar Sector</option>
-                        {sectores.map((s, i) => (
-                            <option key={i} value={s}>
-                                {s}
-                            </option>
-                        ))}
-                    </select>
+                    {/* Sección: Producción */}
+                    <section className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm">
+                        <h2 className="text-xl font-semibold mb-4">⚙️ Detalles de Producción</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Sector Productivo</label>
+                                <Listbox value={form.sector_productivo} onChange={(value) => setForm(prev => ({ ...prev, sector_productivo: value }))}>
+                                    <div className="relative">
+                                        <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:outline-none focus:ring-2 focus:ring-purple-300">
+                                            {form.sector_productivo || 'Seleccione un sector'}
+                                        </ListboxButton>
 
-                </div>
+                                        <ListboxOptions className="absolute mt-1 w-full bg-white border border-gray-200 rounded-md shadow-md z-10 max-h-60 overflow-auto">
+                                            {sectores.map((s, i) => (
+                                                <ListboxOption key={i} value={s} as={Fragment}>
+                                                    {({ active, selected }) => (
+                                                        <li
+                                                            className={`cursor-pointer px-4 py-2 transition rounded-md ${active ? 'bg-purple-100 text-purple-800' : 'text-gray-800'
+                                                                } ${selected ? 'font-medium' : ''}`}
+                                                        >
+                                                            {s}
+                                                        </li>
+                                                    )}
+                                                </ListboxOption>
+                                            ))}
+                                        </ListboxOptions>
+                                    </div>
+                                </Listbox>
 
-                <input
-                    type="text"
-                    name="codigo_ingrediente"
-                    placeholder="Código ingrediente"
-                    value={form.codigo_ingrediente}
-                    onChange={handleChange}
-                    className="w-full border p-2 rounded"
-                    required
-                />
 
-                <input
-                    type="text"
-                    name="descripcion_ingrediente"
-                    placeholder="Descripción ingrediente"
-                    value={form.descripcion_ingrediente}
-                    onChange={handleChange}
-                    className="w-full border p-2 rounded"
-                    required
-                />
+                            </div>
 
-                <input
-                    type="number"
-                    name="cantidad_ingrediente"
-                    placeholder="Cantidad ingrediente"
-                    value={form.cantidad_ingrediente}
-                    onChange={handleChange}
-                    className="w-full border p-2 rounded"
-                    step="0.01"
-                    min="0"
-                    required
-                />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Código del Ingrediente</label>
+                                    <input
+                                        name="codigo_ingrediente"
+                                        value={form.codigo_ingrediente}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Cantidad</label>
+                                    <input
+                                        type="number"
+                                        name="cantidad_ingrediente"
+                                        value={form.cantidad_ingrediente}
+                                        onChange={handleChange}
+                                        step="0.01"
+                                        min="0"
+                                        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        required
+                                    />
+                                </div>
+                            </div>
 
-                <input
-                    type="text"
-                    name="codigo_producto"
-                    placeholder="Código producto final"
-                    value={form.codigo_producto}
-                    onChange={handleChange}
-                    className="w-full border p-2 rounded"
-                    required
-                />
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Descripción del Ingrediente</label>
+                                <input
+                                    name="descripcion_ingrediente"
+                                    value={form.descripcion_ingrediente}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                    required
+                                />
+                            </div>
+                        </div>
+                    </section>
 
-                <input
-                    type="text"
-                    name="descripcion_producto"
-                    placeholder="Descripción producto final"
-                    value={form.descripcion_producto}
-                    onChange={handleChange}
-                    className="w-full border p-2 rounded"
-                    required
-                />
-
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition disabled:opacity-50"
-                >
-                    {loading ? 'Cargando...' : 'Guardar Receta'}
-                </button>
-            </form>
-        </div>
+                    <div className="flex justify-end">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-6 py-2 bg-green-200 text-green-900 font-semibold rounded-md hover:bg-green-300 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-60"
+                        >
+                            {loading ? 'Cargando...' : 'Guardar Receta'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
     )
 }
