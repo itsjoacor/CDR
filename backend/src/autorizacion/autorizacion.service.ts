@@ -1,31 +1,51 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { createClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class AutorizacionService {
+  private supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_KEY!, // usar clave privada segura
+  );
 
-  constructor(private jwtService: JwtService) {}
+  async login(email: string, password: string) {
+    const { data: authData, error: authError } = await this.supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  async login(correo: string, contrasenia: string): Promise<string> {
-    const usuarioValido =
-      correo.toLowerCase().trim() === 'admin' && contrasenia === '/Fierro123';
-
-    if (!usuarioValido) {
+    if (authError || !authData.user) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
-    const payload = { correo };
-    return this.jwtService.sign(payload);
-  }
 
-  verificarSesion(token: string): boolean {
-    try {
-      this.jwtService.verify(token, {
-        secret: process.env.JWT_SECRET,
-      });
-      return true;
-    } catch {
-      return false;
+    const userId = authData.user.id;
+
+    const { data: perfil, error: perfilError } = await this.supabase
+      .from('perfiles')
+      .select('rol')
+      .eq('id', userId)
+      .single();
+
+    if (perfilError || !perfil) {
+      throw new UnauthorizedException('Perfil no encontrado');
     }
+
+    return {
+      token: authData.session.access_token,
+      rol: perfil.rol,
+    };
   }
 
+  async verificarToken(token: string) {
+    const { data: { user }, error } = await this.supabase.auth.getUser(token);
+    if (error || !user) throw new UnauthorizedException('Token inválido');
+
+    const { data: perfil } = await this.supabase
+      .from('perfiles')
+      .select('rol')
+      .eq('id', user.id)
+      .single();
+
+    return { rol: perfil?.rol || null };
+  }
 }

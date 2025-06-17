@@ -1,51 +1,20 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Get,
-  UnauthorizedException,
-  Req,
-} from '@nestjs/common';
-import { Request } from 'express';
+import { Body, Controller, Get, Headers, Post, UnauthorizedException } from '@nestjs/common';
 import { AutorizacionService } from './autorizacion.service';
 
 @Controller('autorizacion')
 export class AutorizacionController {
-  constructor(private autorizacionService: AutorizacionService) {}
+  constructor(private readonly service: AutorizacionService) {}
 
   @Post('login')
-  async login(
-    @Body() dto: { correo: string; contrasenia: string },
-  ) {
-    try {
-      const token = await this.autorizacionService.login(
-        dto.correo,
-        dto.contrasenia,
-      );
-
-      return {
-        mensaje: 'Login exitoso',
-        token,
-      };
-    } catch (e) {
-      throw new UnauthorizedException('Credenciales inválidas');
-    }
+  async login(@Body() body: { email: string; password: string }) {
+    const { email, password } = body;
+    return this.service.login(email, password);
   }
 
   @Get('verificarSesion')
-  async verificarSesion(@Req() req: Request) {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token no presente');
-    }
-
-    const token = authHeader.split(' ')[1];
-    const valido = this.autorizacionService.verificarSesion(token);
-
-    if (!valido) {
-      throw new UnauthorizedException('Token inválido');
-    }
-
-    return { logueado: true };
+  async verificarSesion(@Headers('Authorization') auth: string) {
+    const token = auth?.replace('Bearer ', '');
+    if (!token) throw new UnauthorizedException('Token requerido');
+    return this.service.verificarToken(token);
   }
 }

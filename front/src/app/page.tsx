@@ -1,6 +1,8 @@
-"use client";
+'use client';
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
+
 import {
   Wrench,
   ClipboardList,
@@ -8,47 +10,45 @@ import {
   UserMinus2Icon,
   Search,
   Settings,
-  Bike
 } from "lucide-react";
 
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [rol, setRol] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    sesionIniciada();
+    verificarSesion();
   }, []);
 
-  const sesionIniciada = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setIsLoggedIn(false);
-      return;
-    }
+  const verificarSesion = async () => {
+    const token = Cookies.get("token");
+    if (!token) return;
 
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/autorizacion/verificarSesion`,
-      {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/autorizacion/verificarSesion`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
-    );
+      });
 
-    if (res.status === 401) {
-      localStorage.removeItem("token");
+      if (!res.ok) throw new Error();
+
+      const data = await res.json();
+      setIsLoggedIn(true);
+      setRol(data.rol); // <- ⚠️ esto debe devolverse desde el backend
+    } catch {
+      Cookies.remove("token");
       setIsLoggedIn(false);
-      return;
+      setRol(null);
     }
-
-    const estaLogueado = res.ok;
-    setIsLoggedIn(estaLogueado);
   };
 
   const cerrarSesion = () => {
-    localStorage.removeItem("token");
+    Cookies.remove("token");
     setIsLoggedIn(false);
+    setRol(null);
   };
 
   return (
@@ -62,33 +62,28 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Título */}
           <h1 className="text-2xl font-light text-gray-800">Accedé a una sección</h1>
           <p className="text-gray-500 text-sm mb-6">Selecciona una opción para continuar</p>
 
-          {/* Botones */}
           <div className="flex flex-col gap-3">
             <button
               className={`w-full flex items-center justify-center gap-3 font-medium py-3 rounded-lg ${isLoggedIn
-                ? "bg-gray-200 text-gray-400"
-                : "bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm hover:shadow-md transition-all"
+                  ? "bg-gray-200 text-gray-400"
+                  : "bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm hover:shadow-md transition-all"
                 }`}
-              onClick={async () => {
-                await router.push("/iniciar-sesion");
-              }}
+              onClick={() => router.push("/iniciar-sesion")}
               disabled={isLoggedIn}
             >
               <User2Icon size={18} />
               Iniciar sesión
             </button>
 
-            {isLoggedIn && (
-              <div className="flex flex-col gap-3">
+            {/* Vista para ADMIN */}
+            {isLoggedIn && rol === "admin" && (
+              <>
                 <button
                   className="w-full flex items-center justify-center gap-3 bg-yellow-400 hover:bg-yellow-500 text-white font-medium py-3 rounded-lg shadow-sm hover:shadow-md transition-all"
-                  onClick={async () => {
-                    await router.push("/load");
-                  }}
+                  onClick={() => router.push("/load")}
                 >
                   <Wrench size={18} />
                   Cargar Receta
@@ -96,26 +91,34 @@ export default function HomePage() {
 
                 <button
                   className="w-full flex items-center justify-center gap-3 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 rounded-lg shadow-sm hover:shadow-md transition-all"
-                  onClick={async () => {
-                    await router.push("/visualizar");
-                  }}
+                  onClick={() => router.push("/visualizar")}
                 >
                   <ClipboardList size={18} />
-                 Ver recetas
+                  Ver recetas
                 </button>
 
                 <button
                   className="w-full flex items-center justify-center gap-3 bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 rounded-lg shadow-sm hover:shadow-md transition-all"
-                  onClick={async () => {
-                    await router.push("/opcion3");
-                  }}
+                  onClick={() => router.push("/opcion3")}
                 >
                   <Search size={18} />
-                  Opcion 3
+                  Editar Recetas
                 </button>
-              </div>
+              </>
             )}
 
+            {/* Vista para USUARIO */}
+            {isLoggedIn && rol === "usuario" && (
+              <button
+                className="w-full flex items-center justify-center gap-3 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 rounded-lg shadow-sm hover:shadow-md transition-all"
+                onClick={() => router.push("/visualizar")}
+              >
+                <ClipboardList size={18} />
+                Ver recetas
+              </button>
+            )}
+
+            {/* Botón cerrar sesión */}
             {isLoggedIn && (
               <button
                 onClick={cerrarSesion}
