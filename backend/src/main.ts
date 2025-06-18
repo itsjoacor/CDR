@@ -7,12 +7,14 @@ import { AppModule } from './app.module'; // ✅ ahora importa AppModule
 import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule); // ✅ cambia RecetaModule por AppModule
-  app.use(cookieParser());
+  const app = await NestFactory.create(AppModule);
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
+    origin: process.env.CORS_ORIGIN,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3001);
+
+  await app.listen(process.env.PORT || 3001);
 }
 bootstrap();

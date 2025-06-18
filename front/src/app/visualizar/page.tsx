@@ -1,7 +1,7 @@
 // app/info-trabajos-taller/page.tsx
 'use client';
-import VisualizeReceta from '@/paginas/VisualizeReceta';
+import RecetasLista from '@/paginas/RecetasLista';
 
 export default function Page() {
-  return <VisualizeReceta />;
+  return <RecetasLista />;
 }

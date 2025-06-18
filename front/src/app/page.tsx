@@ -83,7 +83,7 @@ export default function HomePage() {
               <>
                 <button
                   className="w-full flex items-center justify-center gap-3 bg-yellow-400 hover:bg-yellow-500 text-white font-medium py-3 rounded-lg shadow-sm hover:shadow-md transition-all"
-                  onClick={() => router.push("/load")}
+                  onClick={() => router.push("/cargaRapida")}
                 >
                   <Wrench size={18} />
                   Cargar Receta
@@ -99,7 +99,7 @@ export default function HomePage() {
 
                 <button
                   className="w-full flex items-center justify-center gap-3 bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 rounded-lg shadow-sm hover:shadow-md transition-all"
-                  onClick={() => router.push("/opcion3")}
+                  onClick={() => router.push("/Recetas")}
                 >
                   <Search size={18} />
                   Editar Recetas
