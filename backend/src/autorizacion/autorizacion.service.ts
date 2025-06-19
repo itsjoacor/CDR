@@ -36,9 +36,10 @@ export class AutorizacionService {
     };
   }
 
+  // autorizacion.service.ts
   async verificarToken(token: string) {
     const { data: { user }, error } = await this.supabase.auth.getUser(token);
-    if (error || !user) throw new UnauthorizedException('Token inválido');
+    if (error || !user) throw new UnauthorizedException('Invalid token');
 
     const { data: perfil } = await this.supabase
       .from('perfiles')
@@ -46,6 +47,11 @@ export class AutorizacionService {
       .eq('id', user.id)
       .single();
 
-    return { rol: perfil?.rol || null };
+    if (!perfil) throw new UnauthorizedException('Profile not found');
+
+    return {
+      rol: perfil.rol,
+      email: user.email // Make sure to return email
+    };
   }
 }

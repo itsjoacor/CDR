@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,17 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
+  const location = useLocation();
+  const { isAuthenticated } = useAuth(); // Add this
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,15 +32,18 @@ const Login: React.FC = () => {
     try {
       const success = await login(email, password);
       if (success) {
-        toast({ title: "Inicio exitoso", description: "Bienvenido" });
-        navigate('/');
+        toast({
+          title: "Inicio de sesión exitoso",
+          description: "Bienvenido al sistema TexCDR",
+        });
+        // Wait a moment for the toast to show before redirecting
+        setTimeout(() => {
+          const returnTo = location.state?.from?.pathname || '/';
+          navigate(returnTo, { replace: true });
+        }, 500);
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Error handling
     } finally {
       setIsLogging(false);
     }

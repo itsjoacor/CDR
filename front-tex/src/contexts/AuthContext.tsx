@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import Cookies from 'js-cookie';
+import { supabase } from '@/lib/supabase';
 
 interface User {
   id: string;
@@ -15,12 +16,15 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  initialAuthCheck: boolean;
+  isAuthenticated: boolean; // Add this new property
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
@@ -30,7 +34,10 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialAuthCheck, setInitialAuthCheck] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -55,11 +62,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       setUser(userData);
-      Cookies.set('token', data.token);
+      Cookies.set('token', data.token, {
+        expires: 7, // 7 days
+        secure: true,
+        sameSite: 'strict'
+      });
       return true;
     } catch (error) {
       console.error('Login error:', error);
-      throw error; // Propagate error to Login.tsx
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -68,43 +79,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setIsLoading(true);
     try {
+      // Clear Supabase session first
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // Then clear local state
       setUser(null);
       Cookies.remove('token');
+
+      // Force full page reload to clear any state
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Verificar sesión al cargar la app
-  useEffect(() => {
-    const verifySession = async () => {
-      const token = Cookies.get('token');
-      if (!token) return;
+  const verifySession = async () => {
+    const token = Cookies.get('token');
+    if (!token) {
+      setInitialAuthCheck(true);
+      setIsAuthenticated(false);
+      return;
+    }
 
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/autorizacion/verificarSesion`, {
-          headers: { Authorization: `Bearer ${token}` },
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/autorizacion/verificarSesion`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const { rol, email } = await res.json();
+        setUser({
+          id: '', // Get from backend if needed
+          email,
+          role: rol,
+          token,
         });
-
-        if (res.ok) {
-          const { rol } = await res.json();
-          setUser({
-            id: '', // Puedes obtenerlo de Supabase si es necesario
-            email: '', // Obtenerlo de Supabase o almacenarlo en cookies
-            role: rol,
-            token,
-          });
-        }
-      } catch (error) {
-        console.error('Error verifying session:', error);
+        setIsAuthenticated(true);
+      } else {
+        Cookies.remove('token');
+        setIsAuthenticated(false);
       }
-    };
+    } catch (error) {
+      console.error('Session verification error:', error);
+      Cookies.remove('token');
+      setIsAuthenticated(false);
+    } finally {
+      setInitialAuthCheck(true);
+    }
+  };
 
+  useEffect(() => {
     verifySession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_OUT') {
+        Cookies.remove('token');
+        setUser(null);
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      isLoading,
+      initialAuthCheck,
+      isAuthenticated // Add this
+    }}>
       {children}
     </AuthContext.Provider>
   );
