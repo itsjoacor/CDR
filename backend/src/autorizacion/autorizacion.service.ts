@@ -14,12 +14,18 @@ export class AutorizacionService {
       password,
     });
 
-    if (authError || !authData.user) {
-      throw new UnauthorizedException('Credenciales inválidas');
+    if (authError) {
+      // More specific error messages
+      let message = 'Credenciales inválidas';
+      if (authError.message.includes('Invalid login credentials')) {
+        message = 'Correo o contraseña incorrectos';
+      } else if (authError.message.includes('Email not confirmed')) {
+        message = 'Por favor verifica tu correo electrónico primero';
+      }
+      throw new UnauthorizedException(message);
     }
 
     const userId = authData.user.id;
-
     const { data: perfil, error: perfilError } = await this.supabase
       .from('perfiles')
       .select('rol')
@@ -27,7 +33,7 @@ export class AutorizacionService {
       .single();
 
     if (perfilError || !perfil) {
-      throw new UnauthorizedException('Perfil no encontrado');
+      throw new UnauthorizedException('Perfil de usuario no encontrado');
     }
 
     return {

@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || 'Credenciales inválidas');
       }
 
@@ -62,20 +62,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       setUser(userData);
-      Cookies.set('token', data.token, {
-        expires: 7, // 7 days
-        secure: true,
-        sameSite: 'strict'
-      });
+      Cookies.set('token', data.token);
       return true;
     } catch (error) {
       console.error('Login error:', error);
-      throw error;
+      throw error; // Make sure to re-throw the error
     } finally {
       setIsLoading(false);
     }
   };
-
   const logout = async () => {
     setIsLoading(true);
     try {

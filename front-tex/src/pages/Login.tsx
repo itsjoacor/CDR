@@ -13,21 +13,16 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
-  const location = useLocation();
-  const { isAuthenticated } = useAuth(); // Add this
+  const [error, setError] = useState(''); // Add this line
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLogging(true);
+    setError(''); // Reset error state
 
     try {
       const success = await login(email, password);
@@ -36,16 +31,24 @@ const Login: React.FC = () => {
           title: "Inicio de sesión exitoso",
           description: "Bienvenido al sistema TexCDR",
         });
-        // Wait a moment for the toast to show before redirecting
-        setTimeout(() => {
-          const returnTo = location.state?.from?.pathname || '/';
-          navigate(returnTo, { replace: true });
-        }, 500);
+        const returnTo = location.state?.from?.pathname || '/';
+        navigate(returnTo, { replace: true });
       }
     } catch (error) {
-      // Error handling
+      let errorMessage = "Error al iniciar sesión";
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        setError(errorMessage); // Set error state
+      }
+
+      toast({
+        title: "Error de autenticación",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
-      setIsLogging(false);
+      setIsLogging(false); // Ensure loading state is always reset
     }
   };
 
@@ -117,3 +120,7 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+
+function setError(arg0: string) {
+  throw new Error('Function not implemented.');
+}
