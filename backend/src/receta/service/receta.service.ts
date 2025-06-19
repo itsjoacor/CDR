@@ -69,4 +69,6 @@ export class RecetaService {
       throw new Error('Error al eliminar receta: ' + error.message);
     }
   }
+
+  
 }

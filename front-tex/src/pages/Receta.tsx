@@ -1,64 +1,81 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface RecetaItem {
-  id: string;
-  nombre: string;
-  descripcion: string;
-  cantidadProduccion: number;
-  unidad: string;
-  manoObra: string[];
-  manoEnergia: string[];
-  insumos: { nombre: string; cantidad: number; unidad: string }[];
-  fechaCreacion: string;
-  estado: 'activa' | 'inactiva';
+  codigo_producto: string;
+  descripcion_producto: string;
+  sector_productivo: string;
+  ingredientes: {
+    codigo_ingrediente: string;
+    descripcion_ingrediente: string;
+    cantidad_ingrediente: number;
+    costo_ingrediente?: number;
+  }[];
+  costo_mano_obra?: number;
+  costo_matriz_energetica?: number;
+  costo_total?: number;
+  valor_cdr?: number;
 }
 
 const Receta: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [recetas] = useState<RecetaItem[]>([
-    {
-      id: '1',
-      nombre: 'Camiseta Básica Algodón',
-      descripcion: 'Camiseta básica de algodón 100% talla M',
-      cantidadProduccion: 1,
-      unidad: 'pieza',
-      manoObra: ['Corte', 'Costura', 'Acabado'],
-      manoEnergia: ['Máquina de coser', 'Plancha'],
-      insumos: [
-        { nombre: 'Tela algodón', cantidad: 0.5, unidad: 'metros' },
-        { nombre: 'Hilo', cantidad: 50, unidad: 'metros' },
-        { nombre: 'Etiqueta', cantidad: 1, unidad: 'pieza' }
-      ],
-      fechaCreacion: '2024-01-15',
-      estado: 'activa'
-    },
-    {
-      id: '2',
-      nombre: 'Pantalón Jean',
-      descripcion: 'Pantalón jean clásico talla 32',
-      cantidadProduccion: 1,
-      unidad: 'pieza',
-      manoObra: ['Corte', 'Costura especializada', 'Acabado', 'Control calidad'],
-      manoEnergia: ['Máquina overlock', 'Máquina recta', 'Plancha industrial'],
-      insumos: [
-        { nombre: 'Tela denim', cantidad: 1.2, unidad: 'metros' },
-        { nombre: 'Hilo reforzado', cantidad: 80, unidad: 'metros' },
-        { nombre: 'Cremallera', cantidad: 1, unidad: 'pieza' },
-        { nombre: 'Botones', cantidad: 5, unidad: 'piezas' }
-      ],
-      fechaCreacion: '2024-02-01',
-      estado: 'activa'
-    }
-  ]);
+  const [recetas, setRecetas] = useState<RecetaItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchRecetas = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/recetas`);
+        if (!response.ok) {
+          throw new Error('Error al obtener recetas');
+        }
+        const data = await response.json();
+
+        // Group by codigo_producto
+        const groupedRecetas = data.reduce((acc: Record<string, RecetaItem>, item: any) => {
+          if (!acc[item.codigo_producto]) {
+            acc[item.codigo_producto] = {
+              codigo_producto: item.codigo_producto,
+              descripcion_producto: item.descripcion_producto,
+              sector_productivo: item.sector_productivo,
+              ingredientes: [],
+              costo_mano_obra: item.costo_mano_obra,
+              costo_matriz_energetica: item.costo_matriz_energetica,
+              costo_total: item.costo_total,
+              valor_cdr: item.valor_cdr
+            };
+          }
+          acc[item.codigo_producto].ingredientes.push({
+            codigo_ingrediente: item.codigo_ingrediente,
+            descripcion_ingrediente: item.descripcion_ingrediente,
+            cantidad_ingrediente: item.cantidad_ingrediente,
+            costo_ingrediente: item.costo_ingrediente
+          });
+          return acc;
+        }, {});
+
+        setRecetas(Object.values(groupedRecetas));
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Error al cargar recetas",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecetas();
+  }, []);
 
   const handleExport = () => {
     toast({
@@ -69,6 +86,16 @@ const Receta: React.FC = () => {
 
   const canEdit = user?.role === 'admin';
 
+  if (loading) {
+    return (
+      <Layout title="Gestión de Recetas">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout title="Gestión de Recetas">
       <div className="space-y-6">
@@ -76,7 +103,7 @@ const Receta: React.FC = () => {
         <div className="flex justify-between items-center">
           <div>
             <Badge variant="outline" className="bg-blue-50">
-              📋 Recetas - Corazón del cálculo CDR
+              📋 Recetas
             </Badge>
             <p className="text-sm text-muted-foreground mt-2">
               Define materiales, cantidades, mano de obra y energía necesarios para fabricar productos
@@ -97,20 +124,20 @@ const Receta: React.FC = () => {
         {/* Recetas Cards */}
         <div className="grid gap-6">
           {recetas.map((receta) => (
-            <Card key={receta.id} className="border-l-4 border-l-blue-500">
+            <Card key={receta.codigo_producto} className="border-l-4 border-l-blue-500">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="flex items-center space-x-2">
-                      <span>{receta.nombre}</span>
-                      <Badge variant={receta.estado === 'activa' ? 'default' : 'secondary'}>
-                        {receta.estado}
+                      <span>{receta.descripcion_producto}</span>
+                      <Badge variant="default">
+                        {receta.sector_productivo}
                       </Badge>
                     </CardTitle>
-                    <CardDescription>{receta.descripcion}</CardDescription>
+                    <CardDescription>Código: {receta.codigo_producto}</CardDescription>
                   </div>
                   {canEdit && (
-                    <Button variant="outline" size="sm">
+                    <Button onClick={() => navigate(`/editarReceta/${receta.codigo_producto}`)} variant="outline" size="sm">
                       ✏️ Editar
                     </Button>
                   )}
@@ -118,47 +145,21 @@ const Receta: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Producción */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">PRODUCCIÓN</h4>
-                    <div className="text-lg font-semibold">
-                      {receta.cantidadProduccion} {receta.unidad}
-                    </div>
-                  </div>
-
-                  {/* Mano de Obra */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">MANO DE OBRA</h4>
-                    <div className="space-y-1">
-                      {receta.manoObra.map((mo, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          👷 {mo}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Mano de Energía */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">MANO DE ENERGÍA</h4>
-                    <div className="space-y-1">
-                      {receta.manoEnergia.map((me, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          ⚡ {me}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Insumos */}
                   <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">INSUMOS</h4>
+                    <h4 className="font-medium text-sm text-muted-foreground">OTRO CAMPO X</h4>
                     <div className="space-y-1">
-                      {receta.insumos.map((insumo, index) => (
-                        <div key={index} className="text-xs">
-                          📦 {insumo.nombre}: {insumo.cantidad} {insumo.unidad}
-                        </div>
-                      ))}
+
+                    </div>
+                  </div>
+
+                  {/* Costos */}
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-muted-foreground">Costo Directo de Resposicion</h4>
+                    <div className="space-y-1 text-xs">
+                      <div className="text-blue-600">
+                        🏷️ CDR: ${receta.valor_cdr?.toFixed(2) || '0.00'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -173,7 +174,7 @@ const Receta: React.FC = () => {
             <div className="flex items-center space-x-2">
               <span className="text-blue-600">ℹ️</span>
               <span className="text-sm text-blue-800">
-                Las recetas son fundamentales para el cálculo automático del CDR. 
+                Las recetas son fundamentales para el cálculo automático del CDR.
                 Cualquier modificación se reflejará automáticamente en los costos de reposición.
               </span>
             </div>

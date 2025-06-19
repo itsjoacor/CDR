@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Receta from "./pages/Receta";
+import EditarReceta from "./pages/EditarReceta";
 import ManoObra from "./pages/ManoObra";
 import ManoEnergia from "./pages/ManoEnergia";
 import Insumos from "./pages/Insumos";
@@ -35,8 +36,10 @@ const App = () => (
             />
 
             <Route element={<ProtectedRoute />}>
+
               <Route path="/" element={<Dashboard />} />
               <Route path="/receta" element={<Receta />} />
+              <Route path="/editarReceta/:codigoProducto" element={<EditarReceta />} />
               <Route path="/mano-obra" element={<ManoObra />} />
               <Route path="/mano-energia" element={<ManoEnergia />} />
 
