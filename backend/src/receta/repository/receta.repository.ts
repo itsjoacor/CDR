@@ -4,6 +4,7 @@ import { Receta } from '../model/receta.model';
 
 @Injectable()
 export class RecetaRepository {
+  [x: string]: any;
   async buscarPorFiltros(filtros: {
     codigo_producto?: string;
     codigo_ingrediente?: string;
@@ -48,6 +49,17 @@ export class RecetaRepository {
       console.error('❌ Supabase error:', error);
       throw new Error(error.message);
     }
+
+    return data;
+  }
+
+  async buscarProducto(codigo: string) {
+    const { data } = await supabase
+      .from('recetas')
+      .select('descripcion_producto, sector_productivo')
+      .eq('codigo_producto', codigo)
+      .limit(1)
+      .maybeSingle();
 
     return data;
   }

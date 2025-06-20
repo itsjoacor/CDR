@@ -15,6 +15,7 @@ import Insumos from "./pages/Insumos";
 import CDR from "./pages/CDR";
 import NotFound from "./pages/NotFound";
 import { UnauthenticatedOnlyWrapper } from "./components/UnauthenticatedOnlyWrapper";
+import CargarReceta from "./pages/CargarReceta";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
 
               <Route path="/" element={<Dashboard />} />
               <Route path="/receta" element={<Receta />} />
+               <Route path="/cargarReceta" element={<CargarReceta />} />
               <Route path="/editarReceta/:codigoProducto" element={<EditarReceta />} />
               <Route path="/mano-obra" element={<ManoObra />} />
               <Route path="/mano-energia" element={<ManoEnergia />} />
