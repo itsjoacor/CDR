@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 interface RecetaItem {
   codigo_producto: string;
@@ -29,6 +29,7 @@ const Receta: React.FC = () => {
   const [recetas, setRecetas] = useState<RecetaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { codigo_producto } = useParams<{ codigo_producto: string }>();
 
   useEffect(() => {
     const fetchRecetas = async () => {
@@ -110,14 +111,14 @@ const Receta: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            <Button onClick={handleExport} variant="outline">
-              📤 Exportar
-            </Button>
             {canEdit && (
               <Button onClick={() => navigate(`/cargarReceta`)} >
                 ➕ Nueva Receta
               </Button>
             )}
+            <Button onClick={handleExport} variant="outline">
+              📤 Exportar
+            </Button>
           </div>
         </div>
 

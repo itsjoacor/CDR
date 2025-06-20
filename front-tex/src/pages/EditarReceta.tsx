@@ -1,191 +1,280 @@
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { Save, ArrowLeft, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-interface RecetaItem {
-  id: string;
-  nombre: string;
-  descripcion: string;
-  cantidadProduccion: number;
-  unidad: string;
-  manoObra: string[];
-  manoEnergia: string[];
-  insumos: { nombre: string; cantidad: number; unidad: string }[];
-  fechaCreacion: string;
-  estado: 'activa' | 'inactiva';
+interface Ingredient {
+  codigo_ingrediente: string;
+  descripcion_ingrediente: string;
+  cantidad_ingrediente: number;
 }
 
-const Receta: React.FC = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  
-  const [recetas] = useState<RecetaItem[]>([
-    {
-      id: '1',
-      nombre: 'Camiseta Básica Algodón',
-      descripcion: 'Camiseta básica de algodón 100% talla M',
-      cantidadProduccion: 1,
-      unidad: 'pieza',
-      manoObra: ['Corte', 'Costura', 'Acabado'],
-      manoEnergia: ['Máquina de coser', 'Plancha'],
-      insumos: [
-        { nombre: 'Tela algodón', cantidad: 0.5, unidad: 'metros' },
-        { nombre: 'Hilo', cantidad: 50, unidad: 'metros' },
-        { nombre: 'Etiqueta', cantidad: 1, unidad: 'pieza' }
-      ],
-      fechaCreacion: '2024-01-15',
-      estado: 'activa'
-    },
-    {
-      id: '2',
-      nombre: 'Pantalón Jean',
-      descripcion: 'Pantalón jean clásico talla 32',
-      cantidadProduccion: 1,
-      unidad: 'pieza',
-      manoObra: ['Corte', 'Costura especializada', 'Acabado', 'Control calidad'],
-      manoEnergia: ['Máquina overlock', 'Máquina recta', 'Plancha industrial'],
-      insumos: [
-        { nombre: 'Tela denim', cantidad: 1.2, unidad: 'metros' },
-        { nombre: 'Hilo reforzado', cantidad: 80, unidad: 'metros' },
-        { nombre: 'Cremallera', cantidad: 1, unidad: 'pieza' },
-        { nombre: 'Botones', cantidad: 5, unidad: 'piezas' }
-      ],
-      fechaCreacion: '2024-02-01',
-      estado: 'activa'
-    }
-  ]);
+interface RecetaData {
+  codigo_producto: string;
+  descripcion_producto: string;
+  sector_productivo: string;
+  ingredientes: Ingredient[];
+}
 
-  const handleExport = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Los datos de recetas se están exportando a Excel...",
+const EditarReceta: React.FC = () => {
+  const { codigo_producto } = useParams<{ codigo_producto: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [receta, setReceta] = useState<RecetaData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch recipe data from API
+useEffect(() => {
+  const fetchReceta = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas?codigo_producto=${codigo_producto}`);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      
+      // Handle both array response and single object response
+      const recipeData = Array.isArray(data) 
+        ? data.find(r => r.codigo_producto === codigo_producto)
+        : data;
+
+      if (!recipeData) {
+        throw new Error('Receta no encontrada');
+      }
+
+      setReceta({
+        codigo_producto: recipeData.codigo_producto,
+        descripcion_producto: recipeData.descripcion_producto,
+        sector_productivo: recipeData.sector_productivo,
+        ingredientes: recipeData.ingredientes || []
+      });
+
+    } catch (err) {
+      console.error('Fetch error:', err);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la receta",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchReceta();
+}, [codigo_producto]);
+
+  const [newIngredient, setNewIngredient] = useState<Ingredient>({
+    codigo_ingrediente: '',
+    descripcion_ingrediente: '',
+    cantidad_ingrediente: 0,
+  });
+
+  const handleTitleChange = (field: keyof RecetaData, value: string) => {
+    setReceta(prev => prev ? { ...prev, [field]: value } : null);
+  };
+
+  const updateIngredient = (index: number, field: keyof Ingredient, value: any) => {
+    setReceta(prev => {
+      if (!prev) return null;
+      const updatedIngredients = [...prev.ingredientes];
+      updatedIngredients[index] = { ...updatedIngredients[index], [field]: value };
+      return { ...prev, ingredientes: updatedIngredients };
     });
   };
 
-  const handleEdit = (recetaId: string) => {
-    navigate(`/receta/editar/${recetaId}`);
+  const addNewIngredient = () => {
+    if (newIngredient.codigo_ingrediente.trim() && 
+        newIngredient.descripcion_ingrediente.trim() && 
+        receta) {
+      setReceta(prev => prev ? {
+        ...prev,
+        ingredientes: [...prev.ingredientes, { ...newIngredient }],
+      } : null);
+      setNewIngredient({ 
+        codigo_ingrediente: '', 
+        descripcion_ingrediente: '', 
+        cantidad_ingrediente: 0 
+      });
+      toast({
+        title: "Ingrediente agregado",
+        description: "El ingrediente se ha agregado exitosamente.",
+      });
+    }
   };
 
-  const canEdit = user?.role === 'admin';
+  const handleSave = async () => {
+    if (!receta) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas/${codigo_producto}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(receta),
+      });
+
+      if (!res.ok) throw new Error('Error al guardar');
+
+      toast({
+        title: "✅ Receta guardada",
+        description: "Los cambios se han guardado exitosamente.",
+        className: "bg-green-100 text-green-800",
+      });
+      navigate('/receta');
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la receta",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading || !receta) {
+    return <Layout title="Cargando receta...">Loading...</Layout>;
+  }
 
   return (
-    <Layout title="Gestión de Recetas">
+    <Layout title={`Editar Receta: ${receta.codigo_producto}`}>
       <div className="space-y-6">
-        {/* Header Actions */}
-        <div className="flex justify-between items-center">
-          <div>
-            <Badge variant="outline" className="bg-blue-50">
-              📋 Recetas - Corazón del cálculo CDR
-            </Badge>
-            <p className="text-sm text-muted-foreground mt-2">
-              Define materiales, cantidades, mano de obra y energía necesarios para fabricar productos
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <Button onClick={handleExport} variant="outline">
-              📤 Exportar
-            </Button>
-            {canEdit && (
-              <Button>
-                ➕ Nueva Receta
-              </Button>
-            )}
-          </div>
+        {/* Header Buttons */}
+        <div className="flex justify-between">
+          <Button variant="outline" onClick={() => navigate('/receta')}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+          </Button>
+          <Button onClick={handleSave}>
+            <Save className="mr-2 h-4 w-4" /> Guardar
+          </Button>
         </div>
 
-        {/* Recetas Cards */}
-        <div className="grid gap-6">
-          {recetas.map((receta) => (
-            <Card key={receta.id} className="border-l-4 border-l-blue-500">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="flex items-center space-x-2">
-                      <span>{receta.nombre}</span>
-                      <Badge variant={receta.estado === 'activa' ? 'default' : 'secondary'}>
-                        {receta.estado}
-                      </Badge>
-                    </CardTitle>
-                    <CardDescription>{receta.descripcion}</CardDescription>
-                  </div>
-                  {canEdit && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleEdit(receta.id)}
-                    >
-                      ✏️ Editar
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Producción */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">PRODUCCIÓN</h4>
-                    <div className="text-lg font-semibold">
-                      {receta.cantidadProduccion} {receta.unidad}
-                    </div>
-                  </div>
+        {/* Recipe Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Información de la Receta</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Código Producto</Label>
+                <Input
+                  value={receta.codigo_producto}
+                  onChange={(e) => handleTitleChange('codigo_producto', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Descripción</Label>
+                <Input
+                  value={receta.descripcion_producto}
+                  onChange={(e) => handleTitleChange('descripcion_producto', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Sector Productivo</Label>
+                <Input
+                  value={receta.sector_productivo}
+                  onChange={(e) => handleTitleChange('sector_productivo', e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-                  {/* Mano de Obra */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">MANO DE OBRA</h4>
-                    <div className="space-y-1">
-                      {receta.manoObra.map((mo, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          👷 {mo}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
+        {/* Ingredients Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ingredientes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Cantidad</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {receta.ingredientes.map((ingrediente, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <Input
+                          value={ingrediente.codigo_ingrediente}
+                          onChange={(e) => updateIngredient(index, 'codigo_ingrediente', e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={ingrediente.descripcion_ingrediente}
+                          onChange={(e) => updateIngredient(index, 'descripcion_ingrediente', e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={ingrediente.cantidad_ingrediente}
+                          onChange={(e) => updateIngredient(index, 'cantidad_ingrediente', Number(e.target.value))}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
 
-                  {/* Mano de Energía */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">MANO DE ENERGÍA</h4>
-                    <div className="space-y-1">
-                      {receta.manoEnergia.map((me, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          ⚡ {me}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Insumos */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">INSUMOS</h4>
-                    <div className="space-y-1">
-                      {receta.insumos.map((insumo, index) => (
-                        <div key={index} className="text-xs">
-                          📦 {insumo.nombre}: {insumo.cantidad} {insumo.unidad}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Info Card */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-blue-600">ℹ️</span>
-              <span className="text-sm text-blue-800">
-                Las recetas son fundamentales para el cálculo automático del CDR. 
-                Cualquier modificación se reflejará automáticamente en los costos de reposición.
-              </span>
+        {/* Add New Ingredient */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Plus className="mr-2 h-4 w-4" /> Agregar Nuevo Ingrediente
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-12 gap-4">
+              <div className="col-span-4 space-y-2">
+                <Label>Código</Label>
+                <Input
+                  value={newIngredient.codigo_ingrediente}
+                  onChange={(e) => setNewIngredient({...newIngredient, codigo_ingrediente: e.target.value})}
+                />
+              </div>
+              <div className="col-span-5 space-y-2">
+                <Label>Descripción</Label>
+                <Input
+                  value={newIngredient.descripcion_ingrediente}
+                  onChange={(e) => setNewIngredient({...newIngredient, descripcion_ingrediente: e.target.value})}
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Cantidad</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={newIngredient.cantidad_ingrediente}
+                  onChange={(e) => setNewIngredient({...newIngredient, cantidad_ingrediente: Number(e.target.value)})}
+                />
+              </div>
+              <div className="col-span-1 flex items-end">
+                <Button 
+                  onClick={addNewIngredient}
+                  className="w-full"
+                  disabled={!newIngredient.codigo_ingrediente.trim() || !newIngredient.descripcion_ingrediente.trim()}
+                >
+                  Agregar
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -194,4 +283,4 @@ const Receta: React.FC = () => {
   );
 };
 
-export default Receta;
+export default EditarReceta;

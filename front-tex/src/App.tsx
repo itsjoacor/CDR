@@ -40,12 +40,13 @@ const App = () => (
 
               <Route path="/" element={<Dashboard />} />
               <Route path="/receta" element={<Receta />} />
-               <Route path="/cargarReceta" element={<CargarReceta />} />
-              <Route path="/editarReceta/:codigoProducto" element={<EditarReceta />} />
+
               <Route path="/mano-obra" element={<ManoObra />} />
               <Route path="/mano-energia" element={<ManoEnergia />} />
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
+                <Route path="/cargarReceta" element={<CargarReceta />} />
+                <Route path="/editarReceta/:codigo_producto" element={<EditarReceta />} />
                 <Route path="/insumos" element={<Insumos />} />
                 <Route path="/cdr" element={<CDR />} />
               </Route>
