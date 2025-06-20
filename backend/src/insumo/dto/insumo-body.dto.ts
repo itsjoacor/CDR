@@ -1,30 +1,17 @@
-import { IsString, IsNumber, IsNotEmpty } from 'class-validator';
+import { Insumo } from '../model/insumo.model';
 
-export class CreateInsumoDto {
-  @IsString()
-  @IsNotEmpty()
-  codigo: string;
-
-  @IsString()
-  @IsNotEmpty()
+export class InsumoBody {
   grupo: string;
-
-  @IsString()
-  @IsNotEmpty()
+  codigo: string;
   detalle: string;
-
-  @IsNumber()
-  @IsNotEmpty()
   costo: number;
-}
 
-export class UpdateInsumoDto {
-  @IsString()
-  grupo?: string;
-
-  @IsString()
-  detalle?: string;
-
-  @IsNumber()
-  costo?: number;
+  public aModelo(): Insumo {
+    return new Insumo(
+      this.grupo,
+      this.codigo,
+      this.detalle,
+      this.costo
+    );
+  }
 }

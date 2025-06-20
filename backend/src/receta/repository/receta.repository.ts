@@ -30,28 +30,38 @@ export class RecetaRepository {
 
 
   async guardar(receta: Receta): Promise<Receta> {
-    const { data, error } = await supabase
-      .from('recetas') // tu tabla en Supabase
-      .insert([
-        {
-          sector_productivo: receta.sector_productivo,
-          codigo_ingrediente: receta.codigo_ingrediente,
-          descripcion_ingrediente: receta.descripcion_ingrediente,
-          cantidad_ingrediente: receta.cantidad_ingrediente,
-          codigo_producto: receta.codigo_producto,
-          descripcion_producto: receta.descripcion_producto
-        }
-      ])
-      .select()
-      .single(); // retorna un solo objeto
+  // Primero verificar si ya existe
+  const existe = await supabase
+    .from('recetas')
+    .select('*')
+    .eq('codigo_producto', receta.codigo_producto)
+    .eq('codigo_ingrediente', receta.codigo_ingrediente)
+    .maybeSingle();
 
-    if (error) {
-      console.error('❌ Supabase error:', error);
-      throw new Error(error.message);
-    }
-
-    return data;
+  if (existe.data) {
+    throw new Error('Ya existe una receta con estos códigos, si deseasa actualizar valores, Edita la receta');
   }
+
+  // Si no existe, insertar
+  const { data, error } = await supabase
+    .from('recetas')
+    .insert([{
+      sector_productivo: receta.sector_productivo,
+      codigo_ingrediente: receta.codigo_ingrediente,
+      descripcion_ingrediente: receta.descripcion_ingrediente,
+      cantidad_ingrediente: receta.cantidad_ingrediente,
+      codigo_producto: receta.codigo_producto,
+      descripcion_producto: receta.descripcion_producto
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
 
   async buscarProducto(codigo: string) {
     const { data } = await supabase
@@ -63,4 +73,5 @@ export class RecetaRepository {
 
     return data;
   }
+
 }

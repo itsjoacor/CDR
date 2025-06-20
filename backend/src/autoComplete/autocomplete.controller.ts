@@ -1,27 +1,18 @@
+// src/autocomplete/autocomplete.controller.ts
 import { Controller, Get, Param } from '@nestjs/common';
 import { AutocompleteService } from './autocomplete.service';
 
-@Controller('api/autocomplete') // Added 'api/' prefix
+@Controller('api/autocomplete')
 export class AutocompleteController {
   constructor(private readonly service: AutocompleteService) {}
 
   @Get('producto/:codigo')
   async autocompleteProducto(@Param('codigo') codigo: string) {
-    try {
-      const result = await this.service.autocompletarProducto(codigo);
-      return result;
-    } catch (error) {
-      return { descripcion: '', sector: '' };
-    }
+    return this.service.autocompleteProducto(codigo);
   }
 
   @Get('ingrediente/:codigo')
   async autocompleteIngrediente(@Param('codigo') codigo: string) {
-    try {
-      const result = await this.service.autocompletarIngrediente(codigo);
-      return result;
-    } catch (error) {
-      return { descripcion: '' };
-    }
+    return this.service.autocompleteIngrediente(codigo);
   }
 }

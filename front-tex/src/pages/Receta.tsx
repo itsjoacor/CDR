@@ -114,7 +114,7 @@ const Receta: React.FC = () => {
               📤 Exportar
             </Button>
             {canEdit && (
-              <Button onClick={() => navigate(`/cargarReceta}`)} >
+              <Button onClick={() => navigate(`/cargarReceta`)} >
                 ➕ Nueva Receta
               </Button>
             )}

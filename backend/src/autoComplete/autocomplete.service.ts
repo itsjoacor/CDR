@@ -1,3 +1,4 @@
+// src/autocomplete/autocomplete.service.ts
 import { Injectable } from '@nestjs/common';
 import { RecetaRepository } from '../receta/repository/receta.repository';
 import { InsumoRepository } from '../insumo/repository/insumo.repository';
@@ -9,7 +10,8 @@ export class AutocompleteService {
     private readonly insumoRepo: InsumoRepository
   ) {}
 
-  async autocompletarProducto(codigo: string) {
+  async autocompleteProducto(codigo: string) {
+    // Buscar en productos (recetas)
     const producto = await this.recetaRepo.buscarProducto(codigo);
     return {
       descripcion: producto?.descripcion_producto || '',
@@ -17,14 +19,18 @@ export class AutocompleteService {
     };
   }
 
-  async autocompletarIngrediente(codigo: string) {
-    // 1. Buscar en productos
+  async autocompleteIngrediente(codigo: string) {
+    // 1. Buscar en productos (recetas)
     const producto = await this.recetaRepo.buscarProducto(codigo);
-    if (producto) return { descripcion: producto.descripcion_producto };
+    if (producto) {
+      return { descripcion: producto.descripcion_producto };
+    }
 
     // 2. Buscar en insumos
     const insumo = await this.insumoRepo.buscarPorCodigo(codigo);
-    if (insumo) return { descripcion: insumo.detalle };
+    if (insumo) {
+      return { descripcion: insumo.detalle };
+    }
 
     return { descripcion: '' };
   }

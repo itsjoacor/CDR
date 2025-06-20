@@ -1,99 +1,71 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InsumoRepository } from '../repository/insumo.repository';
-import { CreateInsumoDto, UpdateInsumoDto } from '../dto/insumo-body.dto';
+import { Injectable } from '@nestjs/common';
 import { Insumo } from '../model/insumo.model';
+import { InsumoRepository } from '../repository/insumo.repository';
+import { supabase } from '../../config/supabase.client';
 
 @Injectable()
 export class InsumoService {
-  constructor(
-    private readonly insumoRepository: InsumoRepository,
-  ) {}
+  constructor(private readonly insumoRepository: InsumoRepository) { }
 
-  async create(createInsumoDto: CreateInsumoDto): Promise<Insumo> {
+  async guardarInsumo(insumo: Insumo): Promise<Insumo> {
     try {
-      return await this.insumoRepository.guardar({
-        codigo: createInsumoDto.codigo,
-        grupo: createInsumoDto.grupo,
-        detalle: createInsumoDto.detalle,
-        costo: createInsumoDto.costo,
-        getCodigo: function (): string {
-          throw new Error('Function not implemented.');
-        },
-        getGrupo: function (): string {
-          throw new Error('Function not implemented.');
-        },
-        getDetalle: function (): string {
-          throw new Error('Function not implemented.');
-        },
-        getCosto: function (): number {
-          throw new Error('Function not implemented.');
-        },
-        calcularIva: function (porcentajeIva?: number): number {
-          throw new Error('Function not implemented.');
-        },
-        getDescripcionCompleta: function (): string {
-          throw new Error('Function not implemented.');
-        },
-        esDeAltoCosto: function (umbral?: number): boolean {
-          throw new Error('Function not implemented.');
-        },
-        toJSON: function (): Record<string, any> {
-          throw new Error('Function not implemented.');
-        }
-      });
+      return await this.insumoRepository.guardar(insumo);
     } catch (error) {
-      throw new Error(`Failed to create insumo: ${error.message}`);
+      console.error('❌ Error completo al guardar:', error);
+      throw new Error('Error al insertar insumo: ' + (error?.message ?? 'Error desconocido'));
     }
   }
 
-  async findAll(): Promise<Insumo[]> {
-    try {
-      return await this.insumoRepository.buscarPorFiltros({});
-    } catch (error) {
-      throw new Error(`Failed to fetch insumos: ${error.message}`);
+  async obtenerTodos(): Promise<Insumo[]> {
+    const { data, error } = await supabase.from('insumos').select('*');
+
+    if (error) {
+      throw new Error('Error al obtener insumos: ' + error.message);
     }
+    return data as Insumo[];
   }
 
-  async findOne(codigo: string): Promise<Insumo> {
-    const insumo = await this.insumoRepository.buscarPorCodigo(codigo);
-    if (!insumo) {
-      throw new NotFoundException(`Insumo with code ${codigo} not found`);
+  async obtenerInsumoPorCodigo(codigo: string): Promise<Insumo> {
+    const { data, error } = await supabase
+      .from('insumos')
+      .select('*')
+      .eq('codigo', codigo)
+      .single();
+
+    if (error || !data) {
+      throw new Error('Error al obtener insumo: ' + (error?.message || 'No encontrado'));
     }
-    return insumo;
+
+    return data;
   }
 
-  async update(codigo: string, updateInsumoDto: UpdateInsumoDto): Promise<Insumo> {
-    try {
-      // Verify exists first
-      await this.findOne(codigo);
-      
-      return await this.insumoRepository.actualizar(codigo, updateInsumoDto);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new Error(`Failed to update insumo: ${error.message}`);
-    }
+  async buscarPorFiltros(filtros: {
+    codigo?: string;
+    grupo?: string;
+    detalle?: string;
+  }): Promise<Insumo[]> {
+    return this.insumoRepository.buscarPorFiltros(filtros);
   }
 
-  async remove(codigo: string): Promise<void> {
-    try {
-      // Verify exists first
-      await this.findOne(codigo);
-      await this.insumoRepository.eliminar(codigo);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new Error(`Failed to delete insumo: ${error.message}`);
+  async actualizarInsumo(codigo: string, insumo: Partial<Insumo>): Promise<Insumo> {
+    const { data, error } = await supabase
+      .from('insumos')
+      .update(insumo)
+      .eq('codigo', codigo)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error('Error al actualizar insumo: ' + error.message);
     }
+    return data as Insumo;
   }
 
-  async buscarPorCodigo(codigo: string): Promise<Insumo | null> {
-    try {
-      return await this.insumoRepository.buscarPorCodigo(codigo);
-    } catch (error) {
-      throw new Error(`Failed to find insumo by code: ${error.message}`);
+  async eliminarInsumo(codigo: string): Promise<void> {
+    const { error } = await supabase.from('insumos').delete().eq('codigo', codigo);
+
+    if (error) {
+      throw new Error('Error al eliminar insumo: ' + error.message);
     }
   }
 }
