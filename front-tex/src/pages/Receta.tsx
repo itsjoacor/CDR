@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface RecetaItem {
   codigo_producto: string;
@@ -20,7 +20,12 @@ interface RecetaItem {
   costo_mano_obra?: number;
   costo_matriz_energetica?: number;
   costo_total?: number;
-  valor_cdr?: number;
+}
+
+interface ProductoInfo {
+  codigo_producto: string;
+  descripcion_producto: string;
+  sector_productivo: string;
 }
 
 const Receta: React.FC = () => {
@@ -28,64 +33,84 @@ const Receta: React.FC = () => {
   const { toast } = useToast();
   const [recetas, setRecetas] = useState<RecetaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cdrValues, setCdrValues] = useState<Record<string, number>>({});
   const navigate = useNavigate();
-  const { codigo_producto } = useParams<{ codigo_producto: string }>();
+
+  const canEdit = user?.role === 'admin';
 
   useEffect(() => {
-    const fetchRecetas = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/recetas`);
-        if (!response.ok) {
-          throw new Error('Error al obtener recetas');
-        }
-        const data = await response.json();
+        setLoading(true);
 
-        // Group by codigo_producto
-        const groupedRecetas = data.reduce((acc: Record<string, RecetaItem>, item: any) => {
-          if (!acc[item.codigo_producto]) {
-            acc[item.codigo_producto] = {
+        // 1. Obtener productos
+        const productosResponse = await fetch(`${import.meta.env.VITE_API_URL}/productos`);
+        if (!productosResponse.ok) throw new Error('Error al obtener productos');
+        const productosData: ProductoInfo[] = await productosResponse.json();
+        const productosMap = productosData.reduce((acc, prod) => {
+          acc[prod.codigo_producto] = prod;
+          return acc;
+        }, {} as Record<string, ProductoInfo>);
+
+        // 2. Obtener recetas
+        const recetasResponse = await fetch(`${import.meta.env.VITE_API_URL}/recetas`);
+        if (!recetasResponse.ok) throw new Error('Error al obtener recetas');
+        const recetasData = await recetasResponse.json();
+
+        const recetasGrouped: Record<string, RecetaItem> = {};
+
+        for (const item of recetasData) {
+          if (!recetasGrouped[item.codigo_producto]) {
+            const prod = productosMap[item.codigo_producto];
+            recetasGrouped[item.codigo_producto] = {
               codigo_producto: item.codigo_producto,
-              descripcion_producto: item.descripcion_producto,
-              sector_productivo: item.sector_productivo,
+              descripcion_producto: prod?.descripcion_producto || 'Producto no encontrado',
+              sector_productivo: prod?.sector_productivo || 'Desconocido',
               ingredientes: [],
               costo_mano_obra: item.costo_mano_obra,
               costo_matriz_energetica: item.costo_matriz_energetica,
-              costo_total: item.costo_total,
-              valor_cdr: item.valor_cdr
+              costo_total: item.costo_total
             };
           }
-          acc[item.codigo_producto].ingredientes.push({
+
+          recetasGrouped[item.codigo_producto].ingredientes.push({
             codigo_ingrediente: item.codigo_ingrediente,
             descripcion_ingrediente: item.descripcion_ingrediente,
             cantidad_ingrediente: item.cantidad_ingrediente,
             costo_ingrediente: item.costo_ingrediente
           });
-          return acc;
-        }, {});
+        }
 
-        setRecetas(Object.values(groupedRecetas));
+        const recetasArray = Object.values(recetasGrouped);
+        setRecetas(recetasArray);
+
+        // 3. Obtener CDR de cada producto (en paralelo)
+        const cdrMap: Record<string, number> = {};
+        await Promise.all(recetasArray.map(async (receta) => {
+          try {
+            const cdrRes = await fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr/${receta.codigo_producto}`);
+            if (!cdrRes.ok) return;
+            const cdrData = await cdrRes.json();
+            cdrMap[receta.codigo_producto] = cdrData.base_cdr || 0;
+          } catch (_) {
+            cdrMap[receta.codigo_producto] = 0;
+          }
+        }));
+
+        setCdrValues(cdrMap);
       } catch (error) {
         toast({
           title: "Error",
-          description: error instanceof Error ? error.message : "Error al cargar recetas",
-          variant: "destructive",
+          description: error instanceof Error ? error.message : "Fallo en la carga de datos.",
+          variant: "destructive"
         });
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRecetas();
+    fetchData();
   }, []);
-
-  const handleExport = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Los datos de recetas se están exportando a Excel...",
-    });
-  };
-
-  const canEdit = user?.role === 'admin';
 
   if (loading) {
     return (
@@ -100,29 +125,23 @@ const Receta: React.FC = () => {
   return (
     <Layout title="Gestión de Recetas">
       <div className="space-y-6">
-        {/* Header Actions */}
         <div className="flex justify-between items-center">
           <div>
-            <Badge variant="outline" className="bg-blue-50">
-              📋 Recetas
-            </Badge>
+            <Badge variant="outline" className="bg-blue-50">📋 Recetas</Badge>
             <p className="text-sm text-muted-foreground mt-2">
-              Define materiales, cantidades, mano de obra y energía necesarios para fabricar productos
+              Define materiales, cantidades, mano de obra y energía necesarios para fabricar productos.
             </p>
           </div>
           <div className="flex space-x-2">
             {canEdit && (
-              <Button onClick={() => navigate(`/cargarReceta`)} >
-                ➕ Nueva Receta
-              </Button>
+              <Button onClick={() => navigate(`/cargarReceta`)}>➕ Nueva Receta</Button>
             )}
-            <Button onClick={handleExport} variant="outline">
+            <Button onClick={() => toast({ title: 'Exportando...', description: 'Esto exportará tus recetas.' })} variant="outline">
               📤 Exportar
             </Button>
           </div>
         </div>
 
-        {/* Recetas Cards */}
         <div className="grid gap-6">
           {recetas.map((receta) => (
             <Card key={receta.codigo_producto} className="border-l-4 border-l-blue-500">
@@ -131,9 +150,7 @@ const Receta: React.FC = () => {
                   <div>
                     <CardTitle className="flex items-center space-x-2">
                       <span>{receta.descripcion_producto}</span>
-                      <Badge variant="default">
-                        {receta.sector_productivo}
-                      </Badge>
+                      <Badge variant="default">{receta.sector_productivo}</Badge>
                     </CardTitle>
                     <CardDescription>Código: {receta.codigo_producto}</CardDescription>
                   </div>
@@ -146,21 +163,18 @@ const Receta: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Insumos */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">OTRO CAMPO X</h4>
-                    <div className="space-y-1">
-
-                    </div>
-                  </div>
-
-                  {/* Costos */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">Costo Directo de Resposicion</h4>
-                    <div className="space-y-1 text-xs">
-                      <div className="text-blue-600">
-                        🏷️ CDR: ${receta.valor_cdr?.toFixed(2) || '0.00'}
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground">Ingredientes</h4>
+                    {receta.ingredientes.map((ing, idx) => (
+                      <div key={idx} className="text-xs">
+                        {ing.descripcion_ingrediente} ({ing.cantidad_ingrediente})
                       </div>
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-muted-foreground">Costo Directo de Reposición</h4>
+                    <div className="text-blue-600 text-xs">
+                      🏷️ CDR: ${cdrValues[receta.codigo_producto]?.toFixed(2) || '0.00'}
                     </div>
                   </div>
                 </div>
@@ -168,19 +182,6 @@ const Receta: React.FC = () => {
             </Card>
           ))}
         </div>
-
-        {/* Info Card */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-blue-600">ℹ️</span>
-              <span className="text-sm text-blue-800">
-                Las recetas son fundamentales para el cálculo automático del CDR.
-                Cualquier modificación se reflejará automáticamente en los costos de reposición.
-              </span>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </Layout>
   );
