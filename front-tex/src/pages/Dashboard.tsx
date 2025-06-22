@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
       canEdit: user?.role === 'admin'
     },
     {
-      path: '/cdr',
+      path: '/resultados-cdr',
       title: 'CDR (Código Directo de Reposición)',
       icon: '💰',
       description: 'Visualizar costos calculados automáticamente para reposición',
@@ -81,7 +81,7 @@ const Dashboard: React.FC = () => {
                       ) : (
                         <Badge variant="secondary">Solo lectura</Badge>
                       )}
-                      {module.path === '/cdr' && (
+                      {module.path === '/resultados-cdr' && (
                         <Badge variant="outline" className="bg-green-100">
                           Auto-calculado
                         </Badge>

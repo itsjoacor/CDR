@@ -48,7 +48,7 @@ const App = () => (
                 <Route path="/cargarReceta" element={<CargarReceta />} />
                 <Route path="/editarReceta/:codigo_producto" element={<EditarReceta />} />
                 <Route path="/insumos" element={<Insumos />} />
-                <Route path="/cdr" element={<CDR />} />
+                <Route path="/resultados-cdr" element={<CDR />} />
               </Route>
             </Route>
 

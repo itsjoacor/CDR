@@ -5,6 +5,7 @@ import Cookies from 'js-cookie';
 import { supabase } from '@/lib/supabase';
 
 interface User {
+  name: ReactNode;
   id: string;
   email: string;
   role: 'admin' | 'usuario';

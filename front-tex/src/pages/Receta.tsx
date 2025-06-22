@@ -1,3 +1,5 @@
+// Receta.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
@@ -43,7 +45,6 @@ const Receta: React.FC = () => {
       try {
         setLoading(true);
 
-        // 1. Obtener productos
         const productosResponse = await fetch(`${import.meta.env.VITE_API_URL}/productos`);
         if (!productosResponse.ok) throw new Error('Error al obtener productos');
         const productosData: ProductoInfo[] = await productosResponse.json();
@@ -52,7 +53,6 @@ const Receta: React.FC = () => {
           return acc;
         }, {} as Record<string, ProductoInfo>);
 
-        // 2. Obtener recetas
         const recetasResponse = await fetch(`${import.meta.env.VITE_API_URL}/recetas`);
         if (!recetasResponse.ok) throw new Error('Error al obtener recetas');
         const recetasData = await recetasResponse.json();
@@ -84,11 +84,10 @@ const Receta: React.FC = () => {
         const recetasArray = Object.values(recetasGrouped);
         setRecetas(recetasArray);
 
-        // 3. Obtener CDR de cada producto (en paralelo)
         const cdrMap: Record<string, number> = {};
         await Promise.all(recetasArray.map(async (receta) => {
           try {
-            const cdrRes = await fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr/${receta.codigo_producto}`);
+            const cdrRes = await fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr/${receta.codigo_producto}/base`);
             if (!cdrRes.ok) return;
             const cdrData = await cdrRes.json();
             cdrMap[receta.codigo_producto] = cdrData.base_cdr || 0;
@@ -163,14 +162,6 @@ const Receta: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground">Ingredientes</h4>
-                    {receta.ingredientes.map((ing, idx) => (
-                      <div key={idx} className="text-xs">
-                        {ing.descripcion_ingrediente} ({ing.cantidad_ingrediente})
-                      </div>
-                    ))}
-                  </div>
                   <div className="space-y-2">
                     <h4 className="font-medium text-sm text-muted-foreground">Costo Directo de Reposición</h4>
                     <div className="text-blue-600 text-xs">
