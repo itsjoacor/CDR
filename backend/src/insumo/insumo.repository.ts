@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { supabase } from '../../config/supabase.client';
-import { Insumo } from '../model/insumo.model';
+import { supabase } from '../config/supabase.client';
+import { Insumo } from './insumo.model';
 
 @Injectable()
 export class InsumoRepository {

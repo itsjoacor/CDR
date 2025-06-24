@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
@@ -8,75 +7,55 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
-interface ManoObraItem {
-  id: string;
-  tipo: string;
+type ManoObraAPI = {
+  codigo_mano_obra: string;
+  sector_productivo: string;
   descripcion: string;
-  salarioHora: number;
-  tiempoEstimado: number;
-  unidadTiempo: string;
-  categoria: string;
-  estado: 'activo' | 'inactivo';
-}
+  consumo_kw_std: number;
+  std_produccion: number;
+  horas_hombre_std: number;
+  valor_hora_hombre: number;
+  horas_por_turno: number;
+  producto_calculado_std?: string;
+  costo_mano_obra?: number;
+  cantidad_personal_estimado?: number;
+};
 
 const ManoObra: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [manoObra] = useState<ManoObraItem[]>([
-    {
-      id: '1',
-      tipo: 'Corte',
-      descripcion: 'Corte de tela según patrón',
-      salarioHora: 15000,
-      tiempoEstimado: 0.5,
-      unidadTiempo: 'horas',
-      categoria: 'Operario',
-      estado: 'activo'
-    },
-    {
-      id: '2',
-      tipo: 'Costura',
-      descripcion: 'Costura básica en máquina recta',
-      salarioHora: 18000,
-      tiempoEstimado: 1.2,
-      unidadTiempo: 'horas',
-      categoria: 'Operario Especializado',
-      estado: 'activo'
-    },
-    {
-      id: '3',
-      tipo: 'Costura especializada',
-      descripcion: 'Costura con técnicas especiales',
-      salarioHora: 22000,
-      tiempoEstimado: 1.8,
-      unidadTiempo: 'horas',
-      categoria: 'Especialista',
-      estado: 'activo'
-    },
-    {
-      id: '4',
-      tipo: 'Acabado',
-      descripcion: 'Procesos finales y control de calidad',
-      salarioHora: 16000,
-      tiempoEstimado: 0.8,
-      unidadTiempo: 'horas',
-      categoria: 'Operario',
-      estado: 'activo'
-    }
-  ]);
-
-  const handleExport = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Los datos de mano de obra se están exportando a Excel...",
-    });
-  };
-
+  const [manoObra, setManoObra] = useState<ManoObraAPI[]>([]);
+  const [loading, setLoading] = useState(true);
   const canEdit = user?.role === 'admin';
 
-  const calcularCosto = (salarioHora: number, tiempoEstimado: number) => {
-    return (salarioHora * tiempoEstimado).toLocaleString('es-CO');
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/matriz-mano`);
+        if (!res.ok) throw new Error('Error al obtener datos');
+        const data = await res.json();
+        setManoObra(data);
+      } catch (err) {
+        toast({
+          title: 'Error',
+          description: 'No se pudo cargar la mano de obra desde el servidor.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const calcularPromedio = (campo: keyof ManoObraAPI): number => {
+    const numeros = manoObra
+      .map((m) => m[campo])
+      .filter((val): val is number => typeof val === 'number');
+    const total = numeros.reduce((acc, val) => acc + val, 0);
+    return numeros.length > 0 ? total / numeros.length : 0;
   };
+
 
   return (
     <Layout title="Mano de Obra">
@@ -92,46 +71,36 @@ const ManoObra: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            <Button onClick={handleExport} variant="outline">
-              📤 Exportar
-            </Button>
-            {canEdit && (
-              <Button>
-                ➕ Nuevo Tipo MO
-              </Button>
-            )}
+            <Button variant="outline">📤 Exportar</Button>
+            {canEdit && <Button>➕ Nuevo Tipo MO</Button>}
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-orange-600">4</div>
-              <div className="text-sm text-muted-foreground">Tipos de MO</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">$17.750</div>
-              <div className="text-sm text-muted-foreground">Salario Promedio/Hora</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">4.3h</div>
-              <div className="text-sm text-muted-foreground">Tiempo Promedio</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-purple-600">100%</div>
-              <div className="text-sm text-muted-foreground">Tipos Activos</div>
-            </CardContent>
-          </Card>
+          <Card><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-orange-600">{manoObra.length}</div>
+            <div className="text-sm text-muted-foreground">Tipos de MO</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-green-600">
+              ${calcularPromedio('valor_hora_hombre').toLocaleString('es-CO')}
+            </div>
+            <div className="text-sm text-muted-foreground">Salario Promedio/Hora</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              {calcularPromedio('horas_hombre_std').toFixed(1)}h
+            </div>
+            <div className="text-sm text-muted-foreground">Tiempo Promedio</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-purple-600">100%</div>
+            <div className="text-sm text-muted-foreground">Tipos Activos</div>
+          </CardContent></Card>
         </div>
 
-        {/* Main Table */}
+        {/* Table */}
         <Card>
           <CardHeader>
             <CardTitle>Catálogo de Mano de Obra</CardTitle>
@@ -140,74 +109,53 @@ const ManoObra: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tipo de Trabajo</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Salario/Hora</TableHead>
-                  <TableHead>Tiempo Estimado</TableHead>
-                  <TableHead>Costo Total</TableHead>
-                  <TableHead>Estado</TableHead>
-                  {canEdit && <TableHead>Acciones</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {manoObra.map((mo) => (
-                  <TableRow key={mo.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{mo.tipo}</div>
-                        <div className="text-sm text-muted-foreground">{mo.descripcion}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{mo.categoria}</Badge>
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      ${mo.salarioHora.toLocaleString('es-CO')}
-                    </TableCell>
-                    <TableCell>
-                      {mo.tiempoEstimado} {mo.unidadTiempo}
-                    </TableCell>
-                    <TableCell className="font-mono font-semibold text-green-600">
-                      ${calcularCosto(mo.salarioHora, mo.tiempoEstimado)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={mo.estado === 'activo' ? 'default' : 'secondary'}>
-                        {mo.estado}
-                      </Badge>
-                    </TableCell>
-                    {canEdit && (
-                      <TableCell>
-                        <Button variant="outline" size="sm">
-                          ✏️ Editar
-                        </Button>
-                      </TableCell>
-                    )}
+            {loading ? (
+              <p className="text-muted-foreground">Cargando...</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Sector</TableHead>
+                    <TableHead>Salario/Hora</TableHead>
+                    <TableHead>Tiempo Estimado</TableHead>
+                    <TableHead>Costo Estimado</TableHead>
+                    {canEdit && <TableHead>Acciones</TableHead>}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {manoObra.map((mo) => (
+                    <TableRow key={mo.codigo_mano_obra}>
+                      <TableCell>
+                        <div className="font-medium">{mo.codigo_mano_obra}</div>
+                        <div className="text-sm text-muted-foreground">{mo.descripcion}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{mo.sector_productivo}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        ${mo.valor_hora_hombre.toLocaleString('es-CO')}
+                      </TableCell>
+                      <TableCell>{mo.horas_hombre_std} h</TableCell>
+                      <TableCell className="text-green-600 font-semibold font-mono">
+                        ${mo.costo_mano_obra?.toLocaleString('es-CO') ?? 'N/A'}
+                      </TableCell>
+                      {canEdit && (
+                        <TableCell>
+                          <Button variant="outline" size="sm">
+                            ✏️ Editar
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
-        {/* Formula Info */}
-        <Card className="bg-orange-50 border-orange-200">
-          <CardHeader>
-            <CardTitle className="text-orange-800">💡 Fórmula de Cálculo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-orange-800">
-              <div className="font-mono text-sm bg-white p-2 rounded border">
-                Costo MO = Salario por Hora × Tiempo Estimado
-              </div>
-              <p className="text-sm">
-                Esta fórmula se aplica automáticamente en el cálculo del CDR para cada tipo de mano de obra utilizada en las recetas.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+
       </div>
     </Layout>
   );

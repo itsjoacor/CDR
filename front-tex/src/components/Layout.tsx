@@ -27,7 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     { path: '/mano-obra', label: 'Mano de Obra', icon: '👷' },
     { path: '/mano-energia', label: 'Mano de Energía', icon: '⚡' },
     { path: '/insumos', label: 'Insumos', icon: '📦' },
-    { path: '/cdr', label: 'CDR', icon: '💰' },
+    { path: '/resultados-cdr', label: 'CDR', icon: '💰' },
   ];
 
   return (

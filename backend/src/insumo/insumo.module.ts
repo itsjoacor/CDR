@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { InsumoController } from './controller/insumo.controller';
-import { InsumoService } from './service/insumo.service';
-import { InsumoRepository } from './repository/insumo.repository';
+import { InsumoController } from './insumo.controller';
+import { InsumoService } from './insumo.service';
+import { InsumoRepository } from './insumo.repository';
 
 @Module({
   controllers: [InsumoController],

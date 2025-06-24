@@ -11,16 +11,21 @@ import {
   Put,
   Delete
 } from '@nestjs/common';
-import { InsumoService } from '../service/insumo.service';
+import { InsumoService } from './insumo.service';
 import { plainToInstance } from 'class-transformer';
-import { InsumoBody } from '../dto/insumo-body.dto';
-import { Insumo } from '../model/insumo.model';
+import { InsumoBody } from './insumo-body.dto';
+import { Insumo } from './insumo.model';
 
 @Controller('insumos')
 export class InsumoController {
   private readonly logger = new Logger(InsumoController.name);
 
   constructor(private readonly insumoService: InsumoService) { }
+
+  @Get()
+  async listarInsumos(): Promise<Insumo[]> {
+    return this.insumoService.obtenerTodos();
+  }
 
   @Post('registrar')
   async registro(@Body() body: InsumoBody): Promise<Insumo> {
@@ -56,10 +61,7 @@ export class InsumoController {
     return this.insumoService.obtenerInsumoPorCodigo(codigo);
   }
 
-  @Get()
-  async listarInsumos(): Promise<Insumo[]> {
-    return this.insumoService.obtenerTodos();
-  }
+
 
   @Put(':codigo')
   async actualizarInsumo(

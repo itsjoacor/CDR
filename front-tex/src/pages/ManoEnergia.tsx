@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
@@ -8,98 +7,59 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
-interface ManoEnergiaItem {
-  id: string;
-  equipo: string;
-  descripcion: string;
-  tipoEnergia: 'eléctrica' | 'gas' | 'vapor' | 'aire comprimido';
-  potencia: number;
-  unidadPotencia: string;
-  costoHora: number;
-  tiempoUso: number;
-  estado: 'activo' | 'inactivo' | 'mantenimiento';
-}
-
 const ManoEnergia: React.FC = () => {
+  interface MatrizEnergia {
+    codigo_mano_obra: string;
+    sector_productivo: string;
+    codigo_energia: string;
+    descripcion: string;
+    consumo_kw_std: number;
+    valor_kw: number;
+    std_produccion?: number | null;
+    total_pesos_std?: number;
+    costo_energia_unidad?: number;
+  }
+
   const { user } = useAuth();
   const { toast } = useToast();
-  const [manoEnergia] = useState<ManoEnergiaItem[]>([
-    {
-      id: '1',
-      equipo: 'Máquina de coser recta',
-      descripcion: 'Máquina industrial para costura básica',
-      tipoEnergia: 'eléctrica',
-      potencia: 0.5,
-      unidadPotencia: 'kW',
-      costoHora: 2500,
-      tiempoUso: 1.0,
-      estado: 'activo'
-    },
-    {
-      id: '2',
-      equipo: 'Máquina overlock',
-      descripcion: 'Máquina para acabados y costuras especiales',
-      tipoEnergia: 'eléctrica',
-      potencia: 0.7,
-      unidadPotencia: 'kW',
-      costoHora: 3200,
-      tiempoUso: 0.8,
-      estado: 'activo'
-    },
-    {
-      id: '3',
-      equipo: 'Plancha industrial',
-      descripcion: 'Plancha de vapor para acabados',
-      tipoEnergia: 'vapor',
-      potencia: 2.5,
-      unidadPotencia: 'kW',
-      costoHora: 4800,
-      tiempoUso: 0.3,
-      estado: 'activo'
-    },
-    {
-      id: '4',
-      equipo: 'Cortadora eléctrica',
-      descripcion: 'Cortadora automática de telas',
-      tipoEnergia: 'eléctrica',
-      potencia: 1.2,
-      unidadPotencia: 'kW',
-      costoHora: 3800,
-      tiempoUso: 0.5,
-      estado: 'mantenimiento'
-    }
-  ]);
+  const [data, setData] = useState<MatrizEnergia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const canEdit = user?.role === 'admin';
+
+  useEffect(() => {
+    const fetchEnergia = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/matriz-energia`);
+        if (!res.ok) throw new Error('Error al obtener energía');
+        const json = await res.json();
+        setData(json);
+      } catch (err) {
+        toast({
+          title: 'Error',
+          description: 'No se pudo obtener la matriz de energía',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEnergia();
+  }, []);
+
+  const calcularPromedio = (campo: keyof MatrizEnergia) => {
+    const nums = data.map(d => typeof d[campo] === 'number' ? Number(d[campo]) : 0);
+    return nums.reduce((acc, n) => acc + n, 0) / (nums.length || 1);
+  };
+
+  const calcularSuma = (campo: keyof MatrizEnergia) => {
+    return data.reduce((acc, d) => acc + (Number(d[campo]) || 0), 0);
+  };
 
   const handleExport = () => {
     toast({
       title: "Exportación iniciada",
       description: "Los datos de mano de energía se están exportando a Excel...",
     });
-  };
-
-  const canEdit = user?.role === 'admin';
-
-  const calcularCosto = (costoHora: number, tiempoUso: number) => {
-    return (costoHora * tiempoUso).toLocaleString('es-CO');
-  };
-
-  const getEnergiaBadgeColor = (tipo: string) => {
-    switch (tipo) {
-      case 'eléctrica': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'gas': return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'vapor': return 'bg-gray-100 text-gray-800 border-gray-300';
-      case 'aire comprimido': return 'bg-purple-100 text-purple-800 border-purple-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-  };
-
-  const getEstadoBadgeVariant = (estado: string) => {
-    switch (estado) {
-      case 'activo': return 'default';
-      case 'inactivo': return 'secondary';
-      case 'mantenimiento': return 'destructive';
-      default: return 'secondary';
-    }
   };
 
   return (
@@ -116,43 +76,33 @@ const ManoEnergia: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            <Button onClick={handleExport} variant="outline">
-              📤 Exportar
-            </Button>
-            {canEdit && (
-              <Button>
-                ➕ Nuevo Equipo
-              </Button>
-            )}
+            <Button onClick={handleExport} variant="outline">📤 Exportar</Button>
+            {canEdit && <Button>➕ Nuevo Equipo</Button>}
           </div>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-yellow-600">4</div>
-              <div className="text-sm text-muted-foreground">Equipos Registrados</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">75%</div>
-              <div className="text-sm text-muted-foreground">Equipos Activos</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">$3.575</div>
-              <div className="text-sm text-muted-foreground">Costo Promedio/Hora</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-purple-600">4.7kW</div>
-              <div className="text-sm text-muted-foreground">Potencia Total</div>
-            </CardContent>
-          </Card>
+          <Card><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-600">{data.length}</div>
+            <div className="text-sm text-muted-foreground">Equipos Registrados</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-green-600">100%</div>
+            <div className="text-sm text-muted-foreground">Activos (por defecto)</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              ${calcularPromedio('valor_kw').toLocaleString('es-CO')}
+            </div>
+            <div className="text-sm text-muted-foreground">Costo Promedio kW</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-purple-600">
+              {calcularSuma('consumo_kw_std').toFixed(1)} kW
+            </div>
+            <div className="text-sm text-muted-foreground">Consumo Total Estándar</div>
+          </CardContent></Card>
         </div>
 
         {/* Main Table */}
@@ -164,61 +114,49 @@ const ManoEnergia: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Equipo</TableHead>
-                  <TableHead>Tipo de Energía</TableHead>
-                  <TableHead>Potencia</TableHead>
-                  <TableHead>Costo/Hora</TableHead>
-                  <TableHead>Tiempo Uso</TableHead>
-                  <TableHead>Costo Total</TableHead>
-                  <TableHead>Estado</TableHead>
-                  {canEdit && <TableHead>Acciones</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {manoEnergia.map((me) => (
-                  <TableRow key={me.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{me.equipo}</div>
-                        <div className="text-sm text-muted-foreground">{me.descripcion}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getEnergiaBadgeColor(me.tipoEnergia)}>
-                        {me.tipoEnergia}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {me.potencia} {me.unidadPotencia}
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      ${me.costoHora.toLocaleString('es-CO')}
-                    </TableCell>
-                    <TableCell>
-                      {me.tiempoUso}h
-                    </TableCell>
-                    <TableCell className="font-mono font-semibold text-green-600">
-                      ${calcularCosto(me.costoHora, me.tiempoUso)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getEstadoBadgeVariant(me.estado)}>
-                        {me.estado}
-                      </Badge>
-                    </TableCell>
-                    {canEdit && (
-                      <TableCell>
-                        <Button variant="outline" size="sm">
-                          ✏️ Editar
-                        </Button>
-                      </TableCell>
-                    )}
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Cargando datos...</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Equipo</TableHead>
+                    <TableHead>Sector</TableHead>
+                    <TableHead>kW Estándar</TableHead>
+                    <TableHead>$/kW</TableHead>
+                    <TableHead>Producción Estándar</TableHead>
+                    <TableHead>Total $ Estándar</TableHead>
+                    <TableHead>$/Unidad</TableHead>
+                    {canEdit && <TableHead>Acciones</TableHead>}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.map((me) => (
+                    <TableRow key={me.codigo_mano_obra}>
+                      <TableCell>
+                        <div className="font-medium">{me.codigo_energia}</div>
+                        <div className="text-sm text-muted-foreground">{me.descripcion}</div>
+                      </TableCell>
+                      <TableCell>{me.sector_productivo}</TableCell>
+                      <TableCell className="font-mono">{me.consumo_kw_std} kW</TableCell>
+                      <TableCell className="font-mono">${me.valor_kw.toLocaleString('es-CO')}</TableCell>
+                      <TableCell>{me.std_produccion ?? '—'}</TableCell>
+                      <TableCell className="font-mono text-green-600 font-semibold">
+                        ${me.total_pesos_std?.toLocaleString('es-CO') ?? '—'}
+                      </TableCell>
+                      <TableCell className="font-mono text-blue-600 font-semibold">
+                        ${me.costo_energia_unidad?.toLocaleString('es-CO') ?? '—'}
+                      </TableCell>
+                      {canEdit && (
+                        <TableCell>
+                          <Button variant="outline" size="sm">✏️ Editar</Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
@@ -230,11 +168,10 @@ const ManoEnergia: React.FC = () => {
           <CardContent>
             <div className="space-y-2 text-yellow-800">
               <div className="font-mono text-sm bg-white p-2 rounded border">
-                Costo ME = Costo por Hora × Tiempo de Uso
+                Costo Unidad = (Consumo kW × Valor kW) ÷ Producción Estándar
               </div>
               <p className="text-sm">
-                El costo por hora incluye el consumo energético, depreciación del equipo y mantenimiento. 
-                Se calcula automáticamente en el CDR según el uso en cada receta.
+                Este cálculo energético se aplica automáticamente a las recetas a través de los triggers configurados en la base de datos.
               </p>
             </div>
           </CardContent>

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
+
 interface RecetaItem {
   codigo_producto: string;
   descripcion_producto: string;
@@ -134,9 +135,13 @@ const Receta: React.FC = () => {
           <div className="flex space-x-2">
             {canEdit && (
               <Button onClick={() => navigate(`/cargarReceta`)}>➕ Nueva Receta</Button>
+              
             )}
             <Button onClick={() => toast({ title: 'Exportando...', description: 'Esto exportará tus recetas.' })} variant="outline">
               📤 Exportar
+            </Button>
+            <Button onClick={() => navigate(`/detalle-recetas`)} variant="outline">
+              Receta Detallada
             </Button>
           </div>
         </div>

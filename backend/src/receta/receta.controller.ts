@@ -11,10 +11,10 @@ import {
   Put,
   Delete
 } from '@nestjs/common';
-import { RecetaService } from '../service/receta.service';
+import { RecetaService } from './receta.service';
 import { plainToInstance } from 'class-transformer';
-import { RecetaBody } from '../dto/receta-body.dto';
-import { Receta } from '../model/receta.model';
+import { RecetaBody } from './receta-body.dto';
+import { Receta } from './receta.model';
 import { supabase } from 'src/config/supabase.client';
 
 

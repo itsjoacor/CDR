@@ -1,4 +1,4 @@
-import { Insumo } from '../model/insumo.model';
+import { Insumo } from './insumo.model';
 
 export class InsumoBody {
   grupo: string;

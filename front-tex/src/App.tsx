@@ -13,9 +13,11 @@ import ManoObra from "./pages/ManoObra";
 import ManoEnergia from "./pages/ManoEnergia";
 import Insumos from "./pages/Insumos";
 import CDR from "./pages/CDR";
+import RecetasDetalladas from "./pages/RecetasDetalladas";
 import NotFound from "./pages/NotFound";
 import { UnauthenticatedOnlyWrapper } from "./components/UnauthenticatedOnlyWrapper";
 import CargarReceta from "./pages/CargarReceta";
+import PaginaEnProduccion from "./components/PaginaConstruccion";
 
 const queryClient = new QueryClient();
 
@@ -40,13 +42,18 @@ const App = () => (
 
               <Route path="/" element={<Dashboard />} />
               <Route path="/receta" element={<Receta />} />
+              <Route path="/detalle-recetas" element={<RecetasDetalladas />} />
 
               <Route path="/mano-obra" element={<ManoObra />} />
               <Route path="/mano-energia" element={<ManoEnergia />} />
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
-                <Route path="/cargarReceta" element={<CargarReceta />} />
-                <Route path="/editarReceta/:codigo_producto" element={<EditarReceta />} />
+                {/* <Route path="/editarReceta/:codigo_producto" element={<EditarReceta />} /> 
+                 <Route path="/cargarReceta" element={<CargarReceta />} />*/}
+                <Route path="/cargarReceta" element={<PaginaEnProduccion />} />
+                <Route path="/editarReceta/:codigo_producto" element={<PaginaEnProduccion />} />
+
+
                 <Route path="/insumos" element={<Insumos />} />
                 <Route path="/resultados-cdr" element={<CDR />} />
               </Route>

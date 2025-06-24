@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Receta } from '../model/receta.model';
-import { RecetaRepository } from '../repository/receta.repository';
-import { supabase } from '../../config/supabase.client';
+import { Receta } from './receta.model';
+import { RecetaRepository } from './receta.repository';
+import { supabase } from '../config/supabase.client';
 
 @Injectable()
 export class RecetaService {

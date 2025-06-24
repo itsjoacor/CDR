@@ -5,6 +5,8 @@ import { InsumoModule } from './insumo/insumo.module';
 import { AutocompleteModule } from './autoComplete/autocomplete.module';
 import { ProductoModule } from './productos/producto.module';
 import { ResultadosCdrModule } from './resultadosCDR/resultado-cdr.module';
+import { MatrizManoModule } from './matrizMano/matriz-mano.module';
+import { MatrizEnergiaModule } from './matrizEnergia/matriz-energia.module';
 
 @Module({
   imports: [
@@ -13,7 +15,9 @@ import { ResultadosCdrModule } from './resultadosCDR/resultado-cdr.module';
     InsumoModule,
     AutocompleteModule,
     ProductoModule,
-    ResultadosCdrModule
+    ResultadosCdrModule,
+    MatrizManoModule,
+    MatrizEnergiaModule,
 
   ],
 })

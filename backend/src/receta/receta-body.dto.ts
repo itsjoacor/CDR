@@ -1,4 +1,4 @@
-import { Receta } from '../model/receta.model';
+import { Receta } from './receta.model';
 
 export class RecetaBody {
   sector_productivo: string;

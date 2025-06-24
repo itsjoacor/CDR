@@ -106,13 +106,7 @@ const Login: React.FC = () => {
             </Button>
           </form>
 
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground mb-2">Usuarios de prueba:</p>
-            <div className="text-xs space-y-1">
-              <div>👤 <strong>Admin:</strong> admin@gmail.com | <strong>Contraseña:</strong> Fierro123</div>
-              <div>👤 <strong>Usuario:</strong> a@a.com | <strong>Contraseña:</strong> Fierro123</div>
-            </div>
-          </div>
+
         </CardContent>
       </Card>
     </div>

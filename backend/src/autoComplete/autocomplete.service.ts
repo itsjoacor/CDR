@@ -1,7 +1,7 @@
 // src/autocomplete/autocomplete.service.ts
 import { Injectable } from '@nestjs/common';
 import { RecetaRepository } from '../receta/repository/receta.repository';
-import { InsumoRepository } from '../insumo/repository/insumo.repository';
+import { InsumoRepository } from '../insumo/insumo.repository';
 
 @Injectable()
 export class AutocompleteService {
