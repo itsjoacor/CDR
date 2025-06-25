@@ -4,15 +4,15 @@ import { AutocompleteService } from './autocomplete.service';
 
 @Controller('api/autocomplete')
 export class AutocompleteController {
-  constructor(private readonly service: AutocompleteService) {}
+  constructor(private readonly autocompleteService: AutocompleteService) {}
 
   @Get('producto/:codigo')
-  async autocompleteProducto(@Param('codigo') codigo: string) {
-    return this.service.autocompleteProducto(codigo);
+  getProducto(@Param('codigo') codigo: string) {
+    return this.autocompleteService.autocompleteProducto(codigo);
   }
 
   @Get('ingrediente/:codigo')
-  async autocompleteIngrediente(@Param('codigo') codigo: string) {
-    return this.service.autocompleteIngrediente(codigo);
+  getIngrediente(@Param('codigo') codigo: string) {
+    return this.autocompleteService.autocompleteIngrediente(codigo);
   }
 }

@@ -1,361 +1,313 @@
-'use client'
-import { useState, useEffect } from 'react'
-import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/react'
-import { Fragment } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useToast } from '@/hooks/use-toast'
-import { debounce } from 'lodash'
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Layout from '../components/Layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Save, ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
-interface RecetaForm {
-    sector_productivo: string
-    codigo_ingrediente: string
-    descripcion_ingrediente: string
-    cantidad_ingrediente: number
-    codigo_producto: string
-    descripcion_producto: string
+interface Ingredient {
+  codigo_ingrediente: string;
+  cantidad_ingrediente: number;
 }
 
-export default function CargarReceta() {
-    const navigate = useNavigate()
-    const { toast } = useToast();
-    const [form, setForm] = useState<RecetaForm>({
-        sector_productivo: '',
-        codigo_ingrediente: '',
-        descripcion_ingrediente: '',
-        cantidad_ingrediente: 0,
-        codigo_producto: '',
-        descripcion_producto: '',
-    })
+const CargarReceta: React.FC = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-    const [sectores, setSectores] = useState<string[]>([])
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
-    const [isCheckingProducto, setIsCheckingProducto] = useState(false)
-    const [isCheckingIngrediente, setIsCheckingIngrediente] = useState(false)
+  const [codigoProducto, setCodigoProducto] = useState('');
+  const [descripcionProducto, setDescripcionProducto] = useState('');
+  const [sectorProductivo, setSectorProductivo] = useState('');
+  const [descripcionIngrediente, setDescripcionIngrediente] = useState('');
+  const [ingredientes, setIngredientes] = useState<Ingredient[]>([]);
+  const [newIngredient, setNewIngredient] = useState<Ingredient>({
+    codigo_ingrediente: '',
+    cantidad_ingrediente: 0
+  });
 
-    useEffect(() => {
-        const fetchSectores = async () => {
-            try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas/sectores`)
-                const data = await res.json()
-                const nombres = data.map((s: { nombre: string }) => s.nombre)
-                setSectores(nombres)
-            } catch (err) {
-                console.error('Error al cargar sectores', err)
-            }
-        }
-
-        fetchSectores()
-    }, [])
-
-    // Debounced functions for code checking
-    const checkProductCode = debounce(async (codigo: string) => {
-        if (!codigo) {
-            // Clear all product-related fields when code is empty
-            setForm(prev => ({
-                ...prev,
-                codigo_producto: '',
-                descripcion_producto: '',
-                sector_productivo: '' // Clear sector too
-            }));
-            return;
-        }
-
-        setIsCheckingProducto(true);
-        try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/producto/${codigo}`);
-            const data = await res.json();
-
-            if (data.descripcion) {
-                setForm(prev => ({
-                    ...prev,
-                    descripcion_producto: data.descripcion,
-                    sector_productivo: data.sector || '' // Use empty string if no sector
-                }));
-            } else {
-                // Clear all product fields if no match found
-                setForm(prev => ({
-                    ...prev,
-                    descripcion_producto: '',
-                    sector_productivo: ''
-                }));
-            }
-        } catch (error) {
-            console.error('Error al buscar producto:', error);
-            // Clear on error too
-            setForm(prev => ({
-                ...prev,
-                descripcion_producto: '',
-                sector_productivo: ''
-            }));
-        } finally {
-            setIsCheckingProducto(false);
-        }
-    }, 500);
-
-    const checkIngredientCode = debounce(async (codigo: string) => {
-        if (!codigo) {
-            // Clear ingredient fields when code is empty
-            setForm(prev => ({
-                ...prev,
-                codigo_ingrediente: '',
-                descripcion_ingrediente: ''
-            }));
-            return;
-        }
-
-        setIsCheckingIngrediente(true);
-        try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${codigo}`);
-            const data = await res.json();
-
-            if (data.descripcion) {
-                setForm(prev => ({
-                    ...prev,
-                    descripcion_ingrediente: data.descripcion
-                }));
-            } else {
-                // Clear description if no match found
-                setForm(prev => ({
-                    ...prev,
-                    descripcion_ingrediente: ''
-                }));
-            }
-        } catch (error) {
-            console.error('Error al buscar ingrediente:', error);
-            // Clear on error too
-            setForm(prev => ({
-                ...prev,
-                descripcion_ingrediente: ''
-            }));
-        } finally {
-            setIsCheckingIngrediente(false);
-        }
-    }, 500);
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target
-        setForm(prev => ({
-            ...prev,
-            [name]: name === 'cantidad_ingrediente' ? parseFloat(value) : value
-        }))
-
-        // Trigger auto-complete checks
-        if (name === 'codigo_producto') {
-            checkProductCode(value);
-        } else if (name === 'codigo_ingrediente') {
-            checkIngredientCode(value);
-        }
+  // FETCH INFO PRODUCTO
+  useEffect(() => {
+    if (!codigoProducto.trim()) {
+      setDescripcionProducto('');
+      setSectorProductivo('');
+      return;
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setLoading(true)
-        setError('')
+    fetch(`${import.meta.env.VITE_API_URL}/productos/${codigoProducto}`)
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(data => {
+        setDescripcionProducto(data.descripcion_producto || '');
+        setSectorProductivo(data.sector_productivo || '');
+      })
+      .catch(() => {
+        setDescripcionProducto('No encontrado');
+        setSectorProductivo('No encontrado');
+      });
+  }, [codigoProducto]);
 
-        try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas/registrar`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form)
-            })
-
-            if (!res.ok) {
-                const errorData = await res.json()
-                console.error('Error status:', res.status, 'Error details:', errorData)
-
-                let errorMessage = 'Error desconocido al guardar la receta'
-                if (res.status === 500 && errorData.message) {
-                    // Extract the user-friendly part of the message
-                    const match = errorData.message.match(/Error: (.+)/)
-                    errorMessage = match ? match[1] : errorData.message
-                }
-
-                toast({
-                    title: "Error al guardar receta",
-                    description: errorMessage,
-                    variant: "destructive" // This will make it red
-                })
-                return
-            }
-
-            toast({
-                title: "Receta cargada correctamente",
-                description: "La receta fue guardada y calculada exitosamente.",
-                className: "bg-green-100 text-green-800 border-green-200",
-            })
-
-            setForm({
-                sector_productivo: '',
-                codigo_ingrediente: '',
-                descripcion_ingrediente: '',
-                cantidad_ingrediente: 0,
-                codigo_producto: '',
-                descripcion_producto: '',
-            })
-
-        } catch (err: any) {
-            console.error('Error:', err)
-            toast({
-                title: "Error",
-                description: "Ocurrió un error inesperado al guardar la receta",
-                variant: "destructive"
-            })
-        } finally {
-            setLoading(false)
-        }
+  // FETCH INFO INGREDIENTE
+  useEffect(() => {
+    const codigo = newIngredient.codigo_ingrediente.trim();
+    if (!codigo) {
+      setDescripcionIngrediente('');
+      return;
     }
 
-    return (
-        <main className="min-h-screen bg-white text-gray-800 px-6 py-12">
-            <div className="max-w-5xl mx-auto">
-                <header className="mb-10">
-                    <h1 className="text-3xl font-bold">🧪 Crear Receta</h1>
-                    <p className="text-gray-600 mt-1">Cargá los datos de producción y validación del CDR.</p>
-                </header>
+    fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${codigo}`)
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(data => {
+        setDescripcionIngrediente(data.descripcion || 'Sin descripción');
+      })
+      .catch(() => {
+        setDescripcionIngrediente('No encontrado');
+      });
+  }, [newIngredient.codigo_ingrediente]);
 
-                {error && (
-                    <div className="mb-6 p-4 bg-red-100 text-red-700 border border-red-200 rounded-md">
-                        {error}
-                    </div>
-                )}
+  const addIngredient = () => {
+    if (newIngredient.codigo_ingrediente.trim() && newIngredient.cantidad_ingrediente > 0) {
+      setIngredientes(prev => [...prev, { ...newIngredient }]);
+      setNewIngredient({ codigo_ingrediente: '', cantidad_ingrediente: 0 });
+      toast({ title: "Ingrediente agregado", description: "El ingrediente se ha agregado exitosamente." });
+    } else {
+      toast({
+        title: "Error",
+        description: "Completa todos los campos del ingrediente.",
+        variant: "destructive"
+      });
+    }
+  };
 
-                <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Sección: Producto */}
-                    <section className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm">
-                        <h2 className="text-xl font-semibold mb-4">📦 Producto Final</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm mb-1 font-medium">Código del Producto</label>
-                                <div className="relative">
-                                    <input
-                                        name="codigo_producto"
-                                        value={form.codigo_producto}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                        required
-                                    />
-                                    {isCheckingProducto && (
-                                        <div className="absolute right-3 top-2.5">
-                                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-purple-500"></div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm mb-1 font-medium">Descripción del Producto</label>
-                                <input
-                                    name="descripcion_producto"
-                                    value={form.descripcion_producto}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Sector Productivo</label>
-                                <Listbox value={form.sector_productivo} onChange={(value) => setForm(prev => ({ ...prev, sector_productivo: value }))}>
-                                    <div className="relative">
-                                        <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:outline-none focus:ring-2 focus:ring-purple-300 flex items-center justify-between">
-                                            {form.sector_productivo || 'Seleccione un sector'}
-                                            {/* Dropdown arrow icon */}
-                                            <svg
-                                                className="w-5 h-5 text-gray-400"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                viewBox="0 0 20 20"
-                                                fill="currentColor"
-                                                aria-hidden="true"
-                                            >
-                                                <path
-                                                    fillRule="evenodd"
-                                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                    clipRule="evenodd"
-                                                />
-                                            </svg>
-                                        </ListboxButton>
+  const removeIngredient = (index: number) => {
+    setIngredientes(prev => prev.filter((_, i) => i !== index));
+    toast({ title: "Ingrediente eliminado" });
+  };
 
-                                        <ListboxOptions className="absolute mt-1 w-full bg-white border border-gray-200 rounded-md shadow-md z-10 max-h-60 overflow-auto">
-                                            {sectores.map((s, i) => (
-                                                <ListboxOption key={i} value={s} as={Fragment}>
-                                                    {({ active, selected }) => (
-                                                        <li
-                                                            className={`cursor-pointer px-4 py-2 transition rounded-md ${active ? 'bg-purple-100 text-purple-800' : 'text-gray-800'
-                                                                } ${selected ? 'font-medium' : ''}`}
-                                                        >
-                                                            {s}
-                                                        </li>
-                                                    )}
-                                                </ListboxOption>
-                                            ))}
-                                        </ListboxOptions>
-                                    </div>
-                                </Listbox>
-                            </div>
+  const updateIngredient = (index: number, field: keyof Ingredient, value: any) => {
+    setIngredientes(prev => prev.map((ing, i) =>
+      i === index ? { ...ing, [field]: value } : ing
+    ));
+  };
 
-                        </div>
-                    </section>
+  const handleSave = async () => {
+    if (!codigoProducto.trim()) {
+      toast({ title: "Error", description: "Ingresa el código del producto.", variant: "destructive" });
+      return;
+    }
 
-                    {/* Sección: Producción */}
-                    <section className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm">
-                        <h2 className="text-xl font-semibold mb-4">⚙️ Detalles de Producción</h2>
-                        <div className="space-y-4">
+    if (ingredientes.length === 0) {
+      toast({ title: "Error", description: "Agrega al menos un ingrediente.", variant: "destructive" });
+      return;
+    }
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Código del Ingrediente</label>
-                                    <div className="relative">
-                                        <input
-                                            name="codigo_ingrediente"
-                                            value={form.codigo_ingrediente}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                            required
-                                        />
-                                        {isCheckingIngrediente && (
-                                            <div className="absolute right-3 top-2.5">
-                                                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-purple-500"></div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Cantidad</label>
-                                    <input
-                                        type="number"
-                                        name="cantidad_ingrediente"
-                                        value={form.cantidad_ingrediente}
-                                        onChange={handleChange}
-                                        step="0.01"
-                                        min="0"
-                                        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                        required
-                                    />
-                                </div>
-                            </div>
+    try {
+      await Promise.all(
+        ingredientes.map(async (ingrediente) => {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas-normalizada`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              codigo_producto: codigoProducto,
+              codigo_ingrediente: ingrediente.codigo_ingrediente,
+              cantidad_ingrediente: ingrediente.cantidad_ingrediente
+            }),
+          });
 
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Descripción del Ingrediente</label>
-                                <input
-                                    name="descripcion_ingrediente"
-                                    value={form.descripcion_ingrediente}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400"
-                                    required
-                                />
-                            </div>
-                        </div>
-                    </section>
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || `Error con ${ingrediente.codigo_ingrediente}`);
+          }
+        })
+      );
 
-                    <div className="flex justify-end">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-6 py-2 bg-green-200 text-green-900 font-semibold rounded-md hover:bg-green-300 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-60"
-                        >
-                            {loading ? 'Cargando...' : 'Guardar Receta'}
-                        </button>
-                    </div>
-                </form>
+      toast({
+        title: "Receta creada",
+        description: `La receta ${codigoProducto} se guardó con ${ingredientes.length} ingredientes.`,
+      });
+
+      setCodigoProducto('');
+      setDescripcionProducto('');
+      setSectorProductivo('');
+      setIngredientes([]);
+    } catch (error: any) {
+      toast({ title: "Error al guardar", description: error.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Layout title="Nueva Receta">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Button variant="outline" onClick={() => navigate('/receta')} className="flex items-center space-x-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Volver a Recetas</span>
+          </Button>
+          <Button onClick={handleSave} className="flex items-center space-x-2">
+            <Save className="h-4 w-4" />
+            <span>Guardar Receta</span>
+          </Button>
+        </div>
+
+        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          ✨ Crear Nueva Receta - Define los ingredientes necesarios
+        </Badge>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">🏷️ Información del Producto</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="codigo-producto">Código Producto</Label>
+                <Input
+                  id="codigo-producto"
+                  value={codigoProducto}
+                  onChange={(e) => setCodigoProducto(e.target.value)}
+                  placeholder="Ej: PRD001"
+                  className="text-lg font-semibold"
+                  maxLength={15}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Descripción</Label>
+                <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
+                  <span className="text-gray-700 text-sm">{descripcionProducto}</span>
+                </div>
+                <Label className="mt-2">Sector Productivo</Label>
+                <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
+                  <span className="text-gray-700 text-sm">{sectorProductivo}</span>
+                </div>
+              </div>
             </div>
-        </main>
-    )
-}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-blue-50 border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-blue-800">
+              <Plus className="h-5 w-5" />
+              <span>Agregar Ingrediente</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="codigo-ingrediente">Código Ingrediente</Label>
+                <Input
+                  id="codigo-ingrediente"
+                  value={newIngredient.codigo_ingrediente}
+                  onChange={(e) => setNewIngredient(prev => ({ ...prev, codigo_ingrediente: e.target.value }))}
+                  placeholder="Ej: INS001, MO001, ME001"
+                  className="border-blue-300"
+                  maxLength={15}
+                />
+                <p className="text-xs text-blue-600">Puede ser insumo, mano obra o matriz energética</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Descripción</Label>
+                <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
+                  <span className="text-blue-500 text-sm">{descripcionIngrediente}</span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2 mt-4">
+              <Label htmlFor="cantidad-ingrediente">Cantidad Ingrediente</Label>
+              <div className="flex space-x-2">
+                <Input
+                  id="cantidad-ingrediente"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newIngredient.cantidad_ingrediente}
+                  onChange={(e) => setNewIngredient(prev => ({ ...prev, cantidad_ingrediente: Number(e.target.value) }))}
+                  placeholder="0.00"
+                  className="border-blue-300 max-w-60"
+                />
+                <Button
+                  onClick={addIngredient}
+                  className="bg-blue-600 hover:bg-blue-700 px-6"
+                  disabled={!newIngredient.codigo_ingrediente.trim() || newIngredient.cantidad_ingrediente <= 0}
+                >
+                  <Plus className="h-4 w-4 mr-2" />Agregar
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tabla de ingredientes */}
+        {ingredientes.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                📦 Ingredientes de la Receta <Badge variant="secondary">{ingredientes.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px] w-full">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Cantidad</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ingredientes.map((ingrediente, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <Input
+                            value={ingrediente.codigo_ingrediente}
+                            onChange={(e) => updateIngredient(index, 'codigo_ingrediente', e.target.value)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            value={ingrediente.cantidad_ingrediente}
+                            onChange={(e) => updateIngredient(index, 'cantidad_ingrediente', Number(e.target.value))}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm" onClick={() => removeIngredient(index)} className="text-red-600">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-green-600">ℹ️</span>
+              <span className="text-sm text-green-800">
+                Cada ingrediente puede ser un producto, insumo, mano de obra o matriz energética. Asegúrate de que ya exista en la base de datos.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default CargarReceta;

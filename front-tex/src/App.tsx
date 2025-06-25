@@ -49,8 +49,8 @@ const App = () => (
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
                 {/* <Route path="/editarReceta/:codigo_producto" element={<EditarReceta />} /> 
-                 <Route path="/cargarReceta" element={<CargarReceta />} />*/}
-                <Route path="/cargarReceta" element={<PaginaEnProduccion />} />
+                 */}
+                <Route path="/cargarReceta" element={<CargarReceta />} />
                 <Route path="/editarReceta/:codigo_producto" element={<PaginaEnProduccion />} />
 
 
