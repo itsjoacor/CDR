@@ -5,9 +5,32 @@ import { RecetaNormalizada } from './receta-normalizada.model';
 @Injectable()
 export class RecetaNormalizadaRepository {
   async crear(dto: Partial<RecetaNormalizada>) {
+    const { codigo_producto, codigo_ingrediente } = dto;
+
+    // Validar existencia previa
+    const { data: existente, error: readError } = await supabase
+      .from('recetas_normalizada')
+      .select('codigo_producto')
+      .eq('codigo_producto', codigo_producto)
+      .eq('codigo_ingrediente', codigo_ingrediente)
+      .maybeSingle();
+
+    if (readError) {
+      throw new Error('Error al verificar duplicados: ' + readError.message);
+    }
+
+    if (existente) {
+      throw new Error('Ya existe esa combinación de producto e ingrediente.');
+    }
+
+    // Insertar si no existe
     const { error } = await supabase.from('recetas_normalizada').insert(dto);
-    if (error) throw new Error('Error al insertar receta: ' + error.message);
+    if (error) {
+      throw new Error('Error al insertar receta: ' + error.message);
+    }
   }
+
+
 
   async obtenerTodas(): Promise<RecetaNormalizada[]> {
     const { data, error } = await supabase.from('recetas_normalizada').select('*');

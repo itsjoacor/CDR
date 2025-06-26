@@ -29,16 +29,20 @@ const CargarReceta: React.FC = () => {
     codigo_ingrediente: '',
     cantidad_ingrediente: 0
   });
+  const [productoValido, setProductoValido] = useState(false);
+  const [ingredienteValido, setIngredienteValido] = useState(false);
 
   // FETCH INFO PRODUCTO
   useEffect(() => {
-    if (!codigoProducto.trim()) {
+    const codigo = codigoProducto.trim().toUpperCase();
+    if (!codigo) {
       setDescripcionProducto('');
       setSectorProductivo('');
+      setProductoValido(false);
       return;
     }
 
-    fetch(`${import.meta.env.VITE_API_URL}/productos/${codigoProducto}`)
+    fetch(`${import.meta.env.VITE_API_URL}/productos/${codigo}`)
       .then(res => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -46,43 +50,83 @@ const CargarReceta: React.FC = () => {
       .then(data => {
         setDescripcionProducto(data.descripcion_producto || '');
         setSectorProductivo(data.sector_productivo || '');
+        setProductoValido(true);
       })
       .catch(() => {
         setDescripcionProducto('No encontrado');
         setSectorProductivo('No encontrado');
+        setProductoValido(false);
       });
   }, [codigoProducto]);
 
   // FETCH INFO INGREDIENTE
   useEffect(() => {
-    const codigo = newIngredient.codigo_ingrediente.trim();
+    const codigo = newIngredient.codigo_ingrediente.trim().toUpperCase();
+
     if (!codigo) {
       setDescripcionIngrediente('');
+      setIngredienteValido(false);
       return;
     }
 
-    fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${codigo}`)
-      .then(res => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then(data => {
-        setDescripcionIngrediente(data.descripcion || 'Sin descripción');
-      })
-      .catch(() => {
-        setDescripcionIngrediente('No encontrado');
-      });
+    setDescripcionIngrediente('Buscando...');
+
+    const timer = setTimeout(() => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${codigo}`)
+        .then(res => {
+          if (!res.ok) throw new Error();
+          return res.json();
+        })
+        .then(data => {
+          if (codigo === newIngredient.codigo_ingrediente.trim().toUpperCase()) {
+            setDescripcionIngrediente(data.descripcion || 'Sin descripción');
+            setIngredienteValido(true);
+          }
+        })
+        .catch(() => {
+          if (codigo === newIngredient.codigo_ingrediente.trim().toUpperCase()) {
+            setDescripcionIngrediente('No encontrado');
+            setIngredienteValido(false);
+          }
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [newIngredient.codigo_ingrediente]);
 
   const addIngredient = () => {
-    if (newIngredient.codigo_ingrediente.trim() && newIngredient.cantidad_ingrediente > 0) {
-      setIngredientes(prev => [...prev, { ...newIngredient }]);
+    if (!productoValido) {
+      toast({
+        title: "Error",
+        description: "Primero debes ingresar un producto válido",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!ingredienteValido) {
+      toast({
+        title: "Error",
+        description: "El ingrediente no existe en la base de datos",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const codigoIngrediente = newIngredient.codigo_ingrediente.trim().toUpperCase();
+    if (codigoIngrediente && newIngredient.cantidad_ingrediente > 0) {
+      setIngredientes(prev => [...prev, {
+        codigo_ingrediente: codigoIngrediente,
+        cantidad_ingrediente: newIngredient.cantidad_ingrediente
+      }]);
       setNewIngredient({ codigo_ingrediente: '', cantidad_ingrediente: 0 });
+      setDescripcionIngrediente('');
+      setIngredienteValido(false);
       toast({ title: "Ingrediente agregado", description: "El ingrediente se ha agregado exitosamente." });
     } else {
       toast({
         title: "Error",
-        description: "Completa todos los campos del ingrediente.",
+        description: "Completa todos los campos del ingrediente con valores válidos.",
         variant: "destructive"
       });
     }
@@ -95,18 +139,28 @@ const CargarReceta: React.FC = () => {
 
   const updateIngredient = (index: number, field: keyof Ingredient, value: any) => {
     setIngredientes(prev => prev.map((ing, i) =>
-      i === index ? { ...ing, [field]: value } : ing
+      i === index ? {
+        ...ing,
+        [field]: field === 'codigo_ingrediente' ? value.toUpperCase() : value
+      } : ing
     ));
   };
 
   const handleSave = async () => {
-    if (!codigoProducto.trim()) {
+    const codigoProductoUpper = codigoProducto.trim().toUpperCase();
+
+    if (!codigoProductoUpper) {
       toast({ title: "Error", description: "Ingresa el código del producto.", variant: "destructive" });
       return;
     }
 
+    if (!productoValido) {
+      toast({ title: "Error", description: "El producto no existe en la base de datos", variant: "destructive" });
+      return;
+    }
+
     if (ingredientes.length === 0) {
-      toast({ title: "Error", description: "Agrega al menos un ingrediente.", variant: "destructive" });
+      toast({ title: "Error", description: "Agrega al menos un ingrediente válido.", variant: "destructive" });
       return;
     }
 
@@ -117,8 +171,8 @@ const CargarReceta: React.FC = () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              codigo_producto: codigoProducto,
-              codigo_ingrediente: ingrediente.codigo_ingrediente,
+              codigo_producto: codigoProductoUpper,
+              codigo_ingrediente: ingrediente.codigo_ingrediente.trim().toUpperCase(),
               cantidad_ingrediente: ingrediente.cantidad_ingrediente
             }),
           });
@@ -132,13 +186,14 @@ const CargarReceta: React.FC = () => {
 
       toast({
         title: "Receta creada",
-        description: `La receta ${codigoProducto} se guardó con ${ingredientes.length} ingredientes.`,
+        description: `La receta ${codigoProductoUpper} se guardó con ${ingredientes.length} ingredientes.`,
       });
 
       setCodigoProducto('');
       setDescripcionProducto('');
       setSectorProductivo('');
       setIngredientes([]);
+      setProductoValido(false);
     } catch (error: any) {
       toast({ title: "Error al guardar", description: error.message, variant: "destructive" });
     }
@@ -151,10 +206,6 @@ const CargarReceta: React.FC = () => {
           <Button variant="outline" onClick={() => navigate('/receta')} className="flex items-center space-x-2">
             <ArrowLeft className="h-4 w-4" />
             <span>Volver a Recetas</span>
-          </Button>
-          <Button onClick={handleSave} className="flex items-center space-x-2">
-            <Save className="h-4 w-4" />
-            <span>Guardar Receta</span>
           </Button>
         </div>
 
@@ -173,20 +224,29 @@ const CargarReceta: React.FC = () => {
                 <Input
                   id="codigo-producto"
                   value={codigoProducto}
-                  onChange={(e) => setCodigoProducto(e.target.value)}
+                  onChange={(e) => setCodigoProducto(e.target.value.toUpperCase())}
                   placeholder="Ej: PRD001"
                   className="uppercase text-lg font-semibold"
                   maxLength={15}
                 />
+                {!productoValido && codigoProducto && (
+                  <p className="text-xs text-red-500">Producto no encontrado</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Descripción</Label>
                 <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
-                  <span className="text-gray-700 text-sm">{descripcionProducto}</span>
+                  <span className={`text-sm ${descripcionProducto === 'No encontrado' ? 'text-red-500' : 'text-gray-700'
+                    }`}>
+                    {descripcionProducto}
+                  </span>
                 </div>
                 <Label className="mt-2">Sector Productivo</Label>
                 <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
-                  <span className="text-gray-700 text-sm">{sectorProductivo}</span>
+                  <span className={`text-sm ${sectorProductivo === 'No encontrado' ? 'text-red-500' : 'text-gray-700'
+                    }`}>
+                    {sectorProductivo}
+                  </span>
                 </div>
               </div>
             </div>
@@ -207,17 +267,28 @@ const CargarReceta: React.FC = () => {
                 <Input
                   id="codigo-ingrediente"
                   value={newIngredient.codigo_ingrediente}
-                  onChange={(e) => setNewIngredient(prev => ({ ...prev, codigo_ingrediente: e.target.value }))}
+                  onChange={(e) => setNewIngredient(prev => ({
+                    ...prev,
+                    codigo_ingrediente: e.target.value.toUpperCase()
+                  }))}
                   placeholder="Ej: INS001, MO001, ME001"
                   className="uppercase border-blue-300"
                   maxLength={15}
                 />
                 <p className="text-xs text-blue-600">Puede ser insumo, mano obra o matriz energética</p>
+                {newIngredient.codigo_ingrediente && !ingredienteValido && (
+                  <p className="text-xs text-red-500">Ingrediente no encontrado</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Descripción</Label>
                 <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
-                  <span className="text-blue-500 text-sm">{descripcionIngrediente}</span>
+                  <span className={`text-sm ${descripcionIngrediente === 'Buscando...' ? 'text-blue-500 italic' :
+                    descripcionIngrediente === 'No encontrado' ? 'text-red-500' :
+                      'text-blue-500'
+                    }`}>
+                    {descripcionIngrediente}
+                  </span>
                 </div>
               </div>
             </div>
@@ -227,17 +298,25 @@ const CargarReceta: React.FC = () => {
                 <Input
                   id="cantidad-ingrediente"
                   type="number"
-                  step="0.01"
+                  step="0.1"
                   min="0"
                   value={newIngredient.cantidad_ingrediente}
-                  onChange={(e) => setNewIngredient(prev => ({ ...prev, cantidad_ingrediente: Number(e.target.value) }))}
+                  onChange={(e) => setNewIngredient(prev => ({
+                    ...prev,
+                    cantidad_ingrediente: Number(e.target.value)
+                  }))}
                   placeholder="0.00"
                   className="border-blue-300 max-w-60"
                 />
                 <Button
                   onClick={addIngredient}
                   className="bg-blue-600 hover:bg-blue-700 px-6"
-                  disabled={!newIngredient.codigo_ingrediente.trim() || newIngredient.cantidad_ingrediente <= 0}
+                  disabled={
+                    !newIngredient.codigo_ingrediente.trim() ||
+                    newIngredient.cantidad_ingrediente <= 0 ||
+                    !ingredienteValido ||
+                    !productoValido
+                  }
                 >
                   <Plus className="h-4 w-4 mr-2" />Agregar
                 </Button>
@@ -246,7 +325,6 @@ const CargarReceta: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Tabla de ingredientes */}
         {ingredientes.length > 0 && (
           <Card>
             <CardHeader>
@@ -269,8 +347,9 @@ const CargarReceta: React.FC = () => {
                       <TableRow key={index}>
                         <TableCell>
                           <Input
-                            value={ingrediente.codigo_ingrediente}
+                            value={ingrediente.codigo_ingrediente} disabled
                             onChange={(e) => updateIngredient(index, 'codigo_ingrediente', e.target.value)}
+                            className="uppercase cursor-not-allowed"
                           />
                         </TableCell>
                         <TableCell>
@@ -294,13 +373,17 @@ const CargarReceta: React.FC = () => {
             </CardContent>
           </Card>
         )}
+        <Button onClick={handleSave} className="flex items-center space-x-2">
+          <Save className="h-4 w-4" />
+          <span>Guardar Receta</span>
+        </Button>
 
         <Card className="bg-green-50 border-green-200">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <span className="text-green-600">ℹ️</span>
               <span className="text-sm text-green-800">
-                Cada ingrediente puede ser un producto, insumo, mano de obra o matriz energética. Asegúrate de que ya exista en la base de datos.
+                Cada ingrediente puede ser un producto, insumo, mano de obra o matriz energética.
               </span>
             </div>
           </CardContent>
