@@ -175,7 +175,7 @@ const CargarReceta: React.FC = () => {
                   value={codigoProducto}
                   onChange={(e) => setCodigoProducto(e.target.value)}
                   placeholder="Ej: PRD001"
-                  className="text-lg font-semibold"
+                  className="uppercase text-lg font-semibold"
                   maxLength={15}
                 />
               </div>
@@ -209,7 +209,7 @@ const CargarReceta: React.FC = () => {
                   value={newIngredient.codigo_ingrediente}
                   onChange={(e) => setNewIngredient(prev => ({ ...prev, codigo_ingrediente: e.target.value }))}
                   placeholder="Ej: INS001, MO001, ME001"
-                  className="border-blue-300"
+                  className="uppercase border-blue-300"
                   maxLength={15}
                 />
                 <p className="text-xs text-blue-600">Puede ser insumo, mano obra o matriz energética</p>

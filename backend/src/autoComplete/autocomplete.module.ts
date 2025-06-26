@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
 import { AutocompleteService } from './autocomplete.service';
 import { AutocompleteController } from './autocomplete.controller';
-import { RecetaRepository } from '../receta/receta.repository';
 import { InsumoRepository } from '../insumo/insumo.repository';
 import { MatrizManoRepository } from '../matrizMano/matiz-mano.repository';
 import { MatrizEnergiaRepository } from '../matrizEnergia/matiz-energia.repository';
+import { ProductoRepository } from 'src/productos/producto.repository';
 
 @Module({
   controllers: [AutocompleteController],
   providers: [
     AutocompleteService,
-    RecetaRepository,
+    ProductoRepository,
     InsumoRepository,
     MatrizManoRepository,
     MatrizEnergiaRepository,

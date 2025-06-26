@@ -14,7 +14,7 @@ export class MatrizEnergiaRepository {
         const { data, error } = await supabase
             .from('matriz_energia')
             .select('*')
-            .eq('codigo_mano_obra', codigo)
+            .eq('codigo_energia', codigo)
             .maybeSingle();
         if (error) throw new Error(error.message);
         return data as MatrizEnergia | null;
