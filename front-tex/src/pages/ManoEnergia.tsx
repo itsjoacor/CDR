@@ -159,23 +159,6 @@ const ManoEnergia: React.FC = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* Formula Info */}
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardHeader>
-            <CardTitle className="text-yellow-800">💡 Fórmula de Cálculo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-yellow-800">
-              <div className="font-mono text-sm bg-white p-2 rounded border">
-                Costo Unidad = (Consumo kW × Valor kW) ÷ Producción Estándar
-              </div>
-              <p className="text-sm">
-                Este cálculo energético se aplica automáticamente a las recetas a través de los triggers configurados en la base de datos.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </Layout>
   );

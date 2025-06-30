@@ -4,10 +4,23 @@ import { CreateRecetaNormalizadaDto } from '../recetaNormalizada/receta-nomraliz
 
 @Injectable()
 export class RecetaNormalizadaService {
-  constructor(private readonly repo: RecetaNormalizadaRepository) {}
+  constructor(private readonly repo: RecetaNormalizadaRepository) { }
 
   async crear(dto: CreateRecetaNormalizadaDto) {
-    return this.repo.crear(dto);
+    try {
+      const resultado = await this.repo.crear(dto);
+      return {
+        success: true,
+        data: resultado,
+        message: 'Receta creada exitosamente'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Error al crear la receta',
+        error: error.response || error
+      };
+    }
   }
 
   async obtenerTodas() {

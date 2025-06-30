@@ -19,6 +19,22 @@ const Dashboard: React.FC = () => {
       canEdit: user?.role === 'admin'
     },
     {
+      path: '/insumos',
+      title: 'Insumos',
+      icon: '📦',
+      description: 'Catálogo de materiales comprados externamente',
+      color: 'bg-purple-50 hover:bg-purple-100 border-purple-200',
+      canEdit: user?.role === 'admin'
+    },
+    {
+      path: '/productos',
+      title: 'Productos',
+      icon: '🛒',
+      description: 'Configurar tiempos, salarios y fórmulas de trabajo humano',
+      color: 'bg-orange-50 hover:bg-orange-100 border-orange-200',
+      canEdit: user?.role === 'admin'
+    },
+    {
       path: '/mano-obra',
       title: 'Mano de Obra',
       icon: '👷',
@@ -26,20 +42,14 @@ const Dashboard: React.FC = () => {
       color: 'bg-orange-50 hover:bg-orange-100 border-orange-200',
       canEdit: user?.role === 'admin'
     },
+    
+    
     {
       path: '/mano-energia',
       title: 'Mano de Energía',
       icon: '⚡',
       description: 'Administrar recursos energéticos y sus cálculos internos',
       color: 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200',
-      canEdit: user?.role === 'admin'
-    },
-    {
-      path: '/insumos',
-      title: 'Insumos',
-      icon: '📦',
-      description: 'Catálogo de materiales comprados externamente',
-      color: 'bg-purple-50 hover:bg-purple-100 border-purple-200',
       canEdit: user?.role === 'admin'
     },
     {

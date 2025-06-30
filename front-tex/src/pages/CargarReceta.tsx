@@ -24,6 +24,7 @@ const CargarReceta: React.FC = () => {
   const [descripcionProducto, setDescripcionProducto] = useState('');
   const [sectorProductivo, setSectorProductivo] = useState('');
   const [descripcionIngrediente, setDescripcionIngrediente] = useState('');
+
   const [ingredientes, setIngredientes] = useState<Ingredient[]>([]);
   const [newIngredient, setNewIngredient] = useState<Ingredient>({
     codigo_ingrediente: '',
@@ -74,62 +75,79 @@ const CargarReceta: React.FC = () => {
     const timer = setTimeout(() => {
       fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${codigo}`)
         .then(res => {
-          if (!res.ok) throw new Error();
+          if (!res.ok) throw new Error('No encontrado');
           return res.json();
         })
         .then(data => {
-          if (codigo === newIngredient.codigo_ingrediente.trim().toUpperCase()) {
-            setDescripcionIngrediente(data.descripcion || 'Sin descripción');
+          if (data && data.descripcion) {
+            setDescripcionIngrediente(data.descripcion.trim());
             setIngredienteValido(true);
+          } else {
+            throw new Error('Sin datos');
           }
         })
         .catch(() => {
-          if (codigo === newIngredient.codigo_ingrediente.trim().toUpperCase()) {
-            setDescripcionIngrediente('No encontrado');
-            setIngredienteValido(false);
-          }
+          setDescripcionIngrediente('Ingrediente no encontrado');
+          setIngredienteValido(false);
         });
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [newIngredient.codigo_ingrediente]);
+
 
   const addIngredient = () => {
     if (!productoValido) {
       toast({
         title: "Error",
-        description: "Primero debes ingresar un producto válido",
+        description: `Producto no existente (${codigoProducto}), primero deberías cargarlo`,
         variant: "destructive"
       });
       return;
     }
 
-    if (!ingredienteValido) {
+    if (!ingredienteValido || descripcionIngrediente === 'Ingrediente no encontrado') {
+      const codigo = newIngredient.codigo_ingrediente.trim().toUpperCase();
       toast({
         title: "Error",
-        description: "El ingrediente no existe en la base de datos",
+        description: `Ingrediente no existente (${codigo}), primero deberías cargarlo`,
         variant: "destructive"
       });
       return;
     }
 
-    const codigoIngrediente = newIngredient.codigo_ingrediente.trim().toUpperCase();
-    if (codigoIngrediente && newIngredient.cantidad_ingrediente > 0) {
-      setIngredientes(prev => [...prev, {
-        codigo_ingrediente: codigoIngrediente,
-        cantidad_ingrediente: newIngredient.cantidad_ingrediente
-      }]);
-      setNewIngredient({ codigo_ingrediente: '', cantidad_ingrediente: 0 });
-      setDescripcionIngrediente('');
-      setIngredienteValido(false);
-      toast({ title: "Ingrediente agregado", description: "El ingrediente se ha agregado exitosamente." });
-    } else {
+    if (newIngredient.cantidad_ingrediente <= 0) {
       toast({
         title: "Error",
-        description: "Completa todos los campos del ingrediente con valores válidos.",
+        description: "La cantidad debe ser mayor a cero",
         variant: "destructive"
       });
+      return;
     }
+
+    // Verificar si ya existe en la lista actual
+    const existeEnLista = ingredientes.some(
+      ing => ing.codigo_ingrediente === newIngredient.codigo_ingrediente.trim().toUpperCase()
+    );
+
+    if (existeEnLista) {
+      toast({
+        title: "Error",
+        description: "Este ingrediente ya está en la lista",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIngredientes(prev => [...prev, {
+      codigo_ingrediente: newIngredient.codigo_ingrediente.trim().toUpperCase(),
+      cantidad_ingrediente: newIngredient.cantidad_ingrediente
+    }]);
+
+    setNewIngredient({ codigo_ingrediente: '', cantidad_ingrediente: 0 });
+    setDescripcionIngrediente('');
+
+    toast({ title: "Ingrediente agregado", variant: "default" });
   };
 
   const removeIngredient = (index: number) => {
@@ -149,13 +167,18 @@ const CargarReceta: React.FC = () => {
   const handleSave = async () => {
     const codigoProductoUpper = codigoProducto.trim().toUpperCase();
 
+    // Validaciones básicas
     if (!codigoProductoUpper) {
       toast({ title: "Error", description: "Ingresa el código del producto.", variant: "destructive" });
       return;
     }
 
     if (!productoValido) {
-      toast({ title: "Error", description: "El producto no existe en la base de datos", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: `Producto no existente (${codigoProductoUpper}), primero deberías cargarlo`,
+        variant: "destructive"
+      });
       return;
     }
 
@@ -165,39 +188,107 @@ const CargarReceta: React.FC = () => {
     }
 
     try {
-      await Promise.all(
-        ingredientes.map(async (ingrediente) => {
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas-normalizada`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              codigo_producto: codigoProductoUpper,
-              codigo_ingrediente: ingrediente.codigo_ingrediente.trim().toUpperCase(),
-              cantidad_ingrediente: ingrediente.cantidad_ingrediente
-            }),
-          });
+      const loadingToast = toast({
+        title: "Guardando receta...",
+        description: "Validando ingredientes",
+        variant: "default",
+        duration: Infinity
+      });
 
-          if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.message || `Error con ${ingrediente.codigo_ingrediente}`);
+      const results = await Promise.allSettled(
+        ingredientes.map(async (ingrediente) => {
+          const codigoIngrediente = ingrediente.codigo_ingrediente.trim().toUpperCase();
+
+          try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas-normalizada`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                codigo_producto: codigoProductoUpper,
+                codigo_ingrediente: codigoIngrediente,
+                cantidad_ingrediente: ingrediente.cantidad_ingrediente
+              }),
+            });
+
+            // Manejar respuesta vacía
+            const text = await res.text();
+            const data = text ? JSON.parse(text) : {};
+
+            if (!res.ok) {
+              let errorMessage = data.message || 'Error desconocido';
+
+              // Manejar diferentes códigos de error
+              switch (res.status) {
+                case 400:
+                  errorMessage = data.error || 'Datos inválidos';
+                  break;
+                case 404:
+                  errorMessage = 'Recurso no encontrado';
+                  break;
+                case 409:
+                  errorMessage = 'Combinación ya existe';
+                  break;
+                case 500:
+                  errorMessage = 'Error interno del servidor';
+                  break;
+              }
+
+              throw new Error(`${codigoIngrediente}: ${errorMessage}`);
+            }
+
+            return data;
+          } catch (error) {
+            if (error instanceof SyntaxError) {
+              throw new Error(`${codigoIngrediente}: Respuesta inválida del servidor`);
+            }
+            throw error;
           }
         })
       );
 
+      loadingToast.dismiss();
+
+      // Procesar resultados
+      const errores = results.filter(r => r.status === 'rejected');
+      if (errores.length > 0) {
+        const mensajesError = errores.map((e: any) => {
+          // Extraer solo la parte del mensaje después del código
+          const msg = e.reason.message;
+          return msg.includes(': ') ? msg.split(': ')[1] : msg;
+        });
+
+        throw new Error(
+          `Errores encontrados:\n- ${mensajesError.slice(0, 3).join('\n- ')}` +
+          (mensajesError.length > 3 ? `\n- y ${mensajesError.length - 3} más...` : '')
+        );
+      }
+
+      // Éxito
       toast({
-        title: "Receta creada",
-        description: `La receta ${codigoProductoUpper} se guardó con ${ingredientes.length} ingredientes.`,
+        title: "✅ Receta guardada",
+        description: `La receta se guardó correctamente con ${ingredientes.length} ingredientes`,
+        variant: 'default'
       });
 
+      // Resetear formulario
       setCodigoProducto('');
       setDescripcionProducto('');
       setSectorProductivo('');
       setIngredientes([]);
       setProductoValido(false);
+
     } catch (error: any) {
-      toast({ title: "Error al guardar", description: error.message, variant: "destructive" });
+      toast({
+        title: 'Error al guardar',
+        description: error.message || 'Ocurrió un error inesperado',
+        variant: 'destructive',
+        duration: 8000
+      });
+
+      console.error('Error detallado:', error);
     }
   };
+
 
   return (
     <Layout title="Nueva Receta">
@@ -210,7 +301,7 @@ const CargarReceta: React.FC = () => {
         </div>
 
         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-          ✨ Crear Nueva Receta - Define los ingredientes necesarios
+          ✨ Cargar Nueva Receta - Define los ingredientes necesarios. Puedes agregar ingredientes y luego cargarlos todos juntos.
         </Badge>
 
         <Card className="border-l-4 border-l-green-500">
@@ -276,22 +367,25 @@ const CargarReceta: React.FC = () => {
                   maxLength={15}
                 />
                 <p className="text-xs text-blue-600">Puede ser insumo, mano obra o matriz energética</p>
-                {newIngredient.codigo_ingrediente && !ingredienteValido && (
+
+                {/* Mensaje de error IDÉNTICO al del producto */}
+                {!ingredienteValido && newIngredient.codigo_ingrediente && (
                   <p className="text-xs text-red-500">Ingrediente no encontrado</p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label>Descripción</Label>
                 <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
-                  <span className={`text-sm ${descripcionIngrediente === 'Buscando...' ? 'text-blue-500 italic' :
-                    descripcionIngrediente === 'No encontrado' ? 'text-red-500' :
-                      'text-blue-500'
+                  <span className={`text-sm ${descripcionIngrediente === 'Ingrediente no encontrado' ? 'text-red-500' :
+                    descripcionIngrediente === 'Buscando...' ? 'text-blue-500 italic' :
+                      'text-gray-700'
                     }`}>
-                    {descripcionIngrediente}
+                    {descripcionIngrediente || ' '}
                   </span>
                 </div>
               </div>
             </div>
+
             <div className="space-y-2 mt-4">
               <Label htmlFor="cantidad-ingrediente">Cantidad Ingrediente</Label>
               <div className="flex space-x-2">

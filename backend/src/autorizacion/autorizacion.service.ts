@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 export class AutorizacionService {
   private supabase = createClient(
     process.env.SUPABASE_URL!,
-    process.env.SUPABASE_KEY!, // usar clave privada segura
+    process.env.SUPABASE_KEY!, 
   );
 
   async login(email: string, password: string) {

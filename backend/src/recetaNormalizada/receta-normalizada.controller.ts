@@ -1,14 +1,31 @@
-import { Controller, Post, Body, Get, Delete, Param, Put } from '@nestjs/common';
+import { Controller, Post, Body, Get, Delete, Param, Put, HttpException, HttpStatus } from '@nestjs/common';
 import { RecetaNormalizadaService } from '../recetaNormalizada/receta-normalizada.service';
 import { CreateRecetaNormalizadaDto } from '../recetaNormalizada/receta-nomralizada.dto';
 
 @Controller('recetas-normalizada')
 export class RecetaNormalizadaController {
-  constructor(private readonly service: RecetaNormalizadaService) {}
+  constructor(private readonly service: RecetaNormalizadaService) { }
 
   @Post()
-  crear(@Body() dto: CreateRecetaNormalizadaDto) {
-    return this.service.crear(dto);
+  async crear(@Body() dto: CreateRecetaNormalizadaDto) {
+    const result = await this.service.crear(dto);
+
+    if (!result.success) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: result.message,
+          details: result.error
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    return {
+      status: 'success',
+      data: result.data,
+      message: result.message
+    };
   }
 
   @Get()

@@ -24,9 +24,10 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const navigationItems = [
     { path: '/', label: 'Dashboard', icon: '🏠' },
     { path: '/receta', label: 'Receta', icon: '📋' },
+    { path: '/productos', label: 'Productos', icon: '🛒' },
+    { path: '/insumos', label: 'Insumos', icon: '📦' },
     { path: '/mano-obra', label: 'Mano de Obra', icon: '👷' },
     { path: '/mano-energia', label: 'Mano de Energía', icon: '⚡' },
-    { path: '/insumos', label: 'Insumos', icon: '📦' },
     { path: '/resultados-cdr', label: 'CDR', icon: '💰' },
   ];
 
