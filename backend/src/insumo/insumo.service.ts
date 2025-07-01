@@ -9,12 +9,18 @@ export class InsumoService {
 
   async guardarInsumo(insumo: Insumo): Promise<Insumo> {
     try {
-      return await this.insumoRepository.guardar(insumo);
+        return await this.insumoRepository.guardar(insumo);
     } catch (error) {
-      console.error('❌ Error completo al guardar:', error);
-      throw new Error('Error al insertar insumo: ' + (error?.message ?? 'Error desconocido'));
+        console.error('❌ Error completo al guardar:', error);
+        
+        // Manejo específico para error de duplicado
+        if (error.code === '23505') {
+            throw new Error('Insumo ya existente');
+        }
+        
+        throw new Error('Error al insertar insumo: ' + (error?.message ?? 'Error desconocido'));
     }
-  }
+}
 
   async obtenerTodos(): Promise<Insumo[]> {
     const { data, error } = await supabase.from('insumos').select('*');

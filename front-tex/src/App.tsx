@@ -17,7 +17,10 @@ import RecetasDetalladas from "./pages/RecetasDetalladas";
 import NotFound from "./pages/NotFound";
 import { UnauthenticatedOnlyWrapper } from "./components/UnauthenticatedOnlyWrapper";
 import CargarReceta from "./pages/CargarReceta";
+import CargarInsumo from "./pages/CargarInsumo";
+import CargarProducto from "./pages/CargarProducto";
 import PaginaEnProduccion from "./components/PaginaConstruccion";
+import Producto from "./pages/Producto";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +45,7 @@ const App = () => (
 
               <Route path="/" element={<Dashboard />} />
               <Route path="/receta" element={<Receta />} />
+               <Route path="/producto" element={<Producto />} />
               <Route path="/detalle-recetas" element={<RecetasDetalladas />} />
 
               <Route path="/mano-obra" element={<ManoObra />} />
@@ -51,6 +55,8 @@ const App = () => (
                 {/* <Route path="/editarReceta/:codigo_producto" element={<EditarReceta />} /> 
                  */}
                 <Route path="/cargarReceta" element={<CargarReceta />} />
+                <Route path="/cargarInsumo" element={<CargarInsumo />} />
+                <Route path="/cargarProducto" element={<CargarProducto />} />
                 <Route path="/editarReceta/:codigo_producto" element={<PaginaEnProduccion />} />
 
 

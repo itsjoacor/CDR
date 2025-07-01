@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const Insumos: React.FC = () => {
   // Tipo en línea según schema
@@ -23,6 +24,7 @@ const Insumos: React.FC = () => {
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [loading, setLoading] = useState(true);
   const canEdit = user?.role === 'admin';
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchInsumos = async () => {
@@ -71,8 +73,11 @@ const Insumos: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
+            {canEdit && (
+              <Button onClick={() => navigate(`/cargarInsumo`)}>➕ Agregar Insumo</Button>
+
+            )}
             <Button onClick={handleExport} variant="outline">📤 Exportar</Button>
-            {canEdit && <Button>➕ Nuevo Insumo</Button>}
           </div>
         </div>
 

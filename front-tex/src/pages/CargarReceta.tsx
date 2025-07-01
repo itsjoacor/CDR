@@ -265,7 +265,7 @@ const CargarReceta: React.FC = () => {
         });
 
         throw new Error(
-          `\n ${mensajesError.slice(0, 3).join('\n- ')}` +
+          `\n${mensajesError.slice(0, 3).join('\n- ')}` +
           (mensajesError.length > 3 ? `\n- y ${mensajesError.length - 3} más...` : '')
         );
       }

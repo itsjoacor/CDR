@@ -27,7 +27,7 @@ const Dashboard: React.FC = () => {
       canEdit: user?.role === 'admin'
     },
     {
-      path: '/productos',
+      path: '/producto',
       title: 'Productos',
       icon: '🛒',
       description: 'Configurar tiempos, salarios y fórmulas de trabajo humano',
