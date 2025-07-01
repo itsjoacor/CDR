@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 type ManoObraAPI = {
   codigo_mano_obra: string;
@@ -27,6 +28,7 @@ const ManoObra: React.FC = () => {
   const [manoObra, setManoObra] = useState<ManoObraAPI[]>([]);
   const [loading, setLoading] = useState(true);
   const canEdit = user?.role === 'admin';
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,7 +74,11 @@ const ManoObra: React.FC = () => {
           </div>
           <div className="flex space-x-2">
             <Button variant="outline">📤 Exportar</Button>
-            {canEdit && <Button>➕ Nuevo Tipo MO</Button>}
+            {canEdit && (
+              <Button onClick={() => navigate('/cargarManoObra')}>
+                ➕ Agregar Mano obra
+              </Button>
+            )}
           </div>
         </div>
 

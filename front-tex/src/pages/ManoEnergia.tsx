@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const ManoEnergia: React.FC = () => {
   interface MatrizEnergia {
@@ -25,6 +26,7 @@ const ManoEnergia: React.FC = () => {
   const [data, setData] = useState<MatrizEnergia[]>([]);
   const [loading, setLoading] = useState(true);
   const canEdit = user?.role === 'admin';
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchEnergia = async () => {
@@ -77,7 +79,11 @@ const ManoEnergia: React.FC = () => {
           </div>
           <div className="flex space-x-2">
             <Button onClick={handleExport} variant="outline">📤 Exportar</Button>
-            {canEdit && <Button>➕ Nuevo Equipo</Button>}
+            {canEdit && (
+              <Button onClick={() => navigate('/cargarEnergia')}>
+                ➕ Agregar energia
+              </Button>
+            )}
           </div>
         </div>
 
