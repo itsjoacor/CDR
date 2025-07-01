@@ -8,6 +8,7 @@ import { ResultadosCdrModule } from './resultadosCDR/resultado-cdr.module';
 import { MatrizManoModule } from './matrizMano/matriz-mano.module';
 import { MatrizEnergiaModule } from './matrizEnergia/matriz-energia.module';
 import { RecetaNormalizadaModule } from './recetaNormalizada/receta-normalizada.module';
+import { SectorProductivoModule } from './sectorProductivo/sectores-productivos.module';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { RecetaNormalizadaModule } from './recetaNormalizada/receta-normalizada.
     ResultadosCdrModule,
     MatrizManoModule,
     MatrizEnergiaModule,
-    RecetaNormalizadaModule
+    RecetaNormalizadaModule,
+    SectorProductivoModule
 
   ],
 })

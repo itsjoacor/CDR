@@ -19,12 +19,22 @@ import { Producto } from '../productos/producto.model';
 export class ProductoController {
   private readonly logger = new Logger(ProductoController.name);
 
-  constructor(private readonly productoService: ProductoService) {}
+  constructor(private readonly productoService: ProductoService) { }
 
   @Post()
-  async crear(@Body() body: ProductoBody): Promise<Producto> {
+  async crear(@Body() body: {
+    codigo_producto: string,
+    descripcion_producto: string,
+    sector_productivo: string
+  }): Promise<Producto> {
     try {
-      const producto = body.aModelo();
+      // Directly create Producto from the raw body
+      const producto = new Producto(
+        body.codigo_producto,
+        body.descripcion_producto,
+        body.sector_productivo
+      );
+
       return await this.productoService.crear(producto);
     } catch (error) {
       this.logger.error('Error al crear producto', error.stack);

@@ -474,21 +474,12 @@ const CargarReceta: React.FC = () => {
             </CardContent>
           </Card>
         )}
-        <Button onClick={handleSave} className="flex items-center space-x-2">
-          <Save className="h-4 w-4" />
-          <span>Guardar Receta</span>
-        </Button>
-
-        <Card className="bg-green-50 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-green-600">ℹ️</span>
-              <span className="text-sm text-green-800">
-                Cada ingrediente puede ser un producto, insumo, mano de obra o matriz energética.
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex space-x-2 justify-end">
+          <Button onClick={handleSave} className="flex items-center space-x-2">
+            <Save className="h-4 w-4" />
+            <span>Guardar Producto</span>
+          </Button>
+        </div>
       </div>
     </Layout>
   );
