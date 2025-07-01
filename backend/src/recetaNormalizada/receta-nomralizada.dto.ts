@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, IsIn } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber } from 'class-validator';
 
 export class CreateRecetaNormalizadaDto {
   @IsString()
@@ -11,7 +11,4 @@ export class CreateRecetaNormalizadaDto {
 
   @IsNumber()
   cantidad_ingrediente: number;
-
-  @IsIn(['producto', 'insumo', 'mano_obra', 'matriz_energia'])
-  tipo_ingrediente?: string;
 }

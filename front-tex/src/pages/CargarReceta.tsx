@@ -17,6 +17,7 @@ interface Ingredient {
 }
 
 const CargarReceta: React.FC = () => {
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -33,6 +34,12 @@ const CargarReceta: React.FC = () => {
   const [productoValido, setProductoValido] = useState(false);
   const [ingredienteValido, setIngredienteValido] = useState(false);
 
+
+  console.log('Datos a enviar:', {
+    codigo_producto: codigoProducto,
+    codigo_ingrediente: newIngredient.codigo_ingrediente,
+    cantidad_ingrediente: newIngredient.cantidad_ingrediente
+  });
   // FETCH INFO PRODUCTO
   useEffect(() => {
     const codigo = codigoProducto.trim().toUpperCase();
@@ -258,7 +265,7 @@ const CargarReceta: React.FC = () => {
         });
 
         throw new Error(
-          `Errores encontrados:\n- ${mensajesError.slice(0, 3).join('\n- ')}` +
+          `\n ${mensajesError.slice(0, 3).join('\n- ')}` +
           (mensajesError.length > 3 ? `\n- y ${mensajesError.length - 3} más...` : '')
         );
       }

@@ -5,87 +5,6 @@ import { CreateRecetaNormalizadaDto } from './receta-nomralizada.dto';
 
 @Injectable()
 export class RecetaNormalizadaRepository {
-  async crear(dto: CreateRecetaNormalizadaDto) {
-    const { codigo_producto, codigo_ingrediente } = dto;
-
-    // Validación básica
-    if (!codigo_producto || !codigo_ingrediente) {
-      throw new HttpException(
-        'Código de producto o ingrediente faltante',
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    // Verificar existencia del producto principal
-    const productoExiste = await this.existeEnTabla('productos', 'codigo_producto', codigo_producto);
-    if (!productoExiste) {
-      throw new HttpException(
-        `Producto no existente (${codigo_producto}), primero deberías cargarlo`,
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    // Verificar en qué tabla existe el ingrediente
-    const tipoIngrediente = await this.determinarTipoIngrediente(codigo_ingrediente);
-
-    if (!tipoIngrediente) {
-      throw new HttpException(
-        `Ingrediente no existente (${codigo_ingrediente}). Debe existir en alguna de estas tablas: productos, insumos, matriz_mano o matriz_energia.`,
-        HttpStatus.BAD_REQUEST
-      );
-    }
-
-    // Verificar si la combinación ya existe
-    const { data: existente, error: readError } = await supabase
-      .from('recetas_normalizada')
-      .select('codigo_producto')
-      .eq('codigo_producto', codigo_producto)
-      .eq('codigo_ingrediente', codigo_ingrediente)
-      .maybeSingle();
-
-    if (readError) {
-      throw new HttpException(
-        'Error al verificar duplicados: ' + readError.message,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
-
-    if (existente) {
-      throw new HttpException(
-        `Combinación producto (${codigo_producto}) e ingrediente (${codigo_ingrediente}) ya existente.`,
-        HttpStatus.CONFLICT
-      );
-    }
-
-    // Insertar la receta
-    const { error } = await supabase.from('recetas_normalizada').insert({
-      ...dto,
-      tipo_ingrediente: tipoIngrediente // Agregamos el tipo de ingrediente
-    });
-
-    if (error) {
-      throw new HttpException(
-        'Error al insertar receta: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
-
-    return { success: true, message: 'Receta creada exitosamente' };
-  }
-
-  private async determinarTipoIngrediente(codigo: string): Promise<string | null> {
-    // Verificar en qué tabla existe el código
-    const checks = await Promise.all([
-      this.existeEnTabla('productos', 'codigo_producto', codigo).then(existe => existe ? 'producto' : null),
-      this.existeEnTabla('insumos', 'codigo', codigo).then(existe => existe ? 'insumo' : null),
-      this.existeEnTabla('matriz_mano', 'codigo_mano_obra', codigo).then(existe => existe ? 'mano_obra' : null),
-      this.existeEnTabla('matriz_energia', 'codigo_matriz_energia', codigo).then(existe => existe ? 'matriz_energia' : null),
-    ]);
-
-    // Retornar el primer tipo no nulo encontrado
-    return checks.find(tipo => tipo !== null) || null;
-  }
-
   private async existeEnTabla(tabla: string, campo: string, valor: string): Promise<boolean> {
     const { data, error } = await supabase
       .from(tabla)
@@ -99,6 +18,131 @@ export class RecetaNormalizadaRepository {
     }
 
     return !!data;
+  }
+
+  private async existeEnAlgunaTabla(codigo: string): Promise<boolean> {
+    // Verifica en cascada con short-circuit
+    return (await this.existeEnTabla('productos', 'codigo_producto', codigo)) ||
+      (await this.existeEnTabla('insumos', 'codigo', codigo)) ||
+      (await this.existeEnTabla('matriz_mano', 'codigo_mano_obra', codigo)) ||
+      (await this.existeEnTabla('matriz_energia', 'codigo_energia', codigo));
+  }
+
+  async crear(dto: CreateRecetaNormalizadaDto) {
+    try {
+      const { codigo_producto, codigo_ingrediente, cantidad_ingrediente } = dto;
+
+      // Normalizar códigos
+      const codProducto = codigo_producto.trim().toUpperCase();
+      const codIngrediente = codigo_ingrediente.trim().toUpperCase();
+
+      // Validación básica
+      if (!codProducto || !codIngrediente || cantidad_ingrediente == null) {
+        throw new HttpException(
+          'Datos incompletos: código de producto, código de ingrediente y cantidad son requeridos',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      if (isNaN(cantidad_ingrediente) || cantidad_ingrediente <= 0) {
+        throw new HttpException(
+          'La cantidad debe ser un número mayor a cero',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Verificar existencia en paralelo
+      const [productoExiste, ingredienteExiste] = await Promise.all([
+        this.existeEnTabla('productos', 'codigo_producto', codProducto),
+        this.existeEnAlgunaTabla(codIngrediente)
+      ]);
+
+      if (!productoExiste) {
+        throw new HttpException(
+          `El producto "${codProducto}" no existe. Debe crearlo primero.`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      if (!ingredienteExiste) {
+        // Verificación detallada para mensaje de error más informativo
+        const tablas = ['productos', 'insumos', 'matriz_mano', 'matriz_energia'];
+        const resultados = await Promise.all(
+          tablas.map(tabla => this.existeEnTabla(tabla, this.getCampoId(tabla), codIngrediente))
+        );
+
+        const tablasDondeNoExiste = tablas.filter((_, i) => !resultados[i]);
+        throw new HttpException(
+          `El ingrediente "${codIngrediente}" no existe en las siguientes tablas: ${tablasDondeNoExiste.join(', ')}`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Prevenir recursión (producto que se contiene a sí mismo)
+      if (codProducto === codIngrediente) {
+        throw new HttpException(
+          'Un producto no puede ser ingrediente de sí mismo',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Insertar en la base de datos
+      const { error } = await supabase.from('recetas_normalizada').insert({
+        codigo_producto: codProducto,
+        codigo_ingrediente: codIngrediente,
+        cantidad_ingrediente: cantidad_ingrediente
+      });
+
+      if (error) {
+        // Manejo específico para error de duplicado
+        if (error.code === '23505') {
+          throw new HttpException(
+            `La combinación "${codProducto}" (producto) y "${codIngrediente}" (ingrediente) ya existe en la receta`,
+            HttpStatus.CONFLICT
+          );
+        }
+
+        // Manejo genérico de otros errores de Supabase
+        console.error('Error de Supabase:', error);
+        throw new HttpException(
+          `Ocurrió un error al guardar la receta: ${error.message}`,
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+
+      return {
+        success: true,
+        message: `Receta creada exitosamente: ${codProducto} con ingrediente ${codIngrediente}`,
+        data: {
+          codigo_producto: codProducto,
+          codigo_ingrediente: codIngrediente,
+          cantidad_ingrediente: cantidad_ingrediente
+        }
+      };
+
+    } catch (error) {
+      // Si el error ya es una HttpException, simplemente lo relanzamos
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Para errores inesperados
+      console.error('Error inesperado en crear receta:', error);
+      throw new HttpException(
+        'Ocurrió un error inesperado al procesar la receta',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  private getCampoId(tabla: string): string {
+    const map: Record<string, string> = {
+      productos: 'codigo_producto',
+      insumos: 'codigo',
+      matriz_mano: 'codigo_mano_obra',
+      matriz_energia: 'codigo_matriz_energia'
+    };
+    return map[tabla] || 'codigo';
   }
 
 
