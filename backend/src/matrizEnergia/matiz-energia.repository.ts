@@ -21,16 +21,41 @@ export class MatrizEnergiaRepository {
     }
 
     async crear(data: MatrizEnergia): Promise<MatrizEnergia> {
-        const { error } = await supabase.from('matriz_energia').insert([data]);
-        if (error) throw new Error(error.message);
-        return data;
+        try {
+            // Eliminar std_produccion para que lo maneje el trigger
+            const { std_produccion, ...insertData } = data;
+
+            const { data: insertedData, error } = await supabase
+                .from('matriz_energia')
+                .insert([insertData])
+                .select()
+                .single();
+
+            if (error) {
+                // Manejo de errores específicos
+                if (error.code === '23505') {
+                    throw new Error('Código de energía ya existente');
+                }
+                if (error.code === '23502') {
+                    throw new Error('Datos requeridos faltantes');
+                }
+
+                // Otro error
+                throw new Error(error.message);
+            }
+
+            return insertedData;
+        } catch (error: any) {
+            // Propagar error para que el controller lo transforme
+            throw error;
+        }
     }
 
     async actualizar(codigo: string, data: Partial<MatrizEnergia>): Promise<void> {
         const { error } = await supabase
             .from('matriz_energia')
             .update(data)
-            .eq('codigo_mano_obra', codigo);
+            .eq('codigo_energia', codigo);  // Changed from codigo_mano_obra
         if (error) throw new Error(error.message);
     }
 
@@ -38,7 +63,7 @@ export class MatrizEnergiaRepository {
         const { error } = await supabase
             .from('matriz_energia')
             .delete()
-            .eq('codigo_mano_obra', codigo);
+            .eq('codigo_energia', codigo);  // Changed from codigo_mano_obra
         if (error) throw new Error(error.message);
     }
 }

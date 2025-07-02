@@ -6,13 +6,17 @@ import { MatrizEnergiaRepository } from './matiz-energia.repository';
 export class MatrizEnergiaService {
     constructor(private readonly repo: MatrizEnergiaRepository) { }
 
-    async crear(data: MatrizEnergia): Promise<MatrizEnergia> {
-        const existente = await this.repo.obtenerPorCodigo(data.codigo_mano_obra);
-        if (existente) {
-            throw new Error('Ya existe un registro con ese código de mano de obra.');
+    async crear(matriz: MatrizEnergia): Promise<MatrizEnergia> {
+        try {
+            return await this.repo.crear(matriz);
+        } catch (error) {
+            if (error.code === '23505') {
+                throw new Error('Código de energía ya existente'); // ⬅️ Este mensaje lo verá el controller
+            }
+            throw new Error('Error al guardar matriz de energía');
         }
-        return this.repo.crear(data);
     }
+
 
     async obtenerTodos(): Promise<MatrizEnergia[]> {
         return this.repo.obtenerTodos();

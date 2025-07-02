@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, HttpException, HttpStatus } from '@nestjs/common';
 import { MatrizManoService } from './matriz-mano.service';
 import { MatrizManoBodyDto } from './matriz-mano-body.dto';
 import { MatrizMano } from './matriz-mano.model';
@@ -38,5 +38,19 @@ export class MatrizManoController {
     @Delete(':codigo')
     eliminar(@Param('codigo') codigo: string): Promise<void> {
         return this.service.eliminar(codigo);
+    }
+
+
+    @Get('exists/:codigo')
+    async validarCodigo(@Param('codigo') codigo: string): Promise<{ exists: boolean }> {
+        try {
+            const matriz = await this.service.obtenerPorCodigo(codigo);
+            return { exists: matriz !== null };
+        } catch (error) {
+            throw new HttpException(
+                { status: HttpStatus.INTERNAL_SERVER_ERROR, error: 'Error al validar código' },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
     }
 }

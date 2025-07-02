@@ -25,10 +25,14 @@ const CargarEnergia: React.FC = () => {
   const [consumoKwStd, setConsumoKwStd] = useState<number>(0);
   const [valorKw, setValorKw] = useState<number>(89.40);
   const [stdProduccion, setStdProduccion] = useState<number | null>(null);
-  
+
   const [sectores, setSectores] = useState<string[]>([]);
   const [sectorSeleccionado, setSectorSeleccionado] = useState('');
   const [inputValue, setInputValue] = useState('');
+  const [manoObraValida, setManoObraValida] = useState(false);
+  const [validatingManoObra, setValidatingManoObra] = useState(false);
+  const [energiaExistente, setEnergiaExistente] = useState(false);
+  const [validatingCodigoEnergia, setValidatingCodigoEnergia] = useState(false);
 
   // Fetch sectores productivos on component mount
   useEffect(() => {
@@ -52,6 +56,73 @@ const CargarEnergia: React.FC = () => {
     fetchSectores();
   }, []);
 
+  // Validate mano_obra code when it changes
+  useEffect(() => {
+    const validarManoObra = async () => {
+      if (!codigoManoObra.trim()) {
+        setManoObraValida(false);
+        return;
+      }
+
+      setValidatingManoObra(true);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/matriz-mano/exists/${encodeURIComponent(codigoManoObra)}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Error en la validación');
+        }
+
+        const data = await response.json();
+        setManoObraValida(data.exists);
+
+        // Removed the toast notification here
+      } catch (error) {
+        console.error("Error validando mano de obra:", error);
+        setManoObraValida(false);
+      } finally {
+        setValidatingManoObra(false);
+      }
+    };
+
+    const timer = setTimeout(validarManoObra, 500);
+    return () => clearTimeout(timer);
+  }, [codigoManoObra]);
+
+  useEffect(() => {
+    const validarCodigoEnergia = async () => {
+      if (!codigoEnergia.trim()) {
+        setEnergiaExistente(false);
+        return;
+      }
+
+      setValidatingCodigoEnergia(true);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/matriz-energia/exists/${encodeURIComponent(codigoEnergia)}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Error en la validación');
+        }
+
+        const data = await response.json();
+        setEnergiaExistente(data.exists);
+
+        // Removed the toast notification here
+      } catch (error) {
+        console.error("Error validando código de energía:", error);
+        setEnergiaExistente(false);
+      } finally {
+        setValidatingCodigoEnergia(false);
+      }
+    };
+
+    const timer = setTimeout(validarCodigoEnergia, 500);
+    return () => clearTimeout(timer);
+  }, [codigoEnergia]);
+
   const handleSave = async () => {
     if (!sectorSeleccionado.trim()) {
       toast({
@@ -71,10 +142,28 @@ const CargarEnergia: React.FC = () => {
       return;
     }
 
+    if (!manoObraValida) {
+      toast({
+        title: "Error",
+        description: "El código de mano de obra no existe en el sistema",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!codigoEnergia.trim()) {
       toast({
         title: "Error",
         description: "Por favor ingresa el código de energía.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (energiaExistente) {
+      toast({
+        title: "Error",
+        description: "Ya existe una matriz con ese código de energía.",
         variant: "destructive"
       });
       return;
@@ -107,7 +196,6 @@ const CargarEnergia: React.FC = () => {
       return;
     }
 
-    // Crear el objeto que se enviará al backend
     const matrizEnergiaData = {
       sector_productivo: sectorSeleccionado,
       codigo_mano_obra: codigoManoObra,
@@ -115,11 +203,8 @@ const CargarEnergia: React.FC = () => {
       descripcion: descripcion,
       consumo_kw_std: consumoKwStd,
       valor_kw: valorKw,
-      std_produccion: stdProduccion
+      std_produccion: stdProduccion || null
     };
-
-    // Mostrar en consola lo que se enviará
-    console.log('Datos a enviar al backend:', matrizEnergiaData);
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/matriz-energia`, {
@@ -130,21 +215,25 @@ const CargarEnergia: React.FC = () => {
         body: JSON.stringify(matrizEnergiaData),
       });
 
-      // Mostrar la respuesta del servidor en consola
-      console.log('Respuesta del servidor:', response);
-
       if (!response.ok) {
         const errorData = await response.json();
-        console.log('Error del servidor:', errorData);
-        throw new Error(errorData.message || 'Error al crear matriz de energía');
+        console.error("🔴 Error backend:", errorData);
+
+        const message =
+          typeof errorData.message === 'string'
+            ? errorData.message
+            : Array.isArray(errorData.message)
+              ? errorData.message[0]
+              : 'Error desconocido al crear matriz de energía';
+
+        throw new Error(message);
       }
 
       const data = await response.json();
-      console.log('Datos recibidos del servidor:', data);
 
       toast({
         title: "Matriz de energía creada",
-        description: `La matriz ${data.codigo_mano_obra} se ha creado exitosamente.`,
+        description: `La matriz ${data.codigo_energia} se ha creado exitosamente.`,
       });
 
       // Reset form
@@ -156,14 +245,29 @@ const CargarEnergia: React.FC = () => {
       setStdProduccion(null);
       setSectorSeleccionado('');
       setInputValue('');
+      setManoObraValida(false);
 
     } catch (error: any) {
-      console.log('Error en la solicitud:', error);
+      console.error("🟠 error.message:", error.message);
+
+      if (
+        error.message?.includes('duplicate key value') ||
+        error.message === 'Código de energía ya existente' ||
+        error.message === 'El código de energía ya existe'
+      ) {
+        const codigoInput = document.getElementById('codigo_energia');
+        codigoInput?.focus();
+        toast({
+          title: "Error",
+          description: "El código de energía ya existe en la base de datos.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({
         title: "Error",
-        description: error.message.includes('Ya existe')
-          ? "Ya existe una matriz con este código de mano de obra"
-          : "Error al crear la matriz de energía",
+        description: error.message || 'Error al crear la matriz de energía',
         variant: "destructive"
       });
     }
@@ -176,8 +280,8 @@ const CargarEnergia: React.FC = () => {
     : sectores;
 
   const totalPesosStd = consumoKwStd * valorKw;
-  const costoEnergiaUnidad = stdProduccion && stdProduccion > 0 
-    ? totalPesosStd / stdProduccion 
+  const costoEnergiaUnidad = stdProduccion && stdProduccion > 0
+    ? totalPesosStd / stdProduccion
     : null;
 
   return (
@@ -185,8 +289,8 @@ const CargarEnergia: React.FC = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => navigate('/matriz-energia')}
             className="flex items-center space-x-2"
           >
@@ -264,30 +368,44 @@ const CargarEnergia: React.FC = () => {
               {/* Código Mano de Obra */}
               <div className="space-y-2">
                 <Label htmlFor="codigo_mano_obra">Código Mano de Obra</Label>
-                <Input
-                  id="codigo_mano_obra"
-                  value={codigoManoObra}
-                  onChange={(e) => setCodigoManoObra(e.target.value)}
-                  placeholder="Ej: MO-001"
-                  className="text-lg font-semibold max-w-60"
-                  maxLength={20}
-                />
+                <div className="flex items-center gap-2 ">
+                  <Input
+                    id="codigo_mano_obra"
+                    value={codigoManoObra}
+                    onChange={(e) => setCodigoManoObra(e.target.value)}
+                    placeholder="Ej: MO-001"
+                    className="text-lg font-semibold max-w-60"
+                    maxLength={20}
+                  />
+                  {codigoManoObra && (
+                    <span className={manoObraValida ? "text-green-500" : "text-red-500"}>
+                      {validatingManoObra ? "..." : (manoObraValida ? "Código válido" : "Código inválido")}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Código único identificativo de mano de obra (clave primaria)
+                  Código debe existir en matriz_mano
                 </p>
               </div>
 
               {/* Código Energía */}
               <div className="space-y-2">
                 <Label htmlFor="codigo_energia">Código Energía</Label>
-                <Input
-                  id="codigo_energia"
-                  value={codigoEnergia}
-                  onChange={(e) => setCodigoEnergia(e.target.value)}
-                  placeholder="Ej: EN-001"
-                  className="text-lg font-semibold max-w-60"
-                  maxLength={20}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="codigo_energia"
+                    value={codigoEnergia}
+                    onChange={(e) => setCodigoEnergia(e.target.value)}
+                    placeholder="Ej: EN-001"
+                    className="text-lg font-semibold max-w-60"
+                    maxLength={20}
+                  />
+                  {codigoEnergia && (
+                    <span className={energiaExistente ? "text-red-500" : "text-green-500"}>
+                      {validatingCodigoEnergia ? "..." : (energiaExistente ? "Ya existe" : "Disponible")}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Código identificativo de energía
                 </p>
@@ -315,14 +433,14 @@ const CargarEnergia: React.FC = () => {
                   id="consumo_kw_std"
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   value={consumoKwStd}
                   onChange={(e) => setConsumoKwStd(Number(e.target.value))}
                   placeholder="0.00"
                   className="text-lg font-semibold max-w-60"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Consumo estándar en kilovatios
+                  Consumo estándar en kilovatios (mayor que 0)
                 </p>
               </div>
 
@@ -335,7 +453,7 @@ const CargarEnergia: React.FC = () => {
                     id="valor_kw"
                     type="number"
                     step="0.01"
-                    min="0"
+                    min="0.01"
                     value={valorKw}
                     onChange={(e) => setValorKw(Number(e.target.value))}
                     placeholder="89.40"
@@ -343,25 +461,7 @@ const CargarEnergia: React.FC = () => {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Valor por kilovatio (por defecto: $89.40)
-                </p>
-              </div>
-
-              {/* STD Producción */}
-              <div className="space-y-2">
-                <Label htmlFor="std_produccion">STD Producción (Opcional)</Label>
-                <Input
-                  id="std_produccion"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={stdProduccion || ''}
-                  onChange={(e) => setStdProduccion(e.target.value ? Number(e.target.value) : null)}
-                  placeholder="0.00"
-                  className="text-lg font-semibold max-w-60"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Estándar de producción (se copiará desde mano de obra si no se especifica)
+                  Valor por kilovatio (mayor que 0)
                 </p>
               </div>
             </div>
@@ -387,7 +487,7 @@ const CargarEnergia: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-yellow-700 font-medium">Costo Energía por Unidad:</span>
                 <span className="text-yellow-800 font-semibold">
-                  {costoEnergiaUnidad !== null 
+                  {costoEnergiaUnidad !== null
                     ? `$${costoEnergiaUnidad.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`
                     : 'N/A (requiere STD Producción)'
                   }
@@ -397,38 +497,12 @@ const CargarEnergia: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Resumen */}
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-yellow-800">
-              <span className="text-xl">📋</span>
-              <span>Resumen de la Matriz</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-yellow-700 font-medium">Sector:</span>
-                <span className="text-yellow-800">{sectorSeleccionado || 'Sin definir'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-yellow-700 font-medium">Código M.O.:</span>
-                <span className="text-yellow-800 font-mono">{codigoManoObra || 'Sin definir'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-yellow-700 font-medium">Código Energía:</span>
-                <span className="text-yellow-800 font-mono">{codigoEnergia || 'Sin definir'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-yellow-700 font-medium">Descripción:</span>
-                <span className="text-yellow-800">{descripcion || 'Sin definir'}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="flex space-x-2 justify-end">
-          <Button onClick={handleSave} className="flex items-center space-x-2">
+          <Button
+            onClick={handleSave}
+            className="flex items-center space-x-2"
+            disabled={validatingManoObra || !manoObraValida}
+          >
             <Save className="h-4 w-4" />
             <span>Guardar Matriz</span>
           </Button>
