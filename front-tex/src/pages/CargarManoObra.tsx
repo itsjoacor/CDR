@@ -9,6 +9,12 @@ import { ArrowLeft, Save, Users, Clock, Calculator } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions,
+} from '@headlessui/react';
 
 const CargarManoObra: React.FC = () => {
   const navigate = useNavigate();
@@ -23,23 +29,22 @@ const CargarManoObra: React.FC = () => {
   const [valorHoraHombre, setValorHoraHombre] = useState<number>(3000);
   const [horasPorTurno, setHorasPorTurno] = useState<number>(8);
   const [productoCalculadoStd, setProductoCalculadoStd] = useState<string>('');
-  
+
   const [sectores, setSectores] = useState<string[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [manoObraExistente, setManoObraExistente] = useState(false);
+  const [validatingCodigoManoObra, setValidatingCodigoManoObra] = useState(false);
 
   // Fetch sectores productivos on component mount
   useEffect(() => {
     const fetchSectores = async () => {
       try {
-        // Mock data for demonstration - replace with actual API call
-        const mockSectores = [
-          'Producción Principal',
-          'Ensamblaje',
-          'Control de Calidad',
-          'Empaque',
-          'Logística',
-          'Mantenimiento'
-        ];
-        setSectores(mockSectores);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`);
+        if (!response.ok) {
+          throw new Error('Error al cargar sectores productivos');
+        }
+        const data = await response.json();
+        setSectores(data.map((sector: any) => sector.nombre));
       } catch (error) {
         toast({
           title: "Error",
@@ -52,8 +57,39 @@ const CargarManoObra: React.FC = () => {
     fetchSectores();
   }, []);
 
+  // Validate mano_obra code when it changes
+  useEffect(() => {
+    const validarCodigoManoObra = async () => {
+      if (!codigoManoObra.trim()) {
+        setManoObraExistente(false);
+        return;
+      }
+
+      setValidatingCodigoManoObra(true);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/matriz-mano/exists/${encodeURIComponent(codigoManoObra)}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Error en la validación');
+        }
+
+        const data = await response.json();
+        setManoObraExistente(data.exists);
+      } catch (error) {
+        console.error("Error validando código de mano de obra:", error);
+        setManoObraExistente(false);
+      } finally {
+        setValidatingCodigoManoObra(false);
+      }
+    };
+
+    const timer = setTimeout(validarCodigoManoObra, 500);
+    return () => clearTimeout(timer);
+  }, [codigoManoObra]);
+
   const handleSave = async () => {
-    // Validations
     if (!sectorProductivo.trim()) {
       toast({
         title: "Error",
@@ -67,6 +103,15 @@ const CargarManoObra: React.FC = () => {
       toast({
         title: "Error",
         description: "Por favor ingresa el código de mano de obra.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (manoObraExistente) {
+      toast({
+        title: "Error",
+        description: "Ya existe una matriz con ese código de mano de obra.",
         variant: "destructive"
       });
       return;
@@ -126,7 +171,6 @@ const CargarManoObra: React.FC = () => {
       return;
     }
 
-    // Crear el objeto que se enviará al backend
     const matrizManoData = {
       sector_productivo: sectorProductivo,
       codigo_mano_obra: codigoManoObra,
@@ -139,12 +183,8 @@ const CargarManoObra: React.FC = () => {
       producto_calculado_std: productoCalculadoStd || null
     };
 
-    // Mostrar en consola lo que se enviará
-    console.log('Datos a enviar al backend:', matrizManoData);
-
     try {
-      // Mock API call - replace with actual API endpoint
-      const response = await fetch(`/api/matriz-mano`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/matriz-mano`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -152,18 +192,25 @@ const CargarManoObra: React.FC = () => {
         body: JSON.stringify(matrizManoData),
       });
 
-      console.log('Respuesta del servidor:', response);
-
       if (!response.ok) {
-        throw new Error('Error al crear matriz de mano de obra');
+        const errorData = await response.json();
+        console.error("🔴 Error backend:", errorData);
+
+        const message =
+          typeof errorData.message === 'string'
+            ? errorData.message
+            : Array.isArray(errorData.message)
+              ? errorData.message[0]
+              : 'Error desconocido al crear matriz de mano de obra';
+
+        throw new Error(message);
       }
 
       const data = await response.json();
-      console.log('Datos recibidos del servidor:', data);
 
       toast({
         title: "Matriz de mano de obra creada",
-        description: `La matriz ${codigoManoObra} se ha creado exitosamente.`,
+        description: `La matriz ${data.codigo_mano_obra} se ha creado exitosamente.`,
       });
 
       // Reset form
@@ -176,37 +223,58 @@ const CargarManoObra: React.FC = () => {
       setValorHoraHombre(3000);
       setHorasPorTurno(8);
       setProductoCalculadoStd('');
+      setManoObraExistente(false);
 
     } catch (error: any) {
-      console.log('Error en la solicitud:', error);
+      console.error("🟠 error.message:", error.message);
+
+      if (
+        error.message?.includes('duplicate key value') ||
+        error.message === 'Código de mano de obra ya existente' ||
+        error.message === 'El código de mano de obra ya existe'
+      ) {
+        const codigoInput = document.getElementById('codigo_mano_obra');
+        codigoInput?.focus();
+        toast({
+          title: "Error",
+          description: "El código de mano de obra ya existe en la base de datos.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({
         title: "Error",
-        description: error.message.includes('Ya existe')
-          ? "Ya existe una matriz con este código de mano de obra"
-          : "Error al crear la matriz de mano de obra",
+        description: error.message || 'Error al crear la matriz de mano de obra',
         variant: "destructive"
       });
     }
   };
 
   // Calculated values (matching the database generated columns)
-  const costoManoObra = stdProduccion > 0 
-    ? (horasHombreStd * valorHoraHombre) / stdProduccion 
+  const costoManoObra = stdProduccion > 0
+    ? (horasHombreStd * valorHoraHombre) / stdProduccion
     : null;
 
-  const cantidadPersonalEstimado = horasPorTurno > 0 
-    ? horasHombreStd / horasPorTurno 
+  const cantidadPersonalEstimado = horasPorTurno > 0
+    ? horasHombreStd / horasPorTurno
     : null;
 
   const totalCostoManoObra = horasHombreStd * valorHoraHombre;
+
+  const filteredSectores = inputValue
+    ? sectores.filter((sector) =>
+      sector.toLowerCase().includes(inputValue.toLowerCase())
+    )
+    : sectores;
 
   return (
     <Layout title="Nueva Matriz de Mano de Obra">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => navigate('/matriz-mano')}
             className="flex items-center space-x-2"
           >
@@ -214,12 +282,6 @@ const CargarManoObra: React.FC = () => {
             <span>Volver a Matriz Mano de Obra</span>
           </Button>
         </div>
-
-        {/* Info Badge */}
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-          <Users className="h-4 w-4 mr-2" />
-          Crear Nueva Matriz de Mano de Obra
-        </Badge>
 
         {/* Información Básica */}
         <Card className="border-l-4 border-l-blue-500">
@@ -234,18 +296,49 @@ const CargarManoObra: React.FC = () => {
               {/* Sector Productivo */}
               <div className="space-y-2">
                 <Label htmlFor="sector_productivo">Sector Productivo</Label>
-                <Select value={sectorProductivo} onValueChange={setSectorProductivo}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar sector..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sectores.map((sector) => (
-                      <SelectItem key={sector} value={sector}>
-                        {sector}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Listbox value={sectorProductivo} onChange={setSectorProductivo}>
+                  <div className="relative">
+                    <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-blue-300 flex items-center justify-between">
+                      {sectorProductivo || 'Seleccionar sector...'}
+                      <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                      </svg>
+                    </ListboxButton>
+                    <ListboxOptions className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-auto">
+                      <input
+                        type="text"
+                        className="w-full px-4 py-2 border-b focus:outline-none"
+                        placeholder="Buscar sector..."
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                      />
+                      {filteredSectores.length === 0 ? (
+                        <div className="px-4 py-2 text-gray-500">No se encontraron sectores</div>
+                      ) : (
+                        filteredSectores.map((sector) => (
+                          <ListboxOption
+                            key={sector}
+                            value={sector}
+                            className={({ active }) =>
+                              `px-4 py-2 cursor-pointer ${active ? 'bg-blue-100 text-blue-900' : 'text-gray-900'}`
+                            }
+                          >
+                            {({ selected }) => (
+                              <div className={`flex items-center ${selected ? 'font-medium' : 'font-normal'}`}>
+                                {sector}
+                                {selected && (
+                                  <svg className="w-5 h-5 ml-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
+                                  </svg>
+                                )}
+                              </div>
+                            )}
+                          </ListboxOption>
+                        ))
+                      )}
+                    </ListboxOptions>
+                  </div>
+                </Listbox>
                 <p className="text-xs text-muted-foreground">
                   Sector productivo al que pertenece la matriz
                 </p>
@@ -254,14 +347,21 @@ const CargarManoObra: React.FC = () => {
               {/* Código Mano de Obra */}
               <div className="space-y-2">
                 <Label htmlFor="codigo_mano_obra">Código Mano de Obra</Label>
-                <Input
-                  id="codigo_mano_obra"
-                  value={codigoManoObra}
-                  onChange={(e) => setCodigoManoObra(e.target.value)}
-                  placeholder="Ej: MO-001"
-                  className="text-lg font-semibold"
-                  maxLength={20}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="codigo_mano_obra"
+                    value={codigoManoObra}
+                    onChange={(e) => setCodigoManoObra(e.target.value)}
+                    placeholder="Ej: MO-001"
+                    className="text-lg font-semibold"
+                    maxLength={20}
+                  />
+                  {codigoManoObra && (
+                    <span className={manoObraExistente ? "text-red-500" : "text-green-500"}>
+                      {validatingCodigoManoObra ? "..." : (manoObraExistente ? "Ya existe" : "Disponible")}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Código único identificativo (clave primaria)
                 </p>
@@ -320,7 +420,7 @@ const CargarManoObra: React.FC = () => {
                   id="std_produccion"
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   value={stdProduccion}
                   onChange={(e) => setStdProduccion(Number(e.target.value))}
                   placeholder="0.00"
@@ -366,7 +466,7 @@ const CargarManoObra: React.FC = () => {
                   id="horas_hombre_std"
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   value={horasHombreStd}
                   onChange={(e) => setHorasHombreStd(Number(e.target.value))}
                   placeholder="0.00"
@@ -386,7 +486,7 @@ const CargarManoObra: React.FC = () => {
                     id="valor_hora_hombre"
                     type="number"
                     step="0.01"
-                    min="0"
+                    min="0.01"
                     value={valorHoraHombre}
                     onChange={(e) => setValorHoraHombre(Number(e.target.value))}
                     placeholder="3000.00"
@@ -405,7 +505,7 @@ const CargarManoObra: React.FC = () => {
                   id="horas_por_turno"
                   type="number"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   value={horasPorTurno}
                   onChange={(e) => setHorasPorTurno(Number(e.target.value))}
                   placeholder="8.00"
@@ -439,7 +539,7 @@ const CargarManoObra: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-blue-700 font-medium">Costo M.O. por Unidad:</span>
                   <span className="text-blue-800 font-semibold">
-                    {costoManoObra !== null 
+                    {costoManoObra !== null
                       ? `$${costoManoObra.toLocaleString('es-CO', { minimumFractionDigits: 2 })}`
                       : 'N/A (requiere STD Producción > 0)'
                     }
@@ -450,18 +550,9 @@ const CargarManoObra: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-blue-700 font-medium">Personal Estimado:</span>
                   <span className="text-blue-800 font-semibold">
-                    {cantidadPersonalEstimado !== null 
+                    {cantidadPersonalEstimado !== null
                       ? `${cantidadPersonalEstimado.toFixed(2)} personas`
                       : 'N/A (requiere Horas por Turno > 0)'
-                    }
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-700 font-medium">Eficiencia:</span>
-                  <span className="text-blue-800 font-semibold">
-                    {horasPorTurno > 0 
-                      ? `${((horasHombreStd / horasPorTurno) * 100).toFixed(1)}%`
-                      : 'N/A'
                     }
                   </span>
                 </div>
@@ -513,7 +604,11 @@ const CargarManoObra: React.FC = () => {
         </Card>
 
         <div className="flex space-x-2 justify-end">
-          <Button onClick={handleSave} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700">
+          <Button
+            onClick={handleSave}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
+            disabled={validatingCodigoManoObra || manoObraExistente}
+          >
             <Save className="h-4 w-4" />
             <span>Guardar Matriz</span>
           </Button>
