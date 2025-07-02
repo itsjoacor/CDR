@@ -21,6 +21,8 @@ import CargarInsumo from "./pages/CargarInsumo";
 import CargarProducto from "./pages/CargarProducto";
 import PaginaEnProduccion from "./components/PaginaConstruccion";
 import Producto from "./pages/Producto";
+import CargarEnergia from "./pages/CargarEnergia";
+import CargarManoObra from "./pages/CargarManoObra";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +59,8 @@ const App = () => (
                 <Route path="/cargarReceta" element={<CargarReceta />} />
                 <Route path="/cargarInsumo" element={<CargarInsumo />} />
                 <Route path="/cargarProducto" element={<CargarProducto />} />
+                <Route path="/cargarEnergia" element={<CargarEnergia />} />
+                <Route path="/cargarManoObra" element={<CargarManoObra />} />
                 <Route path="/editarReceta/:codigo_producto" element={<PaginaEnProduccion />} />
 
 
