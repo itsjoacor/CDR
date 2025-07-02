@@ -12,6 +12,7 @@ import {
   ListboxOption,
   ListboxOptions,
 } from '@headlessui/react';
+import { useNavigate } from 'react-router';
 
 const RecetasDetalladas: React.FC = () => {
   interface RecetaNormalizada {
@@ -41,6 +42,7 @@ const RecetasDetalladas: React.FC = () => {
   const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const canEdit = user?.role === 'admin';
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRecetas = async () => {
@@ -109,8 +111,12 @@ const RecetasDetalladas: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
+
+            {canEdit && (
+              <Button onClick={() => navigate(`/cargarReceta`)}>➕ Agregar Receta</Button>
+
+            )}
             <Button onClick={handleExport} variant="outline">📤 Exportar</Button>
-            {canEdit && <Button>➕ Agregar Receta</Button>}
           </div>
         </div>
 

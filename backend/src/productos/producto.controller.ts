@@ -108,4 +108,19 @@ export class ProductoController {
       );
     }
   }
+
+  @Get('exists/:codigo')
+  async validarCodigo(@Param('codigo') codigo: string): Promise<{ exists: boolean }> {
+    try {
+      const producto = await this.productoService.obtenerPorCodigo(codigo);
+      return { exists: producto !== null };
+    } catch (error) {
+      throw new HttpException(
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error: 'Error al validar código' },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+
 }

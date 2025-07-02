@@ -139,17 +139,6 @@ const Insumos: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Info Final */}
-        <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-4">
-            <div className="text-sm text-purple-800 flex items-center space-x-2">
-              <span>💡</span>
-              <span>
-                Los costos se usan directamente en la receta. Mantené los valores actualizados para resultados precisos en el CDR.
-              </span>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </Layout>
   );

@@ -171,13 +171,12 @@ const CargarInsumo: React.FC = () => {
                                     <span className="text-lg font-semibold">$</span>
                                     <Input
                                         id="costo"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={costo}
+                                        type="number"  // Keep as number type for proper mobile keyboards/decimal input
+                                        step="0.01"   // Allow decimal values
+                                        value={costo === 0 ? "" : costo}  // Show empty string when zero
                                         onChange={(e) => setCosto(Number(e.target.value))}
                                         placeholder="0.00"
-                                        className="text-lg font-semibold max-w-60"
+                                        className="text-lg font-semibold max-w-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                         disabled={isLoading}
                                     />
                                 </div>
@@ -221,7 +220,7 @@ const CargarInsumo: React.FC = () => {
                     </CardContent>
                 </Card>
 
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 justify-end">
                     <Button
                         onClick={handleSave}
                         className="flex items-center space-x-2"

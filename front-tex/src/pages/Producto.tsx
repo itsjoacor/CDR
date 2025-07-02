@@ -137,14 +137,14 @@ const Producto: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            <Button onClick={handleExport} variant="outline">
-              📤 Exportar
-            </Button>
             {canEdit && (
               <Button onClick={() => navigate('/cargarProducto')}>
                 ➕ Agregar producto
               </Button>
             )}
+            <Button onClick={handleExport} variant="outline">
+              📤 Exportar
+            </Button>
           </div>
         </div>
 

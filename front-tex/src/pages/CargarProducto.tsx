@@ -24,6 +24,8 @@ const CargarProducto: React.FC = () => {
   const [sectores, setSectores] = useState<string[]>([]);
   const [sectorSeleccionado, setSectorSeleccionado] = useState('');
   const [inputValue, setInputValue] = useState('');
+  const [productoExistente, setProductoExistente] = useState(false);
+  const [validatingCodigo, setValidatingCodigo] = useState(false);
 
   // Fetch sectores productivos on component mount
   useEffect(() => {
@@ -47,11 +49,52 @@ const CargarProducto: React.FC = () => {
     fetchSectores();
   }, []);
 
+  // Validate product code when it changes
+  useEffect(() => {
+    const validarCodigoProducto = async () => {
+      if (!codigoProducto.trim()) {
+        setProductoExistente(false);
+        return;
+      }
+
+      setValidatingCodigo(true);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/productos/exists/${encodeURIComponent(codigoProducto)}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Error en la validación');
+        }
+
+        const data = await response.json();
+        setProductoExistente(data.exists);
+      } catch (error) {
+        console.error("Error validando código de producto:", error);
+        setProductoExistente(false);
+      } finally {
+        setValidatingCodigo(false);
+      }
+    };
+
+    const timer = setTimeout(validarCodigoProducto, 500);
+    return () => clearTimeout(timer);
+  }, [codigoProducto]);
+
   const handleSave = async () => {
     if (!codigoProducto.trim()) {
       toast({
         title: "Error",
         description: "Por favor ingresa el código del producto.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (productoExistente) {
+      toast({
+        title: "Error",
+        description: "Ya existe un producto con este código.",
         variant: "destructive"
       });
       return;
@@ -75,15 +118,11 @@ const CargarProducto: React.FC = () => {
       return;
     }
 
-    // Crear el objeto que se enviará al backend
     const productoData = {
       codigo_producto: codigoProducto,
       descripcion_producto: descripcionProducto,
       sector_productivo: sectorSeleccionado
     };
-
-    // Mostrar en consola lo que se enviará
-    console.log('Datos a enviar al backend:', productoData);
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/productos`, {
@@ -94,17 +133,21 @@ const CargarProducto: React.FC = () => {
         body: JSON.stringify(productoData),
       });
 
-      // Mostrar la respuesta del servidor en consola
-      console.log('Respuesta del servidor:', response);
-
       if (!response.ok) {
         const errorData = await response.json();
-        console.log('Error del servidor:', errorData);
-        throw new Error(errorData.message || 'Error al crear producto');
+        console.error("🔴 Error backend:", errorData);
+
+        const message =
+          typeof errorData.message === 'string'
+            ? errorData.message
+            : Array.isArray(errorData.message)
+              ? errorData.message[0]
+              : 'Error desconocido al crear producto';
+
+        throw new Error(message);
       }
 
       const data = await response.json();
-      console.log('Datos recibidos del servidor:', data);
 
       toast({
         title: "Producto creado",
@@ -116,14 +159,29 @@ const CargarProducto: React.FC = () => {
       setDescripcionProducto('');
       setSectorSeleccionado('');
       setInputValue('');
+      setProductoExistente(false);
 
     } catch (error: any) {
-      console.log('Error en la solicitud:', error);
+      console.error("🟠 error.message:", error.message);
+
+      if (
+        error.message?.includes('duplicate key value') ||
+        error.message === 'Código de producto ya existente' ||
+        error.message === 'El código de producto ya existe'
+      ) {
+        const codigoInput = document.getElementById('codigo_producto');
+        codigoInput?.focus();
+        toast({
+          title: "Error",
+          description: "El código de producto ya existe en la base de datos.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({
         title: "Error",
-        description: error.message.includes('Ya existe')
-          ? "Ya existe un producto con este código"
-          : "Error al crear el producto",
+        description: error.message || 'Error al crear el producto',
         variant: "destructive"
       });
     }
@@ -148,7 +206,6 @@ const CargarProducto: React.FC = () => {
             <ArrowLeft className="h-4 w-4" />
             <span>Volver a Productos</span>
           </Button>
-
         </div>
 
         {/* Info Badge */}
@@ -169,14 +226,21 @@ const CargarProducto: React.FC = () => {
               {/* Código Producto */}
               <div className="space-y-2">
                 <Label htmlFor="codigo_producto">Código Producto</Label>
-                <Input
-                  id="codigo_producto"
-                  value={codigoProducto}
-                  onChange={(e) => setCodigoProducto(e.target.value)}
-                  placeholder="Ej: PROD-001"
-                  className="text-lg font-semibold max-w-60"
-                  maxLength={20}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="codigo_producto"
+                    value={codigoProducto}
+                    onChange={(e) => setCodigoProducto(e.target.value)}
+                    placeholder="Ej: PROD-001"
+                    className="text-lg font-semibold max-w-60"
+                    maxLength={20}
+                  />
+                  {codigoProducto && (
+                    <span className={productoExistente ? "text-red-500" : "text-green-500"}>
+                      {validatingCodigo ? "..." : (productoExistente ? "Código inválido" : "Código válido")}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Código único identificativo del producto
                 </p>
@@ -277,7 +341,11 @@ const CargarProducto: React.FC = () => {
           </CardContent>
         </Card>
         <div className="flex space-x-2 justify-end">
-          <Button onClick={handleSave} className="flex items-center space-x-2">
+          <Button
+            onClick={handleSave}
+            className="flex items-center space-x-2"
+            disabled={validatingCodigo || productoExistente}
+          >
             <Save className="h-4 w-4" />
             <span>Guardar Producto</span>
           </Button>

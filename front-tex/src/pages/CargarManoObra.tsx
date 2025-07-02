@@ -403,10 +403,10 @@ const CargarManoObra: React.FC = () => {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={consumoKwStd}
+                  value={consumoKwStd === 0 ? "" : consumoKwStd}
                   onChange={(e) => setConsumoKwStd(Number(e.target.value))}
                   placeholder="0.00"
-                  className="text-lg font-semibold"
+                  className="text-lg font-semibold [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <p className="text-xs text-muted-foreground">
                   Consumo estándar en kilovatios
@@ -421,10 +421,10 @@ const CargarManoObra: React.FC = () => {
                   type="number"
                   step="0.01"
                   min="0.01"
-                  value={stdProduccion}
+                  value={stdProduccion === 0 ? "" : stdProduccion}
                   onChange={(e) => setStdProduccion(Number(e.target.value))}
                   placeholder="0.00"
-                  className="text-lg font-semibold"
+                  className="text-lg font-semibold [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <p className="text-xs text-muted-foreground">
                   Estándar de producción por unidad
@@ -467,10 +467,10 @@ const CargarManoObra: React.FC = () => {
                   type="number"
                   step="0.01"
                   min="0.01"
-                  value={horasHombreStd}
+                  value={horasHombreStd === 0 ? "" : horasHombreStd}
                   onChange={(e) => setHorasHombreStd(Number(e.target.value))}
                   placeholder="0.00"
-                  className="text-lg font-semibold"
+                  className="text-lg font-semibold [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <p className="text-xs text-muted-foreground">
                   Horas hombre estándar requeridas
@@ -487,10 +487,10 @@ const CargarManoObra: React.FC = () => {
                     type="number"
                     step="0.01"
                     min="0.01"
-                    value={valorHoraHombre}
+                    value={valorHoraHombre === 0 ? "" : valorHoraHombre}
                     onChange={(e) => setValorHoraHombre(Number(e.target.value))}
-                    placeholder="3000.00"
-                    className="text-lg font-semibold"
+                    placeholder="0.00"
+                    className="text-lg font-semibold [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -506,10 +506,10 @@ const CargarManoObra: React.FC = () => {
                   type="number"
                   step="0.01"
                   min="0.01"
-                  value={horasPorTurno}
+                  value={horasPorTurno === 0 ? "" : horasPorTurno}
                   onChange={(e) => setHorasPorTurno(Number(e.target.value))}
-                  placeholder="8.00"
-                  className="text-lg font-semibold"
+                  placeholder="0.00"
+                  className="text-lg font-semibold [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <p className="text-xs text-muted-foreground">
                   Horas por turno de trabajo

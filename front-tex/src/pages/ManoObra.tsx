@@ -73,12 +73,12 @@ const ManoObra: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline">📤 Exportar</Button>
             {canEdit && (
               <Button onClick={() => navigate('/cargarManoObra')}>
                 ➕ Agregar Mano obra
               </Button>
             )}
+            <Button variant="outline">📤 Exportar</Button>
           </div>
         </div>
 

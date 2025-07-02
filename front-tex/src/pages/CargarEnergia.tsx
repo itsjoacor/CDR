@@ -434,10 +434,10 @@ const CargarEnergia: React.FC = () => {
                   type="number"
                   step="0.01"
                   min="0.01"
-                  value={consumoKwStd}
+                  value={consumoKwStd === 0 ? "" : consumoKwStd}
                   onChange={(e) => setConsumoKwStd(Number(e.target.value))}
                   placeholder="0.00"
-                  className="text-lg font-semibold max-w-60"
+                  className="text-lg font-semibold max-w-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <p className="text-xs text-muted-foreground">
                   Consumo estándar en kilovatios (mayor que 0)
@@ -454,10 +454,10 @@ const CargarEnergia: React.FC = () => {
                     type="number"
                     step="0.01"
                     min="0.01"
-                    value={valorKw}
+                    value={valorKw === 0 ? "" : valorKw}
                     onChange={(e) => setValorKw(Number(e.target.value))}
-                    placeholder="89.40"
-                    className="text-lg font-semibold max-w-60"
+                    placeholder="0.00"
+                    className="text-lg font-semibold max-w-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">

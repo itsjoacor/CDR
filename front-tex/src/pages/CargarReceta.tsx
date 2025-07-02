@@ -307,10 +307,6 @@ const CargarReceta: React.FC = () => {
           </Button>
         </div>
 
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-          ✨ Cargar Nueva Receta - Define los ingredientes necesarios. Puedes agregar ingredientes y luego cargarlos todos juntos.
-        </Badge>
-
         <Card className="border-l-4 border-l-green-500">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">🏷️ Información del Producto</CardTitle>
@@ -399,16 +395,17 @@ const CargarReceta: React.FC = () => {
                 <Input
                   id="cantidad-ingrediente"
                   type="number"
-                  step="0.1"
-                  min="0"
-                  value={newIngredient.cantidad_ingrediente}
+                  inputMode="decimal"
+                  value={newIngredient.cantidad_ingrediente ?? ''}
                   onChange={(e) => setNewIngredient(prev => ({
                     ...prev,
-                    cantidad_ingrediente: Number(e.target.value)
+                    cantidad_ingrediente: e.target.value === '' ? null : Number(e.target.value)
                   }))}
                   placeholder="0.00"
-                  className="border-blue-300 max-w-60"
+                  className="max-w-60 appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  style={{ MozAppearance: 'textfield' }} // Firefox
                 />
+
                 <Button
                   onClick={addIngredient}
                   className="bg-blue-600 hover:bg-blue-700 px-6"
