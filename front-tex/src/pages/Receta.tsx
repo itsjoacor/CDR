@@ -135,7 +135,7 @@ const Receta: React.FC = () => {
           <div className="flex space-x-2">
             {canEdit && (
               <Button onClick={() => navigate(`/cargarReceta`)}>➕ Nueva Receta</Button>
-              
+
             )}
             <Button onClick={() => toast({ title: 'Exportando...', description: 'Esto exportará tus recetas.' })} variant="outline">
               📤 Exportar
@@ -159,7 +159,7 @@ const Receta: React.FC = () => {
                     <CardDescription>Código: {receta.codigo_producto}</CardDescription>
                   </div>
                   {canEdit && (
-                    <Button onClick={() => navigate(`/editarReceta/${receta.codigo_producto}`)} variant="outline" size="sm">
+                    <Button onClick={() => navigate(`/detalle-recetas?producto=${receta.codigo_producto}`)} variant="outline" size="sm">
                       ✏️ Editar
                     </Button>
                   )}

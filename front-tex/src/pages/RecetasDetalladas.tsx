@@ -13,6 +13,18 @@ import {
   ListboxOptions,
 } from '@headlessui/react';
 import { useNavigate } from 'react-router';
+import { Edit, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction
+} from '@/components/ui/alert-dialog';
 
 const RecetasDetalladas: React.FC = () => {
   interface RecetaNormalizada {
@@ -44,12 +56,21 @@ const RecetasDetalladas: React.FC = () => {
   const canEdit = user?.role === 'admin';
   const navigate = useNavigate();
 
+
   useEffect(() => {
     const fetchRecetas = async () => {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas`);
         const data = await res.json();
         setRecetas(data);
+
+        // Obtener parámetro de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const productoParam = urlParams.get('producto');
+
+        if (productoParam) {
+          setProductoSeleccionado(productoParam);
+        }
       } catch {
         toast({
           title: 'Error',
@@ -66,9 +87,7 @@ const RecetasDetalladas: React.FC = () => {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/productos`);
         const data: Producto[] = await res.json();
         setProductos(data);
-
-        const sectoresUnicos: string[] = [...new Set(data.map(p => p.sector_productivo))];
-        setSectores(sectoresUnicos);
+        setSectores([...new Set(data.map(p => p.sector_productivo))]);
       } catch {
         toast({
           title: 'Error',
@@ -97,6 +116,31 @@ const RecetasDetalladas: React.FC = () => {
     });
   };
 
+  const handleDelete = async (codigo_producto: string, codigo_ingrediente: string) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas/${codigo_producto}/${codigo_ingrediente}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) throw new Error();
+
+      setRecetas(prev =>
+        prev.filter(r => !(r.codigo_producto === codigo_producto && r.codigo_ingrediente === codigo_ingrediente))
+      );
+
+      toast({
+        title: 'Eliminado',
+        description: `La receta fue eliminada correctamente.`,
+      });
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar la receta. Intenta nuevamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Layout title="Recetas Detalladas">
       <div className="space-y-6">
@@ -111,10 +155,8 @@ const RecetasDetalladas: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-
             {canEdit && (
               <Button onClick={() => navigate(`/cargarReceta`)}>➕ Agregar Receta</Button>
-
             )}
             <Button onClick={handleExport} variant="outline">📤 Exportar</Button>
           </div>
@@ -145,8 +187,7 @@ const RecetasDetalladas: React.FC = () => {
                       <ListboxOption key={i} value={p.codigo_producto} as={Fragment}>
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${active ? 'bg-purple-100 text-purple-800' : 'text-gray-800'
-                              } ${selected ? 'font-medium' : ''}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active ? 'bg-purple-100 text-purple-800' : 'text-gray-800'} ${selected ? 'font-medium' : ''}`}
                           >
                             {p.codigo_producto} - {p.descripcion_producto}
                           </li>
@@ -180,8 +221,7 @@ const RecetasDetalladas: React.FC = () => {
                       <ListboxOption key={i} value={s} as={Fragment}>
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${active ? 'bg-yellow-100 text-yellow-800' : 'text-gray-800'
-                              } ${selected ? 'font-medium' : ''}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active ? 'bg-yellow-100 text-yellow-800' : 'text-gray-800'} ${selected ? 'font-medium' : ''}`}
                           >
                             {s}
                           </li>
@@ -226,29 +266,43 @@ const RecetasDetalladas: React.FC = () => {
                       <TableCell className="font-mono">{r.codigo_producto}</TableCell>
                       <TableCell className="font-mono">{r.codigo_ingrediente}</TableCell>
                       <TableCell>{r.cantidad_ingrediente}</TableCell>
-                      <TableCell className="font-mono text-green-700">
-                        ${r.costo_ingrediente?.toLocaleString('es-CO') ?? '—'}
-                      </TableCell>
-                      <TableCell className="font-mono text-purple-700">
-                        ${r.costo_mano_obra?.toLocaleString('es-CO') ?? '—'}
-                      </TableCell>
-                      <TableCell className="font-mono text-blue-700">
-                        ${r.costo_matriz_energetica?.toLocaleString('es-CO') ?? '—'}
-                      </TableCell>
-                      <TableCell className="font-mono font-semibold text-black">
-                        ${r.costo_total?.toLocaleString('es-CO') ?? '—'}
-                      </TableCell>
-                      <TableCell className="font-mono text-orange-600 font-semibold">
-                        ${r.valor_cdr?.toLocaleString('es-CO') ?? '—'}
-                      </TableCell>
+                      <TableCell className="font-mono text-green-700">${r.costo_ingrediente?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                      <TableCell className="font-mono text-purple-700">${r.costo_mano_obra?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                      <TableCell className="font-mono text-blue-700">${r.costo_matriz_energetica?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                      <TableCell className="font-mono font-semibold text-black">${r.costo_total?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                      <TableCell className="font-mono text-orange-600 font-semibold">${r.valor_cdr?.toLocaleString('es-CO') ?? '—'}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {r.ultima_actualizacion
-                          ? new Date(r.ultima_actualizacion).toLocaleDateString()
-                          : '—'}
+                        {r.ultima_actualizacion ? new Date(r.ultima_actualizacion).toLocaleDateString() : '—'}
                       </TableCell>
                       {canEdit && (
                         <TableCell>
-                          <Button variant="outline" size="sm">✏️</Button>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm" onClick={() =>
+                              navigate(`/editarReceta/${r.codigo_producto}/${r.codigo_ingrediente}`)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Se eliminará permanentemente la receta del producto "{r.codigo_producto}" con ingrediente "{r.codigo_ingrediente}".
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(r.codigo_producto, r.codigo_ingrediente)}>
+                                    Eliminar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
