@@ -1,14 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { Edit, Trash2, Save, X } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import Layout from "../components/Layout";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { Edit, Trash2, Save, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,14 +32,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
 
 interface Insumo {
   grupo: string;
   codigo: string;
   detalle: string;
   costo: number;
-  estado?: 'disponible' | 'agotado' | 'descontinuado';
+  estado?: "disponible" | "agotado" | "descontinuado";
   stock?: number;
   stockMinimo?: number;
   fechaActualizacion?: string;
@@ -36,25 +49,25 @@ const Insumos: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Insumo>>({});
-  const canEdit = user?.role === 'admin';
+  const canEdit = user?.role === "admin";
 
   useEffect(() => {
     const fetchInsumos = async () => {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/insumos`);
-        if (!res.ok) throw new Error('Error al obtener insumos');
+        if (!res.ok) throw new Error("Error al obtener insumos");
         const data = await res.json();
         setInsumos(data);
       } catch (err) {
         toast({
-          title: 'Error',
-          description: 'No se pudieron cargar los insumos desde el servidor',
-          variant: 'destructive',
+          title: "Error",
+          description: "No se pudieron cargar los insumos desde el servidor",
+          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -63,10 +76,11 @@ const Insumos: React.FC = () => {
     fetchInsumos();
   }, []);
 
-  const filteredInsumos = insumos.filter(insumo =>
-    insumo.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    insumo.detalle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    insumo.grupo.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredInsumos = insumos.filter(
+    (insumo) =>
+      insumo.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insumo.detalle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insumo.grupo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleExport = () => {
@@ -86,23 +100,35 @@ const Insumos: React.FC = () => {
       toast({
         title: "Error",
         description: "Por favor completa todos los campos requeridos.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/insumos/${editingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/insumos/${editingId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            detalle: editForm.detalle,
+            grupo: editForm.grupo,
+            costo: editForm.costo,
+          }),
+        }
+      );
 
-      if (!response.ok) throw new Error('Error al guardar cambios');
+      const text = await response.text();
+      if (!response.ok) throw new Error(`Error al guardar: ${text}`);
 
-      setInsumos(prev => prev.map(item =>
-        item.codigo === editingId ? { ...item, ...editForm } : item
-      ));
+      const updated = JSON.parse(text);
+
+      setInsumos((prev) =>
+        prev.map((item) =>
+          item.codigo === editingId ? { ...item, ...updated } : item
+        )
+      );
 
       toast({
         title: "Guardado exitoso",
@@ -112,10 +138,12 @@ const Insumos: React.FC = () => {
       setEditingId(null);
       setEditForm({});
     } catch (error) {
+      console.error("Error al guardar insumo:", error);
       toast({
         title: "Error",
-        description: "No se pudo guardar los cambios. Por favor intenta nuevamente.",
-        variant: "destructive"
+        description:
+          "No se pudo guardar los cambios. Por favor intenta nuevamente.",
+        variant: "destructive",
       });
     }
   };
@@ -125,35 +153,47 @@ const Insumos: React.FC = () => {
     setEditForm({});
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (codigo: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/insumos/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/insumos/${codigo}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-      if (!response.ok) throw new Error('Error al eliminar');
+      const text = await response.text();
+      if (!response.ok) throw new Error(`Error al eliminar: ${text}`);
 
-      setInsumos(prev => prev.filter(item => item.codigo !== id));
+      setInsumos((prev) => prev.filter((item) => item.codigo !== codigo));
+
       toast({
         title: "Eliminado",
-        description: "El registro se ha eliminado correctamente.",
+        description: "El insumo fue eliminado correctamente.",
       });
     } catch (error) {
+      console.error("Error al eliminar insumo:", error);
       toast({
         title: "Error",
-        description: "No se pudo eliminar el registro. Por favor intenta nuevamente.",
-        variant: "destructive"
+        description:
+          "No se pudo eliminar el insumo. Por favor intenta nuevamente.",
+        variant: "destructive",
       });
     }
   };
 
   const getGrupoColor = (grupo: string) => {
     switch (grupo) {
-      case 'Telas': return 'bg-blue-100 text-blue-800';
-      case 'Hilos': return 'bg-green-100 text-green-800';
-      case 'Accesorios': return 'bg-purple-100 text-purple-800';
-      case 'Etiquetas': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "Telas":
+        return "bg-blue-100 text-blue-800";
+      case "Hilos":
+        return "bg-green-100 text-green-800";
+      case "Accesorios":
+        return "bg-purple-100 text-purple-800";
+      case "Etiquetas":
+        return "bg-orange-100 text-orange-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -175,25 +215,27 @@ const Insumos: React.FC = () => {
               📤 Exportar
             </Button>
             {canEdit && (
-              <Button onClick={() => navigate('/cargarInsumo')}>
+              <Button onClick={() => navigate("/cargarInsumo")}>
                 ➕ Agregar Insumo
               </Button>
             )}
           </div>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        {/* Stats centradas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 justify-center items-center text-center">
           <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-purple-600">{insumos.length}</div>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-purple-600">
+                {insumos.length}
+              </div>
               <div className="text-sm text-muted-foreground">Total Insumos</div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-4">
               <div className="text-2xl font-bold text-blue-600">
-                {new Set(insumos.map(i => i.grupo)).size}
+                {new Set(insumos.map((i) => i.grupo)).size}
               </div>
               <div className="text-sm text-muted-foreground">Categorías</div>
             </CardContent>
@@ -216,11 +258,15 @@ const Insumos: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>Catálogo de Insumos</CardTitle>
-            <CardDescription>Información de insumos utilizada en recetas y cálculos CDR</CardDescription>
+            <CardDescription>
+              Información de insumos utilizada en recetas y cálculos CDR
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-muted-foreground">Cargando insumos...</p>
+              <p className="text-sm text-muted-foreground">
+                Cargando insumos...
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -238,41 +284,62 @@ const Insumos: React.FC = () => {
                         {editingId === insumo.codigo ? (
                           <div className="space-y-2">
                             <Input
-                              value={editForm.detalle || ''}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, detalle: e.target.value }))}
+                              value={editForm.detalle || ""}
+                              onChange={(e) =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  detalle: e.target.value,
+                                }))
+                              }
                               placeholder="Detalle del insumo"
                             />
-                            <div className="text-sm text-muted-foreground font-mono">{insumo.codigo}</div>
+                            <div className="text-sm text-muted-foreground font-mono">
+                              {insumo.codigo}
+                            </div>
                           </div>
                         ) : (
                           <div>
                             <div className="font-medium">{insumo.detalle}</div>
-                            <div className="text-sm text-muted-foreground font-mono">{insumo.codigo}</div>
+                            <div className="text-sm text-muted-foreground font-mono">
+                              {insumo.codigo}
+                            </div>
                           </div>
                         )}
                       </TableCell>
                       <TableCell>
                         {editingId === insumo.codigo ? (
                           <Input
-                            value={editForm.grupo || ''}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, grupo: e.target.value }))}
+                            value={editForm.grupo || ""}
+                            onChange={(e) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                grupo: e.target.value,
+                              }))
+                            }
                             placeholder="Grupo"
                           />
                         ) : (
-                          <Badge className={getGrupoColor(insumo.grupo)}>{insumo.grupo}</Badge>
+                          <Badge className={getGrupoColor(insumo.grupo)}>
+                            {insumo.grupo}
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell>
                         {editingId === insumo.codigo ? (
                           <Input
                             type="number"
-                            value={editForm.costo || ''}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, costo: Number(e.target.value) }))}
+                            value={editForm.costo || ""}
+                            onChange={(e) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                costo: Number(e.target.value),
+                              }))
+                            }
                             placeholder="Costo"
                           />
                         ) : (
                           <div className="font-mono font-semibold text-green-600">
-                            ${insumo.costo.toLocaleString('es-CO')}
+                            ${insumo.costo.toLocaleString("es-CO")}
                           </div>
                         )}
                       </TableCell>
@@ -280,16 +347,28 @@ const Insumos: React.FC = () => {
                         <TableCell>
                           {editingId === insumo.codigo ? (
                             <div className="flex space-x-2">
-                              <Button variant="outline" size="sm" onClick={handleSave}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleSave}
+                              >
                                 <Save className="h-4 w-4" />
                               </Button>
-                              <Button variant="outline" size="sm" onClick={handleCancel}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCancel}
+                              >
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>
                           ) : (
                             <div className="flex space-x-2">
-                              <Button variant="outline" size="sm" onClick={() => handleEdit(insumo)}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(insumo)}
+                              >
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <AlertDialog>
@@ -300,14 +379,25 @@ const Insumos: React.FC = () => {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                    <AlertDialogTitle>
+                                      ¿Estás seguro?
+                                    </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Se eliminará permanentemente el insumo "{insumo.detalle}".
+                                      Se eliminará permanentemente el insumo "
+                                      {insumo.detalle}".
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(insumo.codigo)}>Eliminar</AlertDialogAction>
+                                    <AlertDialogCancel>
+                                      Cancelar
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        handleDelete(insumo.codigo)
+                                      }
+                                    >
+                                      Eliminar
+                                    </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
                               </AlertDialog>
@@ -320,19 +410,6 @@ const Insumos: React.FC = () => {
                 </TableBody>
               </Table>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Info card */}
-        <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-purple-600">💡</span>
-              <span className="text-sm text-purple-800">
-                Los precios de los insumos se actualizan automáticamente en el cálculo del CDR.
-                Mantén los precios actualizados para obtener costos precisos de reposición.
-              </span>
-            </div>
           </CardContent>
         </Card>
       </div>
