@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Trash2, Save, X } from "lucide-react";
 import {
@@ -141,8 +142,7 @@ const Insumos: React.FC = () => {
       console.error("Error al guardar insumo:", error);
       toast({
         title: "Error",
-        description:
-          "No se pudo guardar los cambios. Por favor intenta nuevamente.",
+        description: "No se pudo guardar los cambios. Por favor intenta nuevamente.",
         variant: "destructive",
       });
     }
@@ -175,8 +175,7 @@ const Insumos: React.FC = () => {
       console.error("Error al eliminar insumo:", error);
       toast({
         title: "Error",
-        description:
-          "No se pudo eliminar el insumo. Por favor intenta nuevamente.",
+        description: "No se pudo eliminar el insumo. Por favor intenta nuevamente.",
         variant: "destructive",
       });
     }
@@ -184,16 +183,11 @@ const Insumos: React.FC = () => {
 
   const getGrupoColor = (grupo: string) => {
     switch (grupo) {
-      case "Telas":
-        return "bg-blue-100 text-blue-800";
-      case "Hilos":
-        return "bg-green-100 text-green-800";
-      case "Accesorios":
-        return "bg-purple-100 text-purple-800";
-      case "Etiquetas":
-        return "bg-orange-100 text-orange-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "Telas": return "bg-blue-100 text-blue-800";
+      case "Hilos": return "bg-green-100 text-green-800";
+      case "Accesorios": return "bg-purple-100 text-purple-800";
+      case "Etiquetas": return "bg-orange-100 text-orange-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -211,38 +205,11 @@ const Insumos: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            <Button onClick={handleExport} variant="outline">
-              📤 Exportar
-            </Button>
-            {canEdit && (
-              <Button onClick={() => navigate("/cargarInsumo")}>
-                ➕ Agregar Insumo
-              </Button>
-            )}
+            <Button onClick={handleExport} variant="outline">📤 Exportar</Button>
+            {canEdit && <Button onClick={() => navigate("/cargarInsumo")}>➕ Agregar Insumo</Button>}
           </div>
         </div>
-        
-        {/* Stats centradas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 justify-center items-center text-center">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-purple-600">
-                {insumos.length}
-              </div>
-              <div className="text-sm text-muted-foreground">Total Insumos</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-blue-600">
-                {new Set(insumos.map((i) => i.grupo)).size}
-              </div>
-              <div className="text-sm text-muted-foreground">Categorías</div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Search */}
         <Card>
           <CardContent className="p-4">
             <Input
@@ -254,7 +221,6 @@ const Insumos: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Table */}
         <Card>
           <CardHeader>
             <CardTitle>Catálogo de Insumos</CardTitle>
@@ -264,9 +230,7 @@ const Insumos: React.FC = () => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-muted-foreground">
-                Cargando insumos...
-              </p>
+              <p className="text-sm text-muted-foreground">Cargando insumos...</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -279,96 +243,24 @@ const Insumos: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredInsumos.map((insumo) => (
-                    <TableRow key={insumo.codigo}>
-                      <TableCell>
-                        {editingId === insumo.codigo ? (
-                          <div className="space-y-2">
-                            <Input
-                              value={editForm.detalle || ""}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  detalle: e.target.value,
-                                }))
-                              }
-                              placeholder="Detalle del insumo"
-                            />
-                            <div className="text-sm text-muted-foreground font-mono">
-                              {insumo.codigo}
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="font-medium">{insumo.detalle}</div>
-                            <div className="text-sm text-muted-foreground font-mono">
-                              {insumo.codigo}
-                            </div>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === insumo.codigo ? (
-                          <Input
-                            value={editForm.grupo || ""}
-                            onChange={(e) =>
-                              setEditForm((prev) => ({
-                                ...prev,
-                                grupo: e.target.value,
-                              }))
-                            }
-                            placeholder="Grupo"
-                          />
-                        ) : (
-                          <Badge className={getGrupoColor(insumo.grupo)}>
-                            {insumo.grupo}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === insumo.codigo ? (
-                          <Input
-                            type="number"
-                            value={editForm.costo || ""}
-                            onChange={(e) =>
-                              setEditForm((prev) => ({
-                                ...prev,
-                                costo: Number(e.target.value),
-                              }))
-                            }
-                            placeholder="Costo"
-                          />
-                        ) : (
+                    <React.Fragment key={insumo.codigo}>
+                      <TableRow>
+                        <TableCell>
+                          <div className="font-medium">{insumo.detalle}</div>
+                          <div className="text-sm text-muted-foreground font-mono">{insumo.codigo}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getGrupoColor(insumo.grupo)}>{insumo.grupo}</Badge>
+                        </TableCell>
+                        <TableCell>
                           <div className="font-mono font-semibold text-green-600">
                             ${insumo.costo.toLocaleString("es-CO")}
                           </div>
-                        )}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell>
-                          {editingId === insumo.codigo ? (
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell>
                             <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleSave}
-                              >
-                                <Save className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancel}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEdit(insumo)}
-                              >
+                              <Button variant="outline" size="sm" onClick={() => handleEdit(insumo)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <AlertDialog>
@@ -379,33 +271,72 @@ const Insumos: React.FC = () => {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>
-                                      ¿Estás seguro?
-                                    </AlertDialogTitle>
+                                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Se eliminará permanentemente el insumo "
-                                      {insumo.detalle}".
+                                      Se eliminará permanentemente el insumo "{insumo.detalle}".
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>
-                                      Cancelar
-                                    </AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() =>
-                                        handleDelete(insumo.codigo)
-                                      }
-                                    >
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(insumo.codigo)}>
                                       Eliminar
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
                               </AlertDialog>
                             </div>
-                          )}
-                        </TableCell>
+                          </TableCell>
+                        )}
+                      </TableRow>
+
+                      {editingId === insumo.codigo && (
+                        <TableRow className="bg-muted/30">
+                          <TableCell colSpan={canEdit ? 4 : 3}>
+                            <Card className="w-full">
+                              <CardHeader>
+                                <CardTitle className="text-lg">Editando: {insumo.detalle}</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="detalle">Nombre del Insumo</Label>
+                                    <Input
+                                      id="detalle"
+                                      value={editForm.detalle || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, detalle: e.target.value }))}
+                                      placeholder="Nombre del insumo"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="grupo">Categoría</Label>
+                                    <Input
+                                      id="grupo"
+                                      value={editForm.grupo || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, grupo: e.target.value }))}
+                                      placeholder="Categoría"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="costo">Costo Unitario</Label>
+                                    <Input
+                                      id="costo"
+                                      type="number"
+                                      value={editForm.costo || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, costo: Number(e.target.value) }))}
+                                      placeholder="Costo"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end mt-4 space-x-2">
+                                  <Button variant="outline" size="sm" onClick={handleSave}><Save className="h-4 w-4 mr-1" /> Guardar</Button>
+                                  <Button variant="outline" size="sm" onClick={handleCancel}><X className="h-4 w-4 mr-1" /> Cancelar</Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </TableRow>
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>

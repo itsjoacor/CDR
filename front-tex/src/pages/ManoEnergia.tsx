@@ -6,15 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Edit, Trash2, Save, X } from 'lucide-react';
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-} from "@headlessui/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,6 +61,11 @@ const ManoEnergia: React.FC = () => {
           fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`),
           fetch(`${import.meta.env.VITE_API_URL}/matriz-mano`)
         ]);
+
+        if (!energiaRes.ok || !sectoresRes.ok || !manoRes.ok) {
+          throw new Error('Error al cargar los datos');
+        }
+
         const [energia, sectoresList, manoList] = await Promise.all([
           energiaRes.json(),
           sectoresRes.json(),
@@ -74,7 +74,6 @@ const ManoEnergia: React.FC = () => {
 
         setData(energia);
         setSectores(sectoresList);
-
         setManoObras(manoList.map((m: any) => m.codigo_mano_obra));
       } catch (err) {
         toast({
@@ -97,6 +96,8 @@ const ManoEnergia: React.FC = () => {
   const calcularSuma = (campo: keyof MatrizEnergia) => {
     return data.reduce((acc, d) => acc + (Number(d[campo]) || 0), 0);
   };
+
+  const calcularCosto = (valorKw: number, consumoKw: number) => (valorKw * consumoKw).toLocaleString('es-CO');
 
   const handleExport = () => {
     toast({
@@ -127,9 +128,6 @@ const ManoEnergia: React.FC = () => {
       return;
     }
 
-    // Filtramos los campos calculados
-    const { total_pesos_std, costo_energia_unidad, ...payload } = editForm;
-
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/matriz-energia/${editingId}`,
@@ -138,16 +136,25 @@ const ManoEnergia: React.FC = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(payload), // Solo datos editables
+          body: JSON.stringify({
+            codigo_energia: editForm.codigo_energia,
+            descripcion: editForm.descripcion,
+            codigo_mano_obra: editForm.codigo_mano_obra,
+            sector_productivo: editForm.sector_productivo,
+            consumo_kw_std: editForm.consumo_kw_std,
+            valor_kw: editForm.valor_kw
+          }),
         }
       );
 
-      const text = await response.text();
-      if (!response.ok) throw new Error(`Error al guardar: ${text}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al guardar los cambios");
+      }
 
-      const updated = JSON.parse(text);
-      setData((prev) =>
-        prev.map((item) =>
+      const updated = await response.json();
+      setData(prev =>
+        prev.map(item =>
           item.codigo_energia === editingId ? { ...item, ...updated } : item
         )
       );
@@ -163,19 +170,16 @@ const ManoEnergia: React.FC = () => {
       console.error("Error al guardar:", error);
       toast({
         title: "Error",
-        description:
-          "No se pudo guardar los cambios. Por favor intenta nuevamente.",
+        description: error instanceof Error ? error.message : "No se pudo guardar los cambios",
         variant: "destructive",
       });
     }
   };
 
-
   const handleCancel = () => {
     setEditingId(null);
     setEditForm({});
   };
-
 
   const handleDelete = async (id: string) => {
     try {
@@ -183,43 +187,25 @@ const ManoEnergia: React.FC = () => {
         method: 'DELETE',
       });
 
-      let result = null;
-      try {
-        result = await response.json();
-      } catch (_) {
-        // Respuesta vacía es válida si status es ok
-      }
-
-
       if (!response.ok) {
-        throw new Error(result.message || 'No se pudo eliminar el registro.');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo eliminar el registro.');
       }
 
-      // ✅ ACTUALIZA LA TABLA
       setData(prev => prev.filter(item => item.codigo_energia !== id));
-
       toast({
         title: "Eliminado",
         description: "El registro se ha eliminado correctamente.",
       });
-
-    } catch (error: any) {
-      const msg = error?.message || 'No se pudo eliminar el registro.';
-
+    } catch (error) {
+      console.error("Error al eliminar:", error);
       toast({
         title: "Error",
-        description: msg,
+        description: error instanceof Error ? error.message : "No se pudo eliminar el registro",
         variant: "destructive",
       });
     }
   };
-
-
-
-
-
-
-  const calcularCosto = (valorKw: number, consumoKw: number) => (valorKw * consumoKw).toLocaleString('es-CO');
 
   return (
     <Layout title="Mano de Energía">
@@ -237,16 +223,25 @@ const ManoEnergia: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card><CardContent className="p-4 text-center"><div className="text-2xl font-bold text-yellow-600">{data.length}</div><div className="text-sm text-muted-foreground">Equipos</div></CardContent></Card>
-          <Card><CardContent className="p-4 text-center"><div className="text-2xl font-bold text-green-600">{Math.round((data.length ? (data.length / data.length) * 100 : 0))}%</div><div className="text-sm text-muted-foreground">Activos</div></CardContent></Card>
+          <Card><CardContent className="p-4 text-center"><div className="text-2xl font-bold text-green-600">{Math.round(data.length ? (data.length / data.length) * 100 : 0)}%</div><div className="text-sm text-muted-foreground">Activos</div></CardContent></Card>
           <Card><CardContent className="p-4 text-center"><div className="text-2xl font-bold text-blue-600">${calcularPromedio('valor_kw').toLocaleString('es-CO')}</div><div className="text-sm text-muted-foreground">Costo Prom. kW</div></CardContent></Card>
           <Card><CardContent className="p-4 text-center"><div className="text-2xl font-bold text-purple-600">{calcularSuma('consumo_kw_std').toFixed(1)} kW</div><div className="text-sm text-muted-foreground">Consumo Total</div></CardContent></Card>
         </div>
 
         <Card className="relative">
-          <CardHeader><CardTitle>Catálogo de Equipos y Energía</CardTitle><CardDescription>Consumos energéticos y costos</CardDescription></CardHeader>
+          <CardHeader>
+            <CardTitle>Catálogo de Equipos y Energía</CardTitle>
+            <CardDescription>Consumos energéticos y costos</CardDescription>
+          </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-muted-foreground">Cargando...</p>
+              <div className="flex justify-center items-center h-64">
+                <p className="text-muted-foreground">Cargando...</p>
+              </div>
+            ) : data.length === 0 ? (
+              <div className="flex justify-center items-center h-64">
+                <p className="text-muted-foreground">No se encontraron registros</p>
+              </div>
             ) : (
               <Table>
                 <TableHeader>
@@ -265,129 +260,160 @@ const ManoEnergia: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {data.map(me => (
-                    <TableRow key={me.codigo_energia}>
-                      <TableCell>
-                        {editingId === me.codigo_energia ? (
-                          <Input value={editForm.codigo_energia || ''} onChange={e => setEditForm(prev => ({ ...prev, codigo_energia: e.target.value }))} />
-                        ) : me.codigo_energia}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === me.codigo_energia ? (
-                          <Input value={editForm.descripcion || ''} onChange={e => setEditForm(prev => ({ ...prev, descripcion: e.target.value }))} />
-                        ) : me.descripcion}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === me.codigo_energia ? (
-                          <Select value={editForm.codigo_mano_obra} onValueChange={(value) => setEditForm(prev => ({ ...prev, codigo_mano_obra: value }))}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar M.O." /></SelectTrigger>
-                            <SelectContent>
-                              {manoObras.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        ) : me.codigo_mano_obra}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === me.codigo_energia ? (
-                          <Listbox
-                            value={editForm.sector_productivo}
-                            onChange={(val) =>
-                              setEditForm((prev) => ({ ...prev, sector_productivo: val }))
-                            }
-                          >
-                            <div className="relative z-20">
-                              <ListboxButton className="w-full px-2 py-1 border rounded-md bg-white text-left text-sm">
-                                {editForm.sector_productivo || "Seleccionar sector"}
-                              </ListboxButton>
-                              <ListboxOptions className="absolute mt-1 w-full bg-white shadow-md rounded-md py-1 max-h-60 overflow-auto z-30">
-
-                                {sectores.map((s) => (
-                                  <ListboxOption
-                                    key={s.nombre}
-                                    value={s.nombre}
-                                    className={({ active }) =>
-                                      `px-3 py-1 cursor-pointer ${active ? "bg-yellow-100 text-yellow-900" : ""
-                                      }`
-                                    }
-                                  >
-                                    {s.nombre}
-                                  </ListboxOption>
-                                ))}
-                              </ListboxOptions>
-                            </div>
-                          </Listbox>
-                        ) : (
+                    <React.Fragment key={me.codigo_energia}>
+                      <TableRow>
+                        <TableCell className="font-mono">{me.codigo_energia}</TableCell>
+                        <TableCell>{me.descripcion}</TableCell>
+                        <TableCell className="font-mono">{me.codigo_mano_obra}</TableCell>
+                        <TableCell>
                           <Badge variant="outline">{me.sector_productivo}</Badge>
-                        )}
-                      </TableCell>
-
-                      <TableCell>
-                        {editingId === me.codigo_energia ? (
-                          <Input type="number" step="0.1" value={editForm.consumo_kw_std || ''} onChange={e => setEditForm(prev => ({ ...prev, consumo_kw_std: Number(e.target.value) }))} />
-                        ) : `${me.consumo_kw_std} kW`}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === me.codigo_energia ? (
-                          <Input type="number" value={editForm.valor_kw || ''} onChange={e => setEditForm(prev => ({ ...prev, valor_kw: Number(e.target.value) }))} />
-                        ) : `$${me.valor_kw.toLocaleString('es-CO')}`}
-                      </TableCell>
-                      <TableCell>{me.std_produccion ?? '—'}</TableCell>
-                      <TableCell>
-                        {editingId === me.codigo_energia ? (
-                          <Input
-                            disabled
-                            value={
-                              editForm.consumo_kw_std && editForm.valor_kw
-                                ? calcularCosto(editForm.valor_kw, editForm.consumo_kw_std)
-                                : ''
-                            }
-                          />
-                        ) : (
+                        </TableCell>
+                        <TableCell>{me.consumo_kw_std} kW</TableCell>
+                        <TableCell>${me.valor_kw.toLocaleString('es-CO')}</TableCell>
+                        <TableCell>{me.std_produccion ?? '—'}</TableCell>
+                        <TableCell>
                           <span className="font-mono text-green-600 font-semibold">
                             ${me.total_pesos_std?.toLocaleString('es-CO') ?? calcularCosto(me.valor_kw, me.consumo_kw_std)}
                           </span>
-                        )}
-                      </TableCell>
-
-                      <TableCell>
-                        {editingId === me.codigo_energia ? (
-                          <Input
-                            disabled
-                            value={
-                              me.costo_energia_unidad !== null && me.costo_energia_unidad !== undefined
-                                ? `$${me.costo_energia_unidad.toLocaleString('es-CO')}`
-                                : '—'
-                            }
-                          />
-                        ) : (
+                        </TableCell>
+                        <TableCell>
                           <span className="font-mono text-blue-600 font-semibold">
                             ${me.costo_energia_unidad?.toLocaleString('es-CO') ?? '—'}
                           </span>
-                        )}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell>
-                          {editingId === me.codigo_energia ? (
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell>
                             <div className="flex space-x-2">
-                              <Button variant="outline" size="sm" onClick={handleSave}><Save className="h-4 w-4" /></Button>
-                              <Button variant="outline" size="sm" onClick={handleCancel}><X className="h-4 w-4" /></Button>
-                            </div>
-                          ) : (
-                            <div className="flex space-x-2">
-                              <Button variant="outline" size="sm" onClick={() => handleEdit(me)}><Edit className="h-4 w-4" /></Button>
+                              <Button variant="outline" size="sm" onClick={() => handleEdit(me)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
                               <AlertDialog>
-                                <AlertDialogTrigger asChild><Button variant="outline" size="sm"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
                                 <AlertDialogContent>
-                                  <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                    <AlertDialogDescription>Se eliminará permanentemente el equipo "{me.codigo_energia}".</AlertDialogDescription></AlertDialogHeader>
-                                  <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(me.codigo_energia)}>Eliminar</AlertDialogAction></AlertDialogFooter>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Se eliminará permanentemente el equipo "{me.codigo_energia}".
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(me.codigo_energia)}>
+                                      Eliminar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
                                 </AlertDialogContent>
                               </AlertDialog>
                             </div>
-                          )}
-                        </TableCell>
+                          </TableCell>
+                        )}
+                      </TableRow>
+
+                      {/* Expanded Edit Row */}
+                      {editingId === me.codigo_energia && (
+                        <TableRow className="bg-muted/30">
+                          <TableCell colSpan={canEdit ? 10 : 9}>
+                            <Card className="w-full">
+                              <CardHeader>
+                                <CardTitle className="text-lg">Editando: {me.descripcion}</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="codigo_energia">Código Energía</Label>
+                                    <Input
+                                      id="codigo_energia"
+                                      value={editForm.codigo_energia || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, codigo_energia: e.target.value }))}
+                                      placeholder="Código energía"
+                                    />
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label htmlFor="descripcion">Descripción</Label>
+                                    <Input
+                                      id="descripcion"
+                                      value={editForm.descripcion || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, descripcion: e.target.value }))}
+                                      placeholder="Descripción"
+                                    />
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label htmlFor="codigo_mano_obra">Código Mano de Obra</Label>
+                                    <Select 
+                                      value={editForm.codigo_mano_obra || ''}
+                                      onValueChange={(value) => setEditForm(prev => ({ ...prev, codigo_mano_obra: value }))}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar M.O." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {manoObras.map(c => (
+                                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label htmlFor="sector_productivo">Sector Productivo</Label>
+                                    <Select
+                                      value={editForm.sector_productivo || ''}
+                                      onValueChange={(value) => setEditForm(prev => ({ ...prev, sector_productivo: value }))}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar sector" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {sectores.map(s => (
+                                          <SelectItem key={s.nombre} value={s.nombre}>{s.nombre}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label htmlFor="consumo_kw_std">Consumo kW Estándar</Label>
+                                    <Input
+                                      id="consumo_kw_std"
+                                      type="number"
+                                      step="0.1"
+                                      value={editForm.consumo_kw_std || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, consumo_kw_std: Number(e.target.value) }))}
+                                      placeholder="Consumo kW"
+                                    />
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <Label htmlFor="valor_kw">Valor $/kW</Label>
+                                    <Input
+                                      id="valor_kw"
+                                      type="number"
+                                      value={editForm.valor_kw || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, valor_kw: Number(e.target.value) }))}
+                                      placeholder="Valor kW"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end mt-4 space-x-2">
+                                  <Button onClick={handleSave}>
+                                    <Save className="h-4 w-4 mr-2" /> Guardar
+                                  </Button>
+                                  <Button variant="outline" onClick={handleCancel}>
+                                    <X className="h-4 w-4 mr-2" /> Cancelar
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </TableRow>
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>
