@@ -56,33 +56,109 @@ const Exportacion: React.FC = () => {
         }
     ];
 
-    const handleExport = (tableName: string) => {
-        toast({
-            title: "Exportación iniciada",
-            description: `Los datos de ${tableName} se están exportando a Excel...`,
-        });
-
-        // Simulate export process
-        setTimeout(() => {
-            toast({
-                title: "Exportación completada",
-                description: `El archivo ${tableName}.xlsx ha sido descargado exitosamente.`,
-            });
-        }, 2000);
+    // Normalize table names for backend
+    const normalizarNombreTabla = (nombreVisual: string) => {
+        switch (nombreVisual) {
+            case 'Productos': return 'productos';
+            case 'Insumos': return 'insumos';
+            case 'Mano de Obra': return 'matriz_mano';
+            case 'Mano de Energia': return 'matriz_energia';
+            case 'CDR': return 'resultados_cdr';
+            case 'Recetas': return 'recetas_normalizada';
+            default: return nombreVisual.toLowerCase();
+        }
     };
 
-    const handleExportAll = () => {
-        toast({
-            title: "Exportación masiva iniciada",
-            description: "Exportando todas las tablas en un archivo consolidado...",
-        });
-
-        setTimeout(() => {
+    // Export single table in specified format
+    const exportTable = async (tableName: string, format: 'csv' | 'xlsx' = 'xlsx') => {
+        try {
             toast({
-                title: "Exportación masiva completada",
-                description: "El archivo consolidado_texcdr.xlsx ha sido descargado exitosamente.",
+                title: "Exportación iniciada",
+                description: `Los datos de ${tableName} se están exportando...`,
             });
-        }, 3000);
+
+            const normalizedTableName = normalizarNombreTabla(tableName);
+            const response = await fetch(
+                `${import.meta.env.VITE_API_URL}/export?table=${normalizedTableName}&format=${format}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${user?.token}`,
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${tableName}.${format}`;
+            link.click();
+            window.URL.revokeObjectURL(url);
+
+            toast({
+                title: "Exportación completada",
+                description: `El archivo ${tableName}.${format} ha sido descargado.`,
+            });
+        } catch (error) {
+            console.error(`Error exporting ${tableName}:`, error);
+            toast({
+                title: "Error en exportación",
+                description: `No se pudo exportar ${tableName}: ${error.message}`,
+                variant: "destructive",
+            });
+        }
+    };
+
+    // Export all tables in a single Excel file
+    const exportAllTables = async () => {
+        try {
+            toast({
+                title: "Exportación masiva iniciada",
+                description: "Preparando archivo con todas las tablas...",
+            });
+
+            const response = await fetch(
+                `${import.meta.env.VITE_API_URL}/export/all`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${user?.token}`,
+                    },
+                    body: JSON.stringify({
+                        tables: exportTables.map(table => normalizarNombreTabla(table.name))
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'exportacion_completa.xlsx';
+            link.click();
+            window.URL.revokeObjectURL(url);
+
+            toast({
+                title: "Exportación completada",
+                description: "Todos los datos han sido exportados en un solo archivo.",
+            });
+        } catch (error) {
+            console.error('Error exporting all tables:', error);
+            toast({
+                title: "Error en exportación masiva",
+                description: `No se pudo completar la exportación: ${error.message}`,
+                variant: "destructive",
+            });
+        }
     };
 
     return (
@@ -95,10 +171,10 @@ const Exportacion: React.FC = () => {
                             📤 Exportación - Descarga de Datos
                         </Badge>
                         <p className="text-sm text-muted-foreground mt-2">
-                            Exporta los datos de las diferentes tablas del sistema a archivos Excel
+                            Exporta los datos de las diferentes tablas del sistema a archivos Excel o CSV
                         </p>
                     </div>
-                    <Button onClick={handleExportAll} className="flex items-center space-x-2">
+                    <Button onClick={exportAllTables} className="flex items-center space-x-2">
                         <FileSpreadsheet className="h-4 w-4" />
                         <span>Exportar Todo</span>
                     </Button>
@@ -115,7 +191,7 @@ const Exportacion: React.FC = () => {
                                         <strong>Tablas disponibles:</strong> {exportTables.length}
                                     </div>
                                     <div className="text-xs text-blue-600">
-                                        Todos los datos se exportan en formato Excel (.xlsx)
+                                        Exporte en formato Excel (.xlsx) o CSV (.csv)
                                     </div>
                                 </div>
                             </div>
@@ -151,16 +227,26 @@ const Exportacion: React.FC = () => {
                                     <div className="text-xs text-muted-foreground">
                                         <div className="flex justify-between">
                                             <span>Formato:</span>
-                                            <span className="font-medium">Excel (.xlsx)</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Tamaño aprox:</span>
-                                            <span className="font-medium">~50KB</span>
+                                            <div className="flex space-x-2">
+                                                <span
+                                                    className="font-medium cursor-pointer hover:underline"
+                                                    onClick={() => exportTable(table.name, 'xlsx')}
+                                                >
+                                                    Excel
+                                                </span>
+                                                <span>|</span>
+                                                <span
+                                                    className="font-medium cursor-pointer hover:underline"
+                                                    onClick={() => exportTable(table.name, 'csv')}
+                                                >
+                                                    CSV
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
                                     <Button
-                                        onClick={() => handleExport(table.name)}
+                                        onClick={() => exportTable(table.name)}
                                         className={`w-full text-white ${table.buttonColor} flex items-center space-x-2`}
                                     >
                                         <Download className="h-4 w-4" />
@@ -185,23 +271,23 @@ const Exportacion: React.FC = () => {
                             <div className="text-sm space-y-2">
                                 <p><strong>Exportación Individual:</strong></p>
                                 <ul className="list-disc list-inside space-y-1 text-sm ml-4">
-                                    <li>Haz clic en el botón "Exportar" de la tabla que desees</li>
-                                    <li>El archivo se descargará automáticamente en formato Excel</li>
-                                    <li>Los datos incluyen toda la información visible en la tabla</li>
+                                    <li>Haz clic en el botón "Exportar" para descargar en Excel</li>
+                                    <li>O selecciona "CSV" para descargar en formato CSV</li>
+                                    <li>Los datos incluyen toda la información de la tabla</li>
                                 </ul>
 
                                 <p className="pt-2"><strong>Exportación Masiva:</strong></p>
                                 <ul className="list-disc list-inside space-y-1 text-sm ml-4">
-                                    <li>Usa el botón "Exportar Todo" para descargar todas las tablas</li>
-                                    <li>Se creará un archivo consolidado con múltiples hojas</li>
-                                    <li>Cada hoja corresponde a una tabla del sistema</li>
+                                    <li>Usa el botón "Exportar Todo" para todas las tablas</li>
+                                    <li>Se creará un archivo Excel con múltiples hojas</li>
+                                    <li>Cada hoja corresponde a una tabla diferente</li>
                                 </ul>
 
                                 <p className="pt-2"><strong>Notas importantes:</strong></p>
                                 <ul className="list-disc list-inside space-y-1 text-sm ml-4">
-                                    <li>Los archivos se generan con los datos actuales del sistema</li>
-                                    <li>Se mantiene el formato y estructura de las tablas originales</li>
-                                    <li>Compatible con Excel, LibreOffice Calc y Google Sheets</li>
+                                    <li>Los datos se exportan en tiempo real</li>
+                                    <li>Requiere conexión a internet para completar la exportación</li>
+                                    <li>Archivos grandes pueden tardar en generarse</li>
                                 </ul>
                             </div>
                         </div>

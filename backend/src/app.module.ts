@@ -9,6 +9,7 @@ import { MatrizManoModule } from './matrizMano/matriz-mano.module';
 import { MatrizEnergiaModule } from './matrizEnergia/matriz-energia.module';
 import { RecetaNormalizadaModule } from './recetaNormalizada/receta-normalizada.module';
 import { SectorProductivoModule } from './sectorProductivo/sectores-productivos.module';
+import { ExportModule } from './exportacion/export.module';
 
 @Module({
   imports: [
@@ -21,8 +22,11 @@ import { SectorProductivoModule } from './sectorProductivo/sectores-productivos.
     MatrizManoModule,
     MatrizEnergiaModule,
     RecetaNormalizadaModule,
-    SectorProductivoModule
+    SectorProductivoModule,
+
+    ExportModule,
+
 
   ],
 })
-export class AppModule {}
+export class AppModule { }

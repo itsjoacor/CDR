@@ -5,15 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-} from '@headlessui/react';
 import { useNavigate } from 'react-router';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Save, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -25,6 +21,12 @@ import {
   AlertDialogCancel,
   AlertDialogAction
 } from '@/components/ui/alert-dialog';
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions,
+} from '@headlessui/react';
 
 const RecetasDetalladas: React.FC = () => {
   interface RecetaNormalizada {
@@ -53,9 +55,10 @@ const RecetasDetalladas: React.FC = () => {
   const [productoSeleccionado, setProductoSeleccionado] = useState<string | null>(null);
   const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<{ codigo_producto: string, codigo_ingrediente: string } | null>(null);
+  const [editForm, setEditForm] = useState<Partial<RecetaNormalizada>>({});
   const canEdit = user?.role === 'admin';
   const navigate = useNavigate();
-
 
   useEffect(() => {
     const fetchRecetas = async () => {
@@ -64,7 +67,6 @@ const RecetasDetalladas: React.FC = () => {
         const data = await res.json();
         setRecetas(data);
 
-        // Obtener parámetro de la URL
         const urlParams = new URLSearchParams(window.location.search);
         const productoParam = urlParams.get('producto');
 
@@ -114,6 +116,74 @@ const RecetasDetalladas: React.FC = () => {
       title: 'Exportación iniciada',
       description: 'Los datos de recetas se están exportando a Excel...',
     });
+  };
+
+  const handleEdit = (item: RecetaNormalizada) => {
+    setEditingId({
+      codigo_producto: item.codigo_producto,
+      codigo_ingrediente: item.codigo_ingrediente
+    });
+    setEditForm(item);
+  };
+
+  const handleSave = async () => {
+    if (!editingId || !editForm.cantidad_ingrediente) {
+      toast({
+        title: 'Error',
+        description: 'Por favor completa todos los campos requeridos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/recetas/${editingId.codigo_producto}/${editingId.codigo_ingrediente}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            cantidad_ingrediente: editForm.cantidad_ingrediente
+          }),
+        }
+      );
+
+      const text = await response.text();
+      if (!response.ok) throw new Error(`Error al guardar: ${text}`);
+
+      const updated = JSON.parse(text);
+
+      setRecetas(prev =>
+        prev.map(item =>
+          item.codigo_producto === editingId.codigo_producto &&
+            item.codigo_ingrediente === editingId.codigo_ingrediente
+            ? { ...item, ...updated }
+            : item
+        )
+      );
+
+      toast({
+        title: 'Guardado exitoso',
+        description: 'Los cambios se han guardado correctamente.',
+      });
+
+      setEditingId(null);
+      setEditForm({});
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo guardar los cambios. Por favor intenta nuevamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setEditForm({});
   };
 
   const handleDelete = async (codigo_producto: string, codigo_ingrediente: string) => {
@@ -262,50 +332,105 @@ const RecetasDetalladas: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((r) => (
-                    <TableRow key={`${r.codigo_producto}-${r.codigo_ingrediente}`}>
-                      <TableCell className="font-mono">{r.codigo_producto}</TableCell>
-                      <TableCell className="font-mono">{r.codigo_ingrediente}</TableCell>
-                      <TableCell>{r.cantidad_ingrediente}</TableCell>
-                      <TableCell className="font-mono text-green-700">${r.costo_ingrediente?.toLocaleString('es-CO') ?? '—'}</TableCell>
-                      <TableCell className="font-mono text-purple-700">${r.costo_mano_obra?.toLocaleString('es-CO') ?? '—'}</TableCell>
-                      <TableCell className="font-mono text-blue-700">${r.costo_matriz_energetica?.toLocaleString('es-CO') ?? '—'}</TableCell>
-                      <TableCell className="font-mono font-semibold text-black">${r.costo_total?.toLocaleString('es-CO') ?? '—'}</TableCell>
-                      <TableCell className="font-mono text-orange-600 font-semibold">${r.valor_cdr?.toLocaleString('es-CO') ?? '—'}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {r.ultima_actualizacion ? new Date(r.ultima_actualizacion).toLocaleDateString() : '—'}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button variant="outline" size="sm" onClick={() =>
-                              navigate(`/editarReceta/${r.codigo_producto}/${r.codigo_ingrediente}`)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Se eliminará permanentemente la receta del producto "{r.codigo_producto}" con ingrediente "{r.codigo_ingrediente}".
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(r.codigo_producto, r.codigo_ingrediente)}>
-                                    Eliminar
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                    <Fragment key={`${r.codigo_producto}-${r.codigo_ingrediente}`}>
+                      <TableRow>
+                        <TableCell className="font-mono">{r.codigo_producto}</TableCell>
+                        <TableCell className="font-mono">{r.codigo_ingrediente}</TableCell>
+                        <TableCell>{r.cantidad_ingrediente}</TableCell>
+                        <TableCell className="font-mono text-green-700">${r.costo_ingrediente?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                        <TableCell className="font-mono text-purple-700">${r.costo_mano_obra?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                        <TableCell className="font-mono text-blue-700">${r.costo_matriz_energetica?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                        <TableCell className="font-mono font-semibold text-black">${r.costo_total?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                        <TableCell className="font-mono text-orange-600 font-semibold">${r.valor_cdr?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {r.ultima_actualizacion ? new Date(r.ultima_actualizacion).toLocaleDateString() : '—'}
                         </TableCell>
-                      )}
-                    </TableRow>
+                        {canEdit && (
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(r)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Se eliminará permanentemente la receta del producto "{r.codigo_producto}" con ingrediente "{r.codigo_ingrediente}".
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(r.codigo_producto, r.codigo_ingrediente)}>
+                                      Eliminar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+
+                      {editingId?.codigo_producto === r.codigo_producto &&
+                        editingId?.codigo_ingrediente === r.codigo_ingrediente && (
+                          <TableRow className="bg-muted/30">
+                            <TableCell colSpan={canEdit ? 10 : 9}>
+                              <Card className="w-full">
+                                <CardHeader>
+                                  <CardTitle className="text-lg">
+                                    Editando: {r.codigo_producto} - {r.codigo_ingrediente}
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                      <Label htmlFor="cantidad">Cantidad del Ingrediente</Label>
+                                      <Input
+                                        id="cantidad"
+                                        type="number"
+                                        value={editForm.cantidad_ingrediente || ''}
+                                        onChange={(e) =>
+                                          setEditForm(prev => ({
+                                            ...prev,
+                                            cantidad_ingrediente: Number(e.target.value)
+                                          }))
+                                        }
+                                        placeholder="Cantidad"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end mt-4 space-x-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleSave}
+                                    >
+                                      <Save className="h-4 w-4 mr-1" /> Guardar
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleCancel}
+                                    >
+                                      <X className="h-4 w-4 mr-1" /> Cancelar
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>
