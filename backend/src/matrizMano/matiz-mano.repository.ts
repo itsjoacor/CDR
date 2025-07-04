@@ -41,4 +41,12 @@ export class MatrizManoRepository {
       .eq('codigo_mano_obra', codigo);
     if (error) throw new Error(error.message);
   }
+
+  async obtenerTodosLosCodigos(): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('matriz_mano')
+      .select('codigo_mano_obra');
+    if (error) throw new Error(error.message);
+    return data.map((item) => item.codigo_mano_obra);
+  }
 }

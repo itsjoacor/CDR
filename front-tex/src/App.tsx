@@ -23,6 +23,7 @@ import PaginaEnProduccion from "./components/PaginaConstruccion";
 import Producto from "./pages/Producto";
 import CargarEnergia from "./pages/CargarEnergia";
 import CargarManoObra from "./pages/CargarManoObra";
+import Exportacion from "./pages/Exportacion";
 
 const queryClient = new QueryClient();
 
@@ -47,11 +48,12 @@ const App = () => (
 
               <Route path="/" element={<Dashboard />} />
               <Route path="/receta" element={<Receta />} />
-               <Route path="/producto" element={<Producto />} />
+              <Route path="/producto" element={<Producto />} />
               <Route path="/detalle-recetas" element={<RecetasDetalladas />} />
 
               <Route path="/mano-obra" element={<ManoObra />} />
               <Route path="/mano-energia" element={<ManoEnergia />} />
+              <Route path="/exportacion" element={<Exportacion />} />
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
                 {/* <Route path="/editarReceta/:codigo_producto" element={<EditarReceta />} /> 

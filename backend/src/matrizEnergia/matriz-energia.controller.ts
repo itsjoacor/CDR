@@ -39,9 +39,34 @@ export class MatrizEnergiaController {
     }
 
     @Delete(':codigo')
-    eliminar(@Param('codigo') codigo: string): Promise<void> {
-        return this.service.eliminar(codigo);
+    async eliminar(@Param('codigo') codigo: string): Promise<void> {
+        try {
+            await this.service.eliminar(codigo);
+        } catch (error: any) {
+
+            const message = error?.message || '';
+            const detail = error?.detail || '';
+            const fullText = `${message} ${detail}`.toLowerCase();
+
+            if (
+                fullText.includes('violates foreign key') ||
+                fullText.includes('está siendo utilizado') ||
+                fullText.includes('constraint')
+            ) {
+                throw new HttpException(
+                    { message: message },  // 👈 importante: pasar objeto con `message`
+                    HttpStatus.CONFLICT,
+                );
+            }
+
+            throw new HttpException(
+                { message: 'Error interno al intentar eliminar el registro.' }, // 👈 también con `message`
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
     }
+
+
 
 
     @Get('exists/:codigo')

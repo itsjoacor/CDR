@@ -34,4 +34,8 @@ export class MatrizManoService {
     async eliminar(codigo: string): Promise<void> {
         return this.matrizManoRepository.eliminar(codigo);
     }
+
+    async obtenerTodosLosCodigos(): Promise<string[]> {
+        return await this.matrizManoRepository.obtenerTodosLosCodigos();
+    }
 }

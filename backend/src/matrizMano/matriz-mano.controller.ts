@@ -94,4 +94,9 @@ export class MatrizManoController {
       );
     }
   }
+
+  @Get()
+  obtenerTodoLosCodigos(): Promise<String[]> {
+    return this.service.obtenerTodosLosCodigos();
+  }
 }

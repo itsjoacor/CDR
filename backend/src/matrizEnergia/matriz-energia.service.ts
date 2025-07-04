@@ -28,12 +28,17 @@ export class MatrizEnergiaService {
         return energia;
     }
 
-    async actualizar(codigo: string, data: Partial<MatrizEnergia>): Promise<MatrizEnergia> {
-        await this.repo.actualizar(codigo, data);
-        const actualizado = await this.repo.obtenerPorCodigo(codigo);
+    async actualizar(id: string, data: Partial<MatrizEnergia>): Promise<MatrizEnergia> {
+        await this.repo.actualizar(id, data);
+
+        const codigoActual = data.codigo_energia ?? id;
+
+        const actualizado = await this.repo.obtenerPorCodigo(codigoActual);
         if (!actualizado) throw new Error('Registro no encontrado después de actualizar');
+
         return actualizado;
     }
+
 
     async eliminar(codigo: string): Promise<void> {
         return this.repo.eliminar(codigo);

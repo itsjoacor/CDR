@@ -59,7 +59,7 @@ const Dashboard: React.FC = () => {
       description: 'Visualizar costos calculados automáticamente para reposición',
       color: 'bg-green-50 hover:bg-green-100 border-green-200',
       canEdit: false
-    }
+    },
   ];
 
   return (
