@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Fragment } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Edit, Trash2, Save, X } from "lucide-react";
@@ -39,7 +40,6 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/react";
-import { Fragment } from "react";
 
 type ManoObraAPI = {
   codigo_mano_obra: string;
@@ -73,7 +73,6 @@ const ManoObra: React.FC = () => {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/matriz-mano`);
         if (!res.ok) throw new Error("Error al obtener datos");
         const data = await res.json();
-        // Ensure all items have estado field
         const dataWithEstado = data.map((item: ManoObraAPI) => ({
           ...item,
           estado: item.estado || "activo",
@@ -91,6 +90,7 @@ const ManoObra: React.FC = () => {
     };
     fetchData();
   }, []);
+
   useEffect(() => {
     const fetchSectores = async () => {
       try {
@@ -99,7 +99,7 @@ const ManoObra: React.FC = () => {
         );
         if (!res.ok) throw new Error();
         const data = await res.json();
-        setSectores(data.map((s: any) => s.nombre)); // Ajustar si el campo es distinto
+        setSectores(data.map((s: any) => s.nombre));
       } catch {
         toast({
           title: "Error",
@@ -131,8 +131,6 @@ const ManoObra: React.FC = () => {
     setEditForm(item);
   };
 
-
-
   const handleSave = async () => {
     if (
       !editForm.codigo_mano_obra ||
@@ -156,8 +154,6 @@ const ManoObra: React.FC = () => {
         horas_hombre_std: editForm.horas_hombre_std,
         sector_productivo: editForm.sector_productivo,
       };
-
-
 
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/matriz-mano/${editingId}`,
@@ -320,7 +316,7 @@ const ManoObra: React.FC = () => {
                 {Math.round(
                   (manoObra.filter((m) => m.estado === "activo").length /
                     manoObra.length) *
-                    100
+                  100
                 )}
                 %
               </div>
@@ -355,162 +351,49 @@ const ManoObra: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {manoObra.map((mo) => (
-                    <TableRow key={mo.codigo_mano_obra}>
-                      <TableCell>
-                        {editingId === mo.codigo_mano_obra ? (
-                          <div className="space-y-2">
-                            <Input
-                              value={editForm.codigo_mano_obra || ""}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  codigo_mano_obra: e.target.value,
-                                }))
-                              }
-                              placeholder="Código"
-                            />
-                            <Input
-                              value={editForm.descripcion || ""}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  descripcion: e.target.value,
-                                }))
-                              }
-                              placeholder="Descripción"
-                            />
+                    <Fragment key={mo.codigo_mano_obra}>
+                      <TableRow>
+                        <TableCell>
+                          <div className="font-medium">
+                            {mo.codigo_mano_obra}
                           </div>
-                        ) : (
-                          <div>
-                            <div className="font-medium">
-                              {mo.codigo_mano_obra}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {mo.descripcion}
-                            </div>
+                          <div className="text-sm text-muted-foreground">
+                            {mo.descripcion}
                           </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === mo.codigo_mano_obra ? (
-                          <Listbox
-                            value={editForm.sector_productivo || ""}
-                            onChange={(value) =>
-                              setEditForm((prev) => ({
-                                ...prev,
-                                sector_productivo: value,
-                              }))
-                            }
-                          >
-                            <div className="relative">
-                              <ListboxButton className="w-full px-3 py-2 border rounded-md bg-white text-left text-sm">
-                                {editForm.sector_productivo ||
-                                  "Seleccionar sector"}
-                              </ListboxButton>
-                              <ListboxOptions className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-md max-h-60 overflow-auto">
-                                {sectores.map((sector, i) => (
-                                  <ListboxOption
-                                    key={i}
-                                    value={sector}
-                                    as={Fragment}
-                                  >
-                                    {({ active, selected }) => (
-                                      <li
-                                        className={`cursor-pointer px-4 py-2 rounded-md ${
-                                          active
-                                            ? "bg-gray-100 text-gray-900"
-                                            : "text-gray-800"
-                                        } ${selected ? "font-medium" : ""}`}
-                                      >
-                                        {sector}
-                                      </li>
-                                    )}
-                                  </ListboxOption>
-                                ))}
-                              </ListboxOptions>
-                            </div>
-                          </Listbox>
-                        ) : (
+                        </TableCell>
+                        <TableCell>
                           <Badge variant="outline">
                             {mo.sector_productivo}
                           </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === mo.codigo_mano_obra ? (
-                          <Input
-                            type="number"
-                            value={editForm.valor_hora_hombre || ""}
-                            onChange={(e) =>
-                              setEditForm((prev) => ({
-                                ...prev,
-                                valor_hora_hombre: Number(e.target.value),
-                              }))
-                            }
-                            placeholder="Salario por hora"
-                          />
-                        ) : (
+                        </TableCell>
+                        <TableCell>
                           <span className="font-mono">
                             ${mo.valor_hora_hombre.toLocaleString("es-CO")}
                           </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === mo.codigo_mano_obra ? (
-                          <Input
-                            type="number"
-                            step="0.1"
-                            value={editForm.horas_hombre_std || ""}
-                            onChange={(e) =>
-                              setEditForm((prev) => ({
-                                ...prev,
-                                horas_hombre_std: Number(e.target.value),
-                              }))
-                            }
-                            placeholder="Tiempo estimado"
-                          />
-                        ) : (
+                        </TableCell>
+                        <TableCell>
                           <span>{mo.horas_hombre_std} h</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono font-semibold text-green-600">
-                        $
-                        {mo.costo_mano_obra
-                          ? mo.costo_mano_obra.toLocaleString("es-CO")
-                          : calcularCosto(
+                        </TableCell>
+                        <TableCell className="font-mono font-semibold text-green-600">
+                          $
+                          {mo.costo_mano_obra
+                            ? mo.costo_mano_obra.toLocaleString("es-CO")
+                            : calcularCosto(
                               mo.valor_hora_hombre,
                               mo.horas_hombre_std
                             )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            mo.estado === "activo" ? "default" : "secondary"
-                          }
-                        >
-                          {mo.estado || "activo"}
-                        </Badge>
-                      </TableCell>
-                      {canEdit && (
+                        </TableCell>
                         <TableCell>
-                          {editingId === mo.codigo_mano_obra ? (
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleSave}
-                              >
-                                <Save className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancel}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
+                          <Badge
+                            variant={
+                              mo.estado === "activo" ? "default" : "secondary"
+                            }
+                          >
+                            {mo.estado || "activo"}
+                          </Badge>
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell>
                             <div className="flex space-x-2">
                               <Button
                                 variant="outline"
@@ -551,10 +434,142 @@ const ManoObra: React.FC = () => {
                                 </AlertDialogContent>
                               </AlertDialog>
                             </div>
-                          )}
-                        </TableCell>
+                          </TableCell>
+                        )}
+                      </TableRow>
+
+                      {editingId === mo.codigo_mano_obra && (
+                        <TableRow className="bg-muted/30">
+                          <TableCell colSpan={canEdit ? 7 : 6}>
+                            <Card className="w-full">
+                              <CardHeader>
+                                <CardTitle className="text-lg">
+                                  Editando: {mo.codigo_mano_obra}
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="codigo">Código</Label>
+                                    <Input
+                                      id="codigo"
+                                      value={editForm.codigo_mano_obra || ''}
+                                      onChange={(e) =>
+                                        setEditForm((prev) => ({
+                                          ...prev,
+                                          codigo_mano_obra: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="Código"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="descripcion">Descripción</Label>
+                                    <Input
+                                      id="descripcion"
+                                      value={editForm.descripcion || ''}
+                                      onChange={(e) =>
+                                        setEditForm((prev) => ({
+                                          ...prev,
+                                          descripcion: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="Descripción"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="sector">Sector Productivo</Label>
+                                    <Listbox
+                                      value={editForm.sector_productivo || ''}
+                                      onChange={(value) =>
+                                        setEditForm((prev) => ({
+                                          ...prev,
+                                          sector_productivo: value,
+                                        }))
+                                      }
+                                    >
+                                      <div className="relative">
+                                        <ListboxButton className="w-full px-3 py-2 border rounded-md bg-white text-left text-sm">
+                                          {editForm.sector_productivo ||
+                                            "Seleccionar sector"}
+                                        </ListboxButton>
+                                        <ListboxOptions className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-md max-h-60 overflow-auto">
+                                          {sectores.map((sector, i) => (
+                                            <ListboxOption
+                                              key={i}
+                                              value={sector}
+                                              as={Fragment}
+                                            >
+                                              {({ active, selected }) => (
+                                                <li
+                                                  className={`cursor-pointer px-4 py-2 rounded-md ${active
+                                                      ? "bg-gray-100 text-gray-900"
+                                                      : "text-gray-800"
+                                                    } ${selected ? "font-medium" : ""}`}
+                                                >
+                                                  {sector}
+                                                </li>
+                                              )}
+                                            </ListboxOption>
+                                          ))}
+                                        </ListboxOptions>
+                                      </div>
+                                    </Listbox>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="valor_hora">Salario por Hora</Label>
+                                    <Input
+                                      id="valor_hora"
+                                      type="number"
+                                      value={editForm.valor_hora_hombre || ''}
+                                      onChange={(e) =>
+                                        setEditForm((prev) => ({
+                                          ...prev,
+                                          valor_hora_hombre: Number(e.target.value),
+                                        }))
+                                      }
+                                      placeholder="Salario por hora"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="horas_std">Tiempo Estimado (horas)</Label>
+                                    <Input
+                                      id="horas_std"
+                                      type="number"
+                                      step="0.1"
+                                      value={editForm.horas_hombre_std || ''}
+                                      onChange={(e) =>
+                                        setEditForm((prev) => ({
+                                          ...prev,
+                                          horas_hombre_std: Number(e.target.value),
+                                        }))
+                                      }
+                                      placeholder="Tiempo estimado"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end mt-4 space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleSave}
+                                  >
+                                    <Save className="h-4 w-4 mr-1" /> Guardar
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleCancel}
+                                  >
+                                    <X className="h-4 w-4 mr-1" /> Cancelar
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </TableRow>
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>
