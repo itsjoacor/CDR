@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -57,12 +58,8 @@ const Producto: React.FC = () => {
   const [productos, setProductos] = useState<ProductoItem[]>([]);
   const [sectores, setSectores] = useState<string[]>([]);
   const [productosLista, setProductosLista] = useState<ProductoItem[]>([]);
-  const [productoSeleccionado, setProductoSeleccionado] = useState<
-    string | null
-  >(null);
-  const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(
-    null
-  );
+  const [productoSeleccionado, setProductoSeleccionado] = useState<string | null>(null);
+  const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ProductoItem>>({});
@@ -98,7 +95,7 @@ const Producto: React.FC = () => {
         });
 
         setProductos(productosData);
-        setProductosLista(productosData); 
+        setProductosLista(productosData);
       } catch (error) {
         console.error("Error fetching productos:", error);
         toast({
@@ -113,6 +110,7 @@ const Producto: React.FC = () => {
 
     fetchProductos();
   }, []);
+
   useEffect(() => {
     const fetchSectores = async () => {
       try {
@@ -121,7 +119,7 @@ const Producto: React.FC = () => {
         );
         if (!response.ok) throw new Error("Error al cargar sectores");
         const data = await response.json();
-        setSectores(data.map((s: any) => s.nombre)); // Asume que el campo es 'nombre'
+        setSectores(data.map((s: any) => s.nombre));
       } catch (error) {
         console.error("Error fetching sectores:", error);
         toast({
@@ -159,6 +157,7 @@ const Producto: React.FC = () => {
     setEditingId(item.codigo_producto);
     setEditForm(item);
   };
+
   const handleExport = () => {
     toast({
       title: "Exportación iniciada",
@@ -182,15 +181,6 @@ const Producto: React.FC = () => {
     }
 
     try {
-      console.log(
-        "📝 Enviando PUT a:",
-        `${import.meta.env.VITE_API_URL}/productos/${editingId}`
-      );
-      console.log("🧾 Payload:", {
-        descripcion_producto: editForm.descripcion_producto,
-        sector_productivo: editForm.sector_productivo,
-      });
-
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/productos/${editingId}`,
         {
@@ -206,8 +196,6 @@ const Producto: React.FC = () => {
       );
 
       const text = await response.text();
-      console.log("🔁 Respuesta:", response.status, text);
-
       if (!response.ok) throw new Error(`Error al guardar: ${text}`);
 
       const updated = JSON.parse(text);
@@ -329,9 +317,8 @@ const Producto: React.FC = () => {
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
                         <li
-                          className={`px-4 py-2 cursor-pointer rounded ${
-                            active ? "bg-blue-100 text-blue-800" : ""
-                          }`}
+                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-blue-100 text-blue-800" : ""
+                            }`}
                         >
                           Todos los productos
                         </li>
@@ -345,11 +332,10 @@ const Producto: React.FC = () => {
                       >
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${
-                              active
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active
                                 ? "bg-blue-100 text-blue-800"
                                 : "text-gray-800"
-                            } ${selected ? "font-medium" : ""}`}
+                              } ${selected ? "font-medium" : ""}`}
                           >
                             {p.codigo_producto} - {p.descripcion_producto}
                           </li>
@@ -382,9 +368,8 @@ const Producto: React.FC = () => {
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
                         <li
-                          className={`px-4 py-2 cursor-pointer rounded ${
-                            active ? "bg-green-100 text-green-800" : ""
-                          }`}
+                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-green-100 text-green-800" : ""
+                            }`}
                         >
                           Todos los sectores
                         </li>
@@ -394,11 +379,10 @@ const Producto: React.FC = () => {
                       <ListboxOption key={i} value={s} as={Fragment}>
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${
-                              active
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active
                                 ? "bg-green-100 text-green-800"
                                 : "text-gray-800"
-                            } ${selected ? "font-medium" : ""}`}
+                              } ${selected ? "font-medium" : ""}`}
                           >
                             {s}
                           </li>
@@ -440,111 +424,31 @@ const Producto: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredProductos.map((producto) => (
-                    <TableRow key={producto.codigo_producto}>
-                      <TableCell>
-                        {editingId === producto.codigo_producto ? (
-                          <div className="space-y-2">
-                            <Input
-                              value={editForm.descripcion_producto || ""}
-                              onChange={(e) =>
-                                setEditForm((p) => ({
-                                  ...p,
-                                  descripcion_producto: e.target.value,
-                                }))
-                              }
-                            />
-                            <div className="text-sm text-muted-foreground font-mono">
-                              {producto.codigo_producto}
-                            </div>
+                    <React.Fragment key={producto.codigo_producto}>
+                      <TableRow>
+                        <TableCell>
+                          <div className="font-medium">
+                            {producto.descripcion_producto}
                           </div>
-                        ) : (
-                          <div>
-                            <div className="font-medium">
-                              {producto.descripcion_producto}
-                            </div>
-                            <div className="text-sm text-muted-foreground font-mono">
-                              {producto.codigo_producto}
-                            </div>
+                          <div className="text-sm text-muted-foreground font-mono">
+                            {producto.codigo_producto}
                           </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editingId === producto.codigo_producto ? (
-                          <Listbox
-                            value={editForm.sector_productivo || ""}
-                            onChange={(value) =>
-                              setEditForm((p) => ({
-                                ...p,
-                                sector_productivo: value,
-                              }))
-                            }
-                          >
-                            <div className="relative">
-                              <ListboxButton className="w-full px-3 py-2 border rounded-md bg-white text-left text-sm">
-                                {editForm.sector_productivo ||
-                                  "Seleccionar sector"}
-                              </ListboxButton>
-                              <ListboxOptions className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-md max-h-60 overflow-auto">
-                                {sectores.map((sector, i) => (
-                                  <ListboxOption
-                                    key={i}
-                                    value={sector}
-                                    as={Fragment}
-                                  >
-                                    {({ active, selected }) => (
-                                      <li
-                                        className={`cursor-pointer px-4 py-2 rounded-md ${
-                                          active
-                                            ? "bg-gray-100 text-gray-900"
-                                            : "text-gray-800"
-                                        } ${selected ? "font-medium" : ""}`}
-                                      >
-                                        {sector}
-                                      </li>
-                                    )}
-                                  </ListboxOption>
-                                ))}
-                              </ListboxOptions>
-                            </div>
-                          </Listbox>
-                        ) : (
-                          <Badge
-                            className={getSectorColor(
-                              producto.sector_productivo
-                            )}
-                          >
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getSectorColor(producto.sector_productivo)}>
                             {producto.sector_productivo}
                           </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getEstadoBadgeVariant(producto.estado)}>
-                          {producto.estado}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {producto.updated_at}
-                      </TableCell>
-                      {canEdit && (
+                        </TableCell>
                         <TableCell>
-                          {editingId === producto.codigo_producto ? (
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleSave}
-                              >
-                                <Save className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancel}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
+                          <Badge variant={getEstadoBadgeVariant(producto.estado)}>
+                            {producto.estado}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {producto.updated_at}
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell>
                             <div className="flex space-x-2">
                               <Button
                                 variant="outline"
@@ -585,10 +489,76 @@ const Producto: React.FC = () => {
                                 </AlertDialogContent>
                               </AlertDialog>
                             </div>
-                          )}
-                        </TableCell>
+                          </TableCell>
+                        )}
+                      </TableRow>
+
+                      {editingId === producto.codigo_producto && (
+                        <TableRow className="bg-muted/30">
+                          <TableCell colSpan={canEdit ? 5 : 4}>
+                            <Card className="w-full">
+                              <CardHeader>
+                                <CardTitle className="text-lg">Editando: {producto.descripcion_producto}</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="descripcion">Descripción del Producto</Label>
+                                    <Input
+                                      id="descripcion"
+                                      value={editForm.descripcion_producto || ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, descripcion_producto: e.target.value }))}
+                                      placeholder="Descripción del producto"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="sector">Sector Productivo</Label>
+                                    <Listbox
+                                      value={editForm.sector_productivo || ''}
+                                      onChange={(value) => setEditForm(prev => ({ ...prev, sector_productivo: value }))}
+                                    >
+                                      <div className="relative">
+                                        <ListboxButton className="w-full px-3 py-2 border rounded-md bg-white text-left text-sm">
+                                          {editForm.sector_productivo || "Seleccionar sector"}
+                                        </ListboxButton>
+                                        <ListboxOptions className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-md max-h-60 overflow-auto">
+                                          {sectores.map((sector, i) => (
+                                            <ListboxOption
+                                              key={i}
+                                              value={sector}
+                                              as={Fragment}
+                                            >
+                                              {({ active, selected }) => (
+                                                <li
+                                                  className={`cursor-pointer px-4 py-2 rounded-md ${active
+                                                      ? "bg-gray-100 text-gray-900"
+                                                      : "text-gray-800"
+                                                    } ${selected ? "font-medium" : ""}`}
+                                                >
+                                                  {sector}
+                                                </li>
+                                              )}
+                                            </ListboxOption>
+                                          ))}
+                                        </ListboxOptions>
+                                      </div>
+                                    </Listbox>
+                                  </div>
+                                </div>
+                                <div className="flex justify-end mt-4 space-x-2">
+                                  <Button variant="outline" size="sm" onClick={handleSave}>
+                                    <Save className="h-4 w-4 mr-1" /> Guardar
+                                  </Button>
+                                  <Button variant="outline" size="sm" onClick={handleCancel}>
+                                    <X className="h-4 w-4 mr-1" /> Cancelar
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </TableRow>
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>
