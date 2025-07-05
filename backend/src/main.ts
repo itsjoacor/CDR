@@ -3,14 +3,23 @@ import { config } from 'dotenv';
 config();
 
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module'; 
+import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
+
+const origins = process.env.CORS_ORIGIN?.split(',') || [];
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN,
+    origin: (origin, callback) => {
+
+      if (!origin || origins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
