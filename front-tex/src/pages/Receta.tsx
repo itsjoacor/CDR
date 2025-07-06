@@ -54,7 +54,7 @@ const Receta: React.FC = () => {
           return acc;
         }, {} as Record<string, ProductoInfo>);
 
-        const recetasResponse = await fetch(`${import.meta.env.VITE_API_URL}/recetas`);
+        const recetasResponse = await fetch(`${import.meta.env.VITE_API_URL}/recetas-normalizada`);
         if (!recetasResponse.ok) throw new Error('Error al obtener recetas');
         const recetasData = await recetasResponse.json();
 

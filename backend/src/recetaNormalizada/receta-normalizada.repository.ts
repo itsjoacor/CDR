@@ -24,8 +24,8 @@ export class RecetaNormalizadaRepository {
     // Verifica en cascada con short-circuit
     return (await this.existeEnTabla('productos', 'codigo_producto', codigo)) ||
       (await this.existeEnTabla('insumos', 'codigo', codigo)) ||
-      (await this.existeEnTabla('matriz_mano', 'codigo_mano_obra', codigo)) ||
-      (await this.existeEnTabla('matriz_energia', 'codigo_energia', codigo));
+      (await this.existeEnTabla('mano', 'codigo_mano', codigo)) ||
+      (await this.existeEnTabla('energia', 'codigo_energia', codigo));
   }
 
   async crear(dto: CreateRecetaNormalizadaDto) {
@@ -66,7 +66,7 @@ export class RecetaNormalizadaRepository {
 
       if (!ingredienteExiste) {
         // Verificación detallada para mensaje de error más informativo
-        const tablas = ['productos', 'insumos', 'matriz_mano', 'matriz_energia'];
+        const tablas = ['productos', 'insumos', 'mano', 'energia'];
         const resultados = await Promise.all(
           tablas.map(tabla => this.existeEnTabla(tabla, this.getCampoId(tabla), codIngrediente))
         );

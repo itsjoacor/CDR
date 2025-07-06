@@ -7,7 +7,6 @@ export class RecetaNormalizadaController {
   constructor(private readonly service: RecetaNormalizadaService) { }
 
   @Post()
-  @Post()
   async crear(@Body() dto: CreateRecetaNormalizadaDto) {
     const result = await this.service.crear(dto);
 

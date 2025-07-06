@@ -1,15 +1,28 @@
-import React, { useEffect, useState, Fragment } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import Layout from '../components/Layout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router';
-import { Edit, Trash2, Save, X } from 'lucide-react';
+import React, { useEffect, useState, Fragment } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import Layout from "../components/Layout";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router";
+import { Edit, Trash2, Save, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -19,14 +32,14 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-  AlertDialogAction
-} from '@/components/ui/alert-dialog';
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import {
   Listbox,
   ListboxButton,
   ListboxOption,
   ListboxOptions,
-} from '@headlessui/react';
+} from "@headlessui/react";
 
 const RecetasDetalladas: React.FC = () => {
   interface RecetaNormalizada {
@@ -34,8 +47,6 @@ const RecetasDetalladas: React.FC = () => {
     codigo_ingrediente: string;
     cantidad_ingrediente: number;
     costo_ingrediente: number | null;
-    costo_mano_obra: number | null;
-    costo_matriz_energetica: number | null;
     costo_total: number | null;
     valor_cdr: number | null;
     ultima_actualizacion: string | null;
@@ -52,32 +63,39 @@ const RecetasDetalladas: React.FC = () => {
   const [recetas, setRecetas] = useState<RecetaNormalizada[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [sectores, setSectores] = useState<string[]>([]);
-  const [productoSeleccionado, setProductoSeleccionado] = useState<string | null>(null);
-  const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
+  const [productoSeleccionado, setProductoSeleccionado] = useState<
+    string | null
+  >(null);
+  const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<{ codigo_producto: string, codigo_ingrediente: string } | null>(null);
+  const [editingId, setEditingId] = useState<{
+    codigo_producto: string;
+    codigo_ingrediente: string;
+  } | null>(null);
   const [editForm, setEditForm] = useState<Partial<RecetaNormalizada>>({});
-  const canEdit = user?.role === 'admin';
+  const canEdit = user?.role === "admin";
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchRecetas = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas-normalizada`);
         const data = await res.json();
         setRecetas(data);
 
         const urlParams = new URLSearchParams(window.location.search);
-        const productoParam = urlParams.get('producto');
+        const productoParam = urlParams.get("producto");
 
         if (productoParam) {
           setProductoSeleccionado(productoParam);
         }
       } catch {
         toast({
-          title: 'Error',
-          description: 'No se pudieron cargar las recetas desde el servidor',
-          variant: 'destructive',
+          title: "Error",
+          description: "No se pudieron cargar las recetas desde el servidor",
+          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -89,12 +107,12 @@ const RecetasDetalladas: React.FC = () => {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/productos`);
         const data: Producto[] = await res.json();
         setProductos(data);
-        setSectores([...new Set(data.map(p => p.sector_productivo))]);
+        setSectores([...new Set(data.map((p) => p.sector_productivo))]);
       } catch {
         toast({
-          title: 'Error',
-          description: 'No se pudieron cargar los productos',
-          variant: 'destructive',
+          title: "Error",
+          description: "No se pudieron cargar los productos",
+          variant: "destructive",
         });
       }
     };
@@ -104,24 +122,27 @@ const RecetasDetalladas: React.FC = () => {
   }, []);
 
   const filtered = recetas.filter((r) => {
-    const matchProducto = productoSeleccionado ? r.codigo_producto === productoSeleccionado : true;
+    const matchProducto = productoSeleccionado
+      ? r.codigo_producto === productoSeleccionado
+      : true;
     const matchSector = sectorSeleccionado
-      ? productos.find(p => p.codigo_producto === r.codigo_producto)?.sector_productivo === sectorSeleccionado
+      ? productos.find((p) => p.codigo_producto === r.codigo_producto)
+          ?.sector_productivo === sectorSeleccionado
       : true;
     return matchProducto && matchSector;
   });
 
   const handleExport = () => {
     toast({
-      title: 'Exportación iniciada',
-      description: 'Los datos de recetas se están exportando a Excel...',
+      title: "Exportación iniciada",
+      description: "Los datos de recetas se están exportando a Excel...",
     });
   };
 
   const handleEdit = (item: RecetaNormalizada) => {
     setEditingId({
       codigo_producto: item.codigo_producto,
-      codigo_ingrediente: item.codigo_ingrediente
+      codigo_ingrediente: item.codigo_ingrediente,
     });
     setEditForm(item);
   };
@@ -129,23 +150,25 @@ const RecetasDetalladas: React.FC = () => {
   const handleSave = async () => {
     if (!editingId || !editForm.cantidad_ingrediente) {
       toast({
-        title: 'Error',
-        description: 'Por favor completa todos los campos requeridos.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Por favor completa todos los campos requeridos.",
+        variant: "destructive",
       });
       return;
     }
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/recetas/${editingId.codigo_producto}/${editingId.codigo_ingrediente}`,
+        `${import.meta.env.VITE_API_URL}/recetas-normalizada/${editingId.codigo_producto}/${
+          editingId.codigo_ingrediente
+        }`,
         {
-          method: 'PUT',
+          method: "PUT",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            cantidad_ingrediente: editForm.cantidad_ingrediente
+            cantidad_ingrediente: editForm.cantidad_ingrediente,
           }),
         }
       );
@@ -155,28 +178,29 @@ const RecetasDetalladas: React.FC = () => {
 
       const updated = JSON.parse(text);
 
-      setRecetas(prev =>
-        prev.map(item =>
+      setRecetas((prev) =>
+        prev.map((item) =>
           item.codigo_producto === editingId.codigo_producto &&
-            item.codigo_ingrediente === editingId.codigo_ingrediente
+          item.codigo_ingrediente === editingId.codigo_ingrediente
             ? { ...item, ...updated }
             : item
         )
       );
 
       toast({
-        title: 'Guardado exitoso',
-        description: 'Los cambios se han guardado correctamente.',
+        title: "Guardado exitoso",
+        description: "Los cambios se han guardado correctamente.",
       });
 
       setEditingId(null);
       setEditForm({});
     } catch (error) {
-      console.error('Error al guardar:', error);
+      console.error("Error al guardar:", error);
       toast({
-        title: 'Error',
-        description: 'No se pudo guardar los cambios. Por favor intenta nuevamente.',
-        variant: 'destructive',
+        title: "Error",
+        description:
+          "No se pudo guardar los cambios. Por favor intenta nuevamente.",
+        variant: "destructive",
       });
     }
   };
@@ -186,27 +210,41 @@ const RecetasDetalladas: React.FC = () => {
     setEditForm({});
   };
 
-  const handleDelete = async (codigo_producto: string, codigo_ingrediente: string) => {
+  const handleDelete = async (
+    codigo_producto: string,
+    codigo_ingrediente: string
+  ) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas/${codigo_producto}/${codigo_ingrediente}`, {
-        method: 'DELETE'
-      });
+      const res = await fetch(
+        `${
+          import.meta.env.VITE_API_URL
+        }/recetas-normalizada/${codigo_producto}/${codigo_ingrediente}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!res.ok) throw new Error();
 
-      setRecetas(prev =>
-        prev.filter(r => !(r.codigo_producto === codigo_producto && r.codigo_ingrediente === codigo_ingrediente))
+      setRecetas((prev) =>
+        prev.filter(
+          (r) =>
+            !(
+              r.codigo_producto === codigo_producto &&
+              r.codigo_ingrediente === codigo_ingrediente
+            )
+        )
       );
 
       toast({
-        title: 'Eliminado',
+        title: "Eliminado",
         description: `La receta fue eliminada correctamente.`,
       });
     } catch {
       toast({
-        title: 'Error',
-        description: 'No se pudo eliminar la receta. Intenta nuevamente.',
-        variant: 'destructive',
+        title: "Error",
+        description: "No se pudo eliminar la receta. Intenta nuevamente.",
+        variant: "destructive",
       });
     }
   };
@@ -221,14 +259,18 @@ const RecetasDetalladas: React.FC = () => {
               🍲 Recetas Normalizadas - Estructura de Costos
             </Badge>
             <p className="text-sm text-muted-foreground mt-2">
-              Detalle de insumos, mano de obra y energía utilizados por producto
+              Detalle de insumos utilizados por producto
             </p>
           </div>
           <div className="flex space-x-2">
             {canEdit && (
-              <Button onClick={() => navigate(`/cargarReceta`)}>➕ Agregar Receta</Button>
+              <Button onClick={() => navigate(`/cargarReceta`)}>
+                ➕ Agregar Receta
+              </Button>
             )}
-            <Button onClick={handleExport} variant="outline">📤 Exportar</Button>
+            <Button onClick={handleExport} variant="outline">
+              📤 Exportar
+            </Button>
           </div>
         </div>
 
@@ -237,27 +279,46 @@ const RecetasDetalladas: React.FC = () => {
           <CardContent className="p-4 flex flex-col md:flex-row gap-4">
             {/* Producto */}
             <div className="flex-1">
-              <Listbox value={productoSeleccionado} onChange={setProductoSeleccionado}>
+              <Listbox
+                value={productoSeleccionado}
+                onChange={setProductoSeleccionado}
+              >
                 <div className="relative w-full">
                   <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-purple-300 flex items-center justify-between">
-                    {productoSeleccionado || 'Filtrar por producto'}
-                    <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    {productoSeleccionado || "Filtrar por producto"}
+                    <svg
+                      className="w-5 h-5 text-gray-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                     </svg>
                   </ListboxButton>
                   <ListboxOptions className="absolute mt-1 w-full bg-white border rounded-md shadow-md z-10 max-h-60 overflow-auto">
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
-                        <li className={`px-4 py-2 cursor-pointer rounded ${active ? 'bg-purple-100 text-purple-800' : ''}`}>
+                        <li
+                          className={`px-4 py-2 cursor-pointer rounded ${
+                            active ? "bg-purple-100 text-purple-800" : ""
+                          }`}
+                        >
                           Todos los productos
                         </li>
                       )}
                     </ListboxOption>
                     {productos.map((p, i) => (
-                      <ListboxOption key={i} value={p.codigo_producto} as={Fragment}>
+                      <ListboxOption
+                        key={i}
+                        value={p.codigo_producto}
+                        as={Fragment}
+                      >
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${active ? 'bg-purple-100 text-purple-800' : 'text-gray-800'} ${selected ? 'font-medium' : ''}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md ${
+                              active
+                                ? "bg-purple-100 text-purple-800"
+                                : "text-gray-800"
+                            } ${selected ? "font-medium" : ""}`}
                           >
                             {p.codigo_producto} - {p.descripcion_producto}
                           </li>
@@ -271,18 +332,29 @@ const RecetasDetalladas: React.FC = () => {
 
             {/* Sector */}
             <div className="flex-1">
-              <Listbox value={sectorSeleccionado} onChange={setSectorSeleccionado}>
+              <Listbox
+                value={sectorSeleccionado}
+                onChange={setSectorSeleccionado}
+              >
                 <div className="relative w-full">
                   <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-yellow-300 flex items-center justify-between">
-                    {sectorSeleccionado || 'Filtrar por sector'}
-                    <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    {sectorSeleccionado || "Filtrar por sector"}
+                    <svg
+                      className="w-5 h-5 text-gray-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                     </svg>
                   </ListboxButton>
                   <ListboxOptions className="absolute mt-1 w-full bg-white border rounded-md shadow-md z-10 max-h-60 overflow-auto">
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
-                        <li className={`px-4 py-2 cursor-pointer rounded ${active ? 'bg-yellow-100 text-yellow-800' : ''}`}>
+                        <li
+                          className={`px-4 py-2 cursor-pointer rounded ${
+                            active ? "bg-yellow-100 text-yellow-800" : ""
+                          }`}
+                        >
                           Todos los sectores
                         </li>
                       )}
@@ -291,7 +363,11 @@ const RecetasDetalladas: React.FC = () => {
                       <ListboxOption key={i} value={s} as={Fragment}>
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${active ? 'bg-yellow-100 text-yellow-800' : 'text-gray-800'} ${selected ? 'font-medium' : ''}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md ${
+                              active
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "text-gray-800"
+                            } ${selected ? "font-medium" : ""}`}
                           >
                             {s}
                           </li>
@@ -309,11 +385,15 @@ const RecetasDetalladas: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>Recetas Normalizadas</CardTitle>
-            <CardDescription>Incluye cantidades, costos desglosados y valor CDR</CardDescription>
+            <CardDescription>
+              Incluye cantidades, costos y valor CDR
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-muted-foreground">Cargando recetas...</p>
+              <p className="text-sm text-muted-foreground">
+                Cargando recetas...
+              </p>
             ) : (
               <Table>
                 <TableHeader>
@@ -322,8 +402,6 @@ const RecetasDetalladas: React.FC = () => {
                     <TableHead>Ingrediente</TableHead>
                     <TableHead>Cantidad</TableHead>
                     <TableHead>Insumo</TableHead>
-                    <TableHead>MO</TableHead>
-                    <TableHead>Energía</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>CDR</TableHead>
                     <TableHead>Últ. Modif.</TableHead>
@@ -332,18 +410,32 @@ const RecetasDetalladas: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((r) => (
-                    <Fragment key={`${r.codigo_producto}-${r.codigo_ingrediente}`}>
+                    <Fragment
+                      key={`${r.codigo_producto}-${r.codigo_ingrediente}`}
+                    >
                       <TableRow>
-                        <TableCell className="font-mono">{r.codigo_producto}</TableCell>
-                        <TableCell className="font-mono">{r.codigo_ingrediente}</TableCell>
+                        <TableCell className="font-mono">
+                          {r.codigo_producto}
+                        </TableCell>
+                        <TableCell className="font-mono">
+                          {r.codigo_ingrediente}
+                        </TableCell>
                         <TableCell>{r.cantidad_ingrediente}</TableCell>
-                        <TableCell className="font-mono text-green-700">${r.costo_ingrediente?.toLocaleString('es-CO') ?? '—'}</TableCell>
-                        <TableCell className="font-mono text-purple-700">${r.costo_mano_obra?.toLocaleString('es-CO') ?? '—'}</TableCell>
-                        <TableCell className="font-mono text-blue-700">${r.costo_matriz_energetica?.toLocaleString('es-CO') ?? '—'}</TableCell>
-                        <TableCell className="font-mono font-semibold text-black">${r.costo_total?.toLocaleString('es-CO') ?? '—'}</TableCell>
-                        <TableCell className="font-mono text-orange-600 font-semibold">${r.valor_cdr?.toLocaleString('es-CO') ?? '—'}</TableCell>
+                        <TableCell className="font-mono text-green-700">
+                          ${r.costo_ingrediente?.toLocaleString("es-CO") ?? "—"}
+                        </TableCell>
+                        <TableCell className="font-mono font-semibold text-black">
+                          ${r.costo_total?.toLocaleString("es-CO") ?? "—"}
+                        </TableCell>
+                        <TableCell className="font-mono text-orange-600 font-semibold">
+                          ${r.valor_cdr?.toLocaleString("es-CO") ?? "—"}
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {r.ultima_actualizacion ? new Date(r.ultima_actualizacion).toLocaleDateString() : '—'}
+                          {r.ultima_actualizacion
+                            ? new Date(
+                                r.ultima_actualizacion
+                              ).toLocaleDateString()
+                            : "—"}
                         </TableCell>
                         {canEdit && (
                           <TableCell>
@@ -363,14 +455,27 @@ const RecetasDetalladas: React.FC = () => {
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                    <AlertDialogTitle>
+                                      ¿Estás seguro?
+                                    </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Se eliminará permanentemente la receta del producto "{r.codigo_producto}" con ingrediente "{r.codigo_ingrediente}".
+                                      Se eliminará permanentemente la receta del
+                                      producto "{r.codigo_producto}" con
+                                      ingrediente "{r.codigo_ingrediente}".
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(r.codigo_producto, r.codigo_ingrediente)}>
+                                    <AlertDialogCancel>
+                                      Cancelar
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        handleDelete(
+                                          r.codigo_producto,
+                                          r.codigo_ingrediente
+                                        )
+                                      }
+                                    >
                                       Eliminar
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
@@ -382,27 +487,35 @@ const RecetasDetalladas: React.FC = () => {
                       </TableRow>
 
                       {editingId?.codigo_producto === r.codigo_producto &&
-                        editingId?.codigo_ingrediente === r.codigo_ingrediente && (
+                        editingId?.codigo_ingrediente ===
+                          r.codigo_ingrediente && (
                           <TableRow className="bg-muted/30">
-                            <TableCell colSpan={canEdit ? 10 : 9}>
+                            <TableCell colSpan={canEdit ? 8 : 7}>
                               <Card className="w-full">
                                 <CardHeader>
                                   <CardTitle className="text-lg">
-                                    Editando: {r.codigo_producto} - {r.codigo_ingrediente}
+                                    Editando: {r.codigo_producto} -{" "}
+                                    {r.codigo_ingrediente}
                                   </CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                      <Label htmlFor="cantidad">Cantidad del Ingrediente</Label>
+                                      <Label htmlFor="cantidad">
+                                        Cantidad del Ingrediente
+                                      </Label>
                                       <Input
                                         id="cantidad"
                                         type="number"
-                                        value={editForm.cantidad_ingrediente || ''}
+                                        value={
+                                          editForm.cantidad_ingrediente || ""
+                                        }
                                         onChange={(e) =>
-                                          setEditForm(prev => ({
+                                          setEditForm((prev) => ({
                                             ...prev,
-                                            cantidad_ingrediente: Number(e.target.value)
+                                            cantidad_ingrediente: Number(
+                                              e.target.value
+                                            ),
                                           }))
                                         }
                                         placeholder="Cantidad"
@@ -441,7 +554,9 @@ const RecetasDetalladas: React.FC = () => {
         {/* Info */}
         <Card className="bg-pink-50 border-pink-200">
           <CardContent className="p-4 text-pink-800 text-sm">
-            💡 Cada vez que se modifica una receta, el sistema recalcula automáticamente los costos y el valor CDR gracias a los triggers configurados en la base de datos.
+            💡 Cada vez que se modifica una receta, el sistema recalcula
+            automáticamente los costos y el valor CDR gracias a los triggers
+            configurados en la base de datos.
           </CardContent>
         </Card>
       </div>
