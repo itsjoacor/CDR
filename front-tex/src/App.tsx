@@ -24,6 +24,9 @@ import Producto from "./pages/Producto";
 import CargarEnergia from "./pages/CargarEnergia";
 import CargarManoObra from "./pages/CargarManoObra";
 import Exportacion from "./pages/Exportacion";
+import Actualizacion from "./pages/Actualizacion";
+import ActualizacionME from "./pages/ActualizacionME";
+import ActualizacionMO from "./pages/ActualizacionMO";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +67,9 @@ const App = () => (
                 <Route path="/cargarEnergia" element={<CargarEnergia />} />
                 <Route path="/cargarManoObra" element={<CargarManoObra />} />
                 <Route path="/editarReceta/:codigo_producto" element={<PaginaEnProduccion />} />
+                <Route path="/actualizar" element={<Actualizacion/>}/>
+                <Route path="/actualizarME"  element={<ActualizacionME/>}/>
+                <Route path="/actualizarMO"  element={<ActualizacionMO/>}/>
 
 
                 <Route path="/insumos" element={<Insumos />} />
