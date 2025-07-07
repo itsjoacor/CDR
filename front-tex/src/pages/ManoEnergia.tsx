@@ -99,12 +99,6 @@ const ManoEnergia: React.FC = () => {
 
   const calcularCosto = (valorKw: number, consumoKw: number) => (valorKw * consumoKw).toLocaleString('es-CO');
 
-  const handleExport = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Los datos se están exportando...",
-    });
-  };
 
   const handleEdit = (item: MatrizEnergia) => {
     setEditingId(item.codigo_energia);
@@ -216,7 +210,6 @@ const ManoEnergia: React.FC = () => {
             <p className="text-sm text-muted-foreground mt-2">Gestión de consumo energético y costos</p>
           </div>
           <div className="flex space-x-2">
-            <Button onClick={handleExport} variant="outline">📤 Exportar</Button>
             {canEdit && <Button onClick={() => navigate('/cargarEnergia')}>➕ Agregar energía</Button>}
           </div>
         </div>

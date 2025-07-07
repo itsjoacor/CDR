@@ -44,31 +44,6 @@ const ResultadosCDR: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleExport = async () => {
-    try {
-      toast({
-        title: "Exportación iniciada",
-        description: "Los resultados CDR se están exportando a Excel...",
-      });
-
-      // Este endpoint debe devolver un archivo Excel, si lo deseas lo creo luego
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr`);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'resultados-cdr.xlsx';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "No se pudo exportar los datos",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleRefresh = () => {
     fetchData();
@@ -111,7 +86,6 @@ const ResultadosCDR: React.FC = () => {
           <CardTitle>Resultados CDR</CardTitle>
           <div className="space-x-2">
             <Button onClick={handleRefresh} variant="outline">Refrescar</Button>
-            <Button onClick={handleExport}>Exportar</Button>
           </div>
         </CardHeader>
         <CardContent>

@@ -84,12 +84,6 @@ const Insumos: React.FC = () => {
       insumo.grupo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleExport = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Los datos de insumos se están exportando a Excel...",
-    });
-  };
 
   const handleEdit = (item: Insumo) => {
     setEditingId(item.codigo);
@@ -205,7 +199,6 @@ const Insumos: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            <Button onClick={handleExport} variant="outline">📤 Exportar</Button>
             {canEdit && <Button onClick={() => navigate("/cargarInsumo")}>➕ Agregar Insumo</Button>}
           </div>
         </div>

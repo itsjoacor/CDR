@@ -158,12 +158,6 @@ const Producto: React.FC = () => {
     setEditForm(item);
   };
 
-  const handleExport = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Los datos de productos se están exportando a Excel...",
-    });
-  };
 
   const handleCancel = () => {
     setEditingId(null);
@@ -287,9 +281,6 @@ const Producto: React.FC = () => {
                 ➕ Agregar producto
               </Button>
             )}
-            <Button onClick={handleExport} variant="outline">
-              📤 Exportar
-            </Button>
           </div>
         </div>
 

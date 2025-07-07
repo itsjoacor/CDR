@@ -81,15 +81,17 @@ const RecetasDetalladas: React.FC = () => {
   useEffect(() => {
     const fetchRecetas = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas-normalizada`);
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/recetas-normalizada`
+        );
         const data = await res.json();
         setRecetas(data);
 
         const urlParams = new URLSearchParams(window.location.search);
-        const productoParam = urlParams.get("producto");
+        const productIdParam = urlParams.get("productId"); // Changed from "producto" to "productId"
 
-        if (productoParam) {
-          setProductoSeleccionado(productoParam);
+        if (productIdParam) {
+          setProductoSeleccionado(productIdParam);
         }
       } catch {
         toast({
@@ -132,12 +134,6 @@ const RecetasDetalladas: React.FC = () => {
     return matchProducto && matchSector;
   });
 
-  const handleExport = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Los datos de recetas se están exportando a Excel...",
-    });
-  };
 
   const handleEdit = (item: RecetaNormalizada) => {
     setEditingId({
@@ -159,9 +155,9 @@ const RecetasDetalladas: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/recetas-normalizada/${editingId.codigo_producto}/${
-          editingId.codigo_ingrediente
-        }`,
+        `${import.meta.env.VITE_API_URL}/recetas-normalizada/${
+          editingId.codigo_producto
+        }/${editingId.codigo_ingrediente}`,
         {
           method: "PUT",
           headers: {
@@ -268,9 +264,6 @@ const RecetasDetalladas: React.FC = () => {
                 ➕ Agregar Receta
               </Button>
             )}
-            <Button onClick={handleExport} variant="outline">
-              📤 Exportar
-            </Button>
           </div>
         </div>
 

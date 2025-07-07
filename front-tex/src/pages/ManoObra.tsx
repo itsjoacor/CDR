@@ -119,12 +119,6 @@ const ManoObra: React.FC = () => {
     return numeros.length > 0 ? total / numeros.length : 0;
   };
 
-  const handleExport = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Los datos de mano de obra se están exportando a Excel...",
-    });
-  };
 
   const handleEdit = (item: ManoObraAPI) => {
     setEditingId(item.codigo_mano_obra);
@@ -269,9 +263,6 @@ const ManoObra: React.FC = () => {
             </p>
           </div>
           <div className="flex space-x-2">
-            <Button onClick={handleExport} variant="outline">
-              📤 Exportar
-            </Button>
             {canEdit && (
               <Button onClick={() => navigate("/cargarManoObra")}>
                 ➕ Agregar Mano obra
