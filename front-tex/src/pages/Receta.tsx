@@ -1,14 +1,32 @@
-// Receta.tsx
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-
+import { Edit, Trash2, Save, X, Search, Filter } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions,
+} from '@headlessui/react';
 
 interface RecetaItem {
   codigo_producto: string;
@@ -23,21 +41,26 @@ interface RecetaItem {
   costo_mano_obra?: number;
   costo_matriz_energetica?: number;
   costo_total?: number;
-}
-
-interface ProductoInfo {
-  codigo_producto: string;
-  descripcion_producto: string;
-  sector_productivo: string;
+  estado: 'activa' | 'inactiva';
+  fecha_creacion: string;
 }
 
 const Receta: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [recetas, setRecetas] = useState<RecetaItem[]>([]);
+  const [productosLista, setProductosLista] = useState<any[]>([]);
+  const [sectores, setSectores] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [cdrValues, setCdrValues] = useState<Record<string, number>>({});
-  const navigate = useNavigate();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<RecetaItem>>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [productoSeleccionado, setProductoSeleccionado] = useState<string | null>(null);
+  const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const canEdit = user?.role === 'admin';
 
@@ -46,13 +69,15 @@ const Receta: React.FC = () => {
       try {
         setLoading(true);
 
+        // Fetch productos first to get sectors and product list
         const productosResponse = await fetch(`${import.meta.env.VITE_API_URL}/productos`);
         if (!productosResponse.ok) throw new Error('Error al obtener productos');
-        const productosData: ProductoInfo[] = await productosResponse.json();
-        const productosMap = productosData.reduce((acc, prod) => {
-          acc[prod.codigo_producto] = prod;
-          return acc;
-        }, {} as Record<string, ProductoInfo>);
+        const productosData = await productosResponse.json();
+
+        // Extract unique sectors
+        const sectoresUnicos = [...new Set(productosData.map((p: any) => p.sector_productivo))] as string[];
+        setSectores(sectoresUnicos);
+        setProductosLista(productosData);
 
         const recetasResponse = await fetch(`${import.meta.env.VITE_API_URL}/recetas-normalizada`);
         if (!recetasResponse.ok) throw new Error('Error al obtener recetas');
@@ -62,7 +87,7 @@ const Receta: React.FC = () => {
 
         for (const item of recetasData) {
           if (!recetasGrouped[item.codigo_producto]) {
-            const prod = productosMap[item.codigo_producto];
+            const prod = productosData.find((p: any) => p.codigo_producto === item.codigo_producto);
             recetasGrouped[item.codigo_producto] = {
               codigo_producto: item.codigo_producto,
               descripcion_producto: prod?.descripcion_producto || 'Producto no encontrado',
@@ -70,7 +95,9 @@ const Receta: React.FC = () => {
               ingredientes: [],
               costo_mano_obra: item.costo_mano_obra,
               costo_matriz_energetica: item.costo_matriz_energetica,
-              costo_total: item.costo_total
+              costo_total: item.costo_total,
+              estado: item.estado || 'activa',
+              fecha_creacion: item.fecha_creacion || new Date().toISOString().split('T')[0]
             };
           }
 
@@ -112,6 +139,89 @@ const Receta: React.FC = () => {
     fetchData();
   }, []);
 
+  const filteredRecetas = recetas.filter(receta => {
+    const matchesSearch = receta.descripcion_producto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      receta.codigo_producto.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesProducto = productoSeleccionado
+      ? receta.codigo_producto === productoSeleccionado
+      : true;
+    const matchesSector = sectorSeleccionado
+      ? receta.sector_productivo === sectorSeleccionado
+      : true;
+    return matchesSearch && matchesProducto && matchesSector;
+  });
+
+  const totalPages = Math.ceil(filteredRecetas.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRecetas = filteredRecetas.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleExport = () => {
+    toast({
+      title: "Exportación iniciada",
+      description: "Los datos de recetas se están exportando a Excel...",
+    });
+  };
+
+  const handleEdit = (receta: RecetaItem) => {
+    setEditingId(receta.codigo_producto);
+    setEditForm(receta);
+  };
+
+  const handleSave = () => {
+    if (!editForm.descripcion_producto) {
+      toast({
+        title: "Error",
+        description: "Por favor completa todos los campos requeridos.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setRecetas(prev => prev.map(item =>
+      item.codigo_producto === editingId ? { ...item, ...editForm } as RecetaItem : item
+    ));
+
+    toast({
+      title: "Guardado exitoso",
+      description: "Los cambios se han guardado correctamente.",
+    });
+
+    setEditingId(null);
+    setEditForm({});
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setEditForm({});
+  };
+
+  const handleDelete = (id: string) => {
+    setRecetas(prev => prev.filter(item => item.codigo_producto !== id));
+    toast({
+      title: "Eliminado",
+      description: "La receta se ha eliminado correctamente.",
+    });
+  };
+
+  const handleNewReceta = () => {
+    navigate('/cargarReceta');
+  };
+
+  const getSectorColor = (sector: string) => {
+    switch (sector) {
+      case "Confección":
+        return "bg-blue-100 text-blue-800";
+      case "Textil":
+        return "bg-green-100 text-green-800";
+      case "Marroquinería":
+        return "bg-purple-100 text-purple-800";
+      case "Calzado":
+        return "bg-orange-100 text-orange-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
   if (loading) {
     return (
       <Layout title="Gestión de Recetas">
@@ -127,57 +237,316 @@ const Receta: React.FC = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <Badge variant="outline" className="bg-blue-50">📋 Recetas</Badge>
+            <Badge variant="outline" className="bg-blue-50">
+              📋 Recetas - Corazón del cálculo CDR
+            </Badge>
             <p className="text-sm text-muted-foreground mt-2">
-              Define materiales, cantidades, mano de obra y energía necesarios para fabricar productos.
+              Define materiales, cantidades, mano de obra y energía necesarios para fabricar productos
             </p>
           </div>
           <div className="flex space-x-2">
-            {canEdit && (
-              <Button onClick={() => navigate(`/cargarReceta`)}>➕ Nueva Receta</Button>
-
-            )}
-            <Button onClick={() => toast({ title: 'Exportando...', description: 'Esto exportará tus recetas.' })} variant="outline">
+            <Button onClick={handleExport} variant="outline">
               📤 Exportar
             </Button>
-            <Button onClick={() => navigate(`/detalle-recetas`)} variant="outline">
-              Receta Detallada
-            </Button>
+            {canEdit && (
+              <Button onClick={handleNewReceta}>
+                ➕ Nueva Receta
+              </Button>
+            )}
           </div>
         </div>
 
-        <div className="grid gap-6">
-          {recetas.map((receta) => (
-            <Card key={receta.codigo_producto} className="border-l-4 border-l-blue-500">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="flex items-center space-x-2">
-                      <span>{receta.descripcion_producto}</span>
-                      <Badge variant="default">{receta.sector_productivo}</Badge>
-                    </CardTitle>
-                    <CardDescription>Código: {receta.codigo_producto}</CardDescription>
-                  </div>
-                  {canEdit && (
-                    <Button onClick={() => navigate(`/detalle-recetas?producto=${receta.codigo_producto}`)} variant="outline" size="sm">
-                      ✏️ Editar
-                    </Button>
-                  )}
+        {/* Filtros */}
+        <Card>
+          <CardContent className="p-4 flex flex-col md:flex-row gap-4">
+            {/* Filtro por Producto */}
+            <div className="flex-1">
+              <Listbox
+                value={productoSeleccionado}
+                onChange={setProductoSeleccionado}
+              >
+                <div className="relative w-full">
+                  <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-blue-300 flex items-center justify-between">
+                    {productoSeleccionado ?
+                      productosLista.find(p => p.codigo_producto === productoSeleccionado)?.descripcion_producto || productoSeleccionado
+                      : "Filtrar por producto"}
+                    <svg
+                      className="w-5 h-5 text-gray-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                  </ListboxButton>
+                  <ListboxOptions className="absolute mt-1 w-full bg-white border rounded-md shadow-md z-10 max-h-60 overflow-auto">
+                    <ListboxOption value={null} as={Fragment}>
+                      {({ active }) => (
+                        <li
+                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-blue-100 text-blue-800" : ""
+                            }`}
+                        >
+                          Todos los productos
+                        </li>
+                      )}
+                    </ListboxOption>
+                    {productosLista.map((p, i) => (
+                      <ListboxOption
+                        key={i}
+                        value={p.codigo_producto}
+                        as={Fragment}
+                      >
+                        {({ active, selected }) => (
+                          <li
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active
+                              ? "bg-blue-100 text-blue-800"
+                              : "text-gray-800"
+                              } ${selected ? "font-medium" : ""}`}
+                          >
+                            {p.codigo_producto} - {p.descripcion_producto}
+                          </li>
+                        )}
+                      </ListboxOption>
+                    ))}
+                  </ListboxOptions>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-muted-foreground">Costo Directo de Reposición</h4>
-                    <div className="text-blue-600 text-xs">
-                      🏷️ CDR: ${cdrValues[receta.codigo_producto]?.toFixed(2) || '0.00'}
-                    </div>
-                  </div>
+              </Listbox>
+            </div>
+
+            {/* Filtro por Sector */}
+            <div className="flex-1">
+              <Listbox
+                value={sectorSeleccionado}
+                onChange={setSectorSeleccionado}
+              >
+                <div className="relative w-full">
+                  <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-green-300 flex items-center justify-between">
+                    {sectorSeleccionado || "Filtrar por sector"}
+                    <svg
+                      className="w-5 h-5 text-gray-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                  </ListboxButton>
+                  <ListboxOptions className="absolute mt-1 w-full bg-white border rounded-md shadow-md z-10 max-h-60 overflow-auto">
+                    <ListboxOption value={null} as={Fragment}>
+                      {({ active }) => (
+                        <li
+                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-green-100 text-green-800" : ""
+                            }`}
+                        >
+                          Todos los sectores
+                        </li>
+                      )}
+                    </ListboxOption>
+                    {sectores.map((s, i) => (
+                      <ListboxOption key={i} value={s} as={Fragment}>
+                        {({ active, selected }) => (
+                          <li
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active
+                              ? "bg-green-100 text-green-800"
+                              : "text-gray-800"
+                              } ${selected ? "font-medium" : ""}`}
+                          >
+                            {s}
+                          </li>
+                        )}
+                      </ListboxOption>
+                    ))}
+                  </ListboxOptions>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </Listbox>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Lista de Recetas</CardTitle>
+                <CardDescription>
+                  Mostrando {paginatedRecetas.length} de {filteredRecetas.length} recetas
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[600px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Sector</TableHead>
+                    <TableHead>CDR</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    {canEdit && <TableHead>Acciones</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedRecetas.map((receta) => (
+                    <React.Fragment key={receta.codigo_producto}>
+                      <TableRow className={editingId === receta.codigo_producto ? "bg-blue-50" : ""}>
+                        <TableCell className="font-medium">
+                          {receta.codigo_producto}
+                        </TableCell>
+                        <TableCell>
+                          {editingId === receta.codigo_producto ? (
+                            <Input
+                              value={editForm.descripcion_producto || ''}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, descripcion_producto: e.target.value }))}
+                              className="min-w-[250px]"
+                            />
+                          ) : (
+                            <div className="max-w-[250px] truncate">{receta.descripcion_producto}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getSectorColor(receta.sector_productivo)}>
+                            {receta.sector_productivo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-semibold text-green-600">
+                            ${cdrValues[receta.codigo_producto]?.toFixed(2) || '0.00'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={receta.estado === 'activa' ? 'default' : 'secondary'}>
+                            {receta.estado}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {receta.fecha_creacion}
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              {editingId === receta.codigo_producto ? (
+                                <>
+                                  <Button variant="outline" size="sm" onClick={handleSave}>
+                                    <Save className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="outline" size="sm" onClick={handleCancel}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button variant="outline" size="sm" onClick={() => handleEdit(receta)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="outline" size="sm">
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Esta acción no se puede deshacer. Se eliminará permanentemente la receta "{receta.descripcion_producto}".
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDelete(receta.codigo_producto)}>
+                                          Eliminar
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+
+                      {editingId === receta.codigo_producto && (
+                        <TableRow className="bg-blue-50">
+                          <TableCell colSpan={canEdit ? 7 : 6}>
+                            <div className="p-4 space-y-4">
+                              <div className="grid md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                  <h4 className="font-medium text-sm text-blue-700">COSTOS</h4>
+                                  <div className="space-y-1">
+                                    <div className="text-xs">
+                                      💰 Mano de obra: ${receta.costo_mano_obra?.toFixed(2) || '0.00'}
+                                    </div>
+                                    <div className="text-xs">
+                                      ⚡ Matriz energética: ${receta.costo_matriz_energetica?.toFixed(2) || '0.00'}
+                                    </div>
+                                    <div className="text-xs font-semibold">
+                                      🏷️ Total: ${receta.costo_total?.toFixed(2) || '0.00'}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <h4 className="font-medium text-sm text-blue-700">INGREDIENTES</h4>
+                                  <div className="space-y-1">
+                                    {receta.ingredientes.map((ingrediente, index) => (
+                                      <div key={index} className="text-xs">
+                                        📦 {ingrediente.descripcion_ingrediente}: {ingrediente.cantidad_ingrediente} (${ingrediente.costo_ingrediente?.toFixed(2) || '0.00'})
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  Página {currentPage} de {totalPages}
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-blue-600">ℹ️</span>
+              <span className="text-sm text-blue-800">
+                Las recetas son fundamentales para el cálculo automático del CDR.
+                Cualquier modificación se reflejará automáticamente en los costos de reposición.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );
