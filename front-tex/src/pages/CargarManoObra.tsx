@@ -477,26 +477,17 @@ const CargarManoObra: React.FC = () => {
                 </p>
               </div>
 
-              {/* Valor Hora Hombre */}
+              {/* Valor Hora Hombre (Fijo) */}
               <div className="space-y-2">
-                <Label htmlFor="valor_hora_hombre">Valor Hora Hombre</Label>
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg font-semibold">$</span>
-                  <Input
-                    id="valor_hora_hombre"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={valorHoraHombre === 0 ? "" : valorHoraHombre}
-                    onChange={(e) => setValorHoraHombre(Number(e.target.value))}
-                    placeholder="0.00"
-                    className="text-lg font-semibold [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
+                <Label>Valor por hora</Label>
+                <div className="text-lg font-semibold text-gray-800">
+                  ${valorHoraHombre.toLocaleString('es-CO', { minimumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Valor por hora hombre (por defecto: $3,000)
+                  Valor fijo por hora hombre definido por el sistema
                 </p>
               </div>
+
 
               {/* Horas por Turno */}
               <div className="space-y-2">

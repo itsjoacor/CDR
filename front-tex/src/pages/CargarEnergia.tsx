@@ -444,26 +444,18 @@ const CargarEnergia: React.FC = () => {
                 </p>
               </div>
 
+
               {/* Valor kW */}
               <div className="space-y-2">
-                <Label htmlFor="valor_kw">Valor kW</Label>
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg font-semibold">$</span>
-                  <Input
-                    id="valor_kw"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={valorKw === 0 ? "" : valorKw}
-                    onChange={(e) => setValorKw(Number(e.target.value))}
-                    placeholder="0.00"
-                    className="text-lg font-semibold max-w-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
+                <Label>Valor kW</Label>
+                <div className="text-lg font-semibold text-gray-800">
+                  ${valorKw.toLocaleString('es-CO', { minimumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Valor por kilovatio (mayor que 0)
+                  Valor fijo por kilovatio definido por el sistema
                 </p>
               </div>
+
             </div>
           </CardContent>
         </Card>

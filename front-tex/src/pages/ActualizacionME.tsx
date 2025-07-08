@@ -21,99 +21,57 @@ const ActualizarCostoME: React.FC = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/matriz-energia/default/valor-kw`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`, // Add auth token
-            'Content-Type': 'application/json'
-          }
-        }
+        `${import.meta.env.VITE_API_URL}/valores-globales/matriz_energia`,
+        { headers: { 'Content-Type': 'application/json' } }
       );
 
       if (!response.ok) {
-        throw new Error(response.status === 401 ?
-          'No autorizado - inicie sesión' :
-          'Error al cargar el valor actual');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al obtener el valor');
       }
 
       const data = await response.json();
-      setCurrentDefault(data.defaultValue);
-      setNuevoCosto(data.defaultValue.toString());
+      setCurrentDefault(data.valor);
+      setNuevoCosto(data.valor?.toString() || '');
     } catch (error) {
-      console.error('Error fetching default value:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Error desconocido",
-        variant: "destructive"
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Error desconocido',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchDefaultValue();
-  }, []);
-
   const handleUpdate = async () => {
     const numericValue = parseFloat(nuevoCosto);
 
-    if (isNaN(numericValue)) {
-      toast({
-        title: "Error",
-        description: "Por favor ingresa un valor numérico válido",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (numericValue <= 0) {
-      toast({
-        title: "Error",
-        description: "El valor debe ser mayor que cero",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setUpdating(true);
-
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/matriz-energia/default/valor-kw`,
+        `${import.meta.env.VITE_API_URL}/valores-globales/energia`,
         {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({ newValue: numericValue }),
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valor: numericValue }),
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(
-          response.status === 401 ? 'No autorizado' :
-            errorData.message || 'Error al actualizar'
-        );
+        throw new Error(errorData.error || 'Error al actualizar');
       }
 
-      const result = await response.json();
-
       toast({
-        title: "Actualización Completada",
-        description: `Costo de energía actualizado a $${numericValue.toFixed(2)} (${result.updatedRecords} registros actualizados)`,
+        title: 'Éxito',
+        description: `Valor de energía actualizado a $${numericValue.toFixed(2)}`,
       });
-
-      // Refresh the current value after update
       await fetchDefaultValue();
     } catch (error) {
-      console.error('Error updating value:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Ocurrió un error durante la actualización",
-        variant: "destructive"
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Error desconocido',
+        variant: 'destructive',
       });
     } finally {
       setUpdating(false);
@@ -123,35 +81,32 @@ const ActualizarCostoME: React.FC = () => {
   const handleRefresh = async () => {
     await fetchDefaultValue();
     toast({
-      title: "Valor actualizado",
-      description: "Se ha refrescado el valor actual",
+      title: 'Actualizado',
+      description: 'Se ha refrescado el valor actual desde la base de datos.',
     });
   };
+
+  useEffect(() => {
+    fetchDefaultValue();
+  }, []);
 
   return (
     <Layout title="Actualizar Costo Energía">
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            onClick={() => navigate(-1)}
-            className="flex items-center space-x-2"
-          >
+          <Button variant="outline" onClick={() => navigate(-1)} className="flex items-center space-x-2">
             <ArrowLeft className="h-4 w-4" />
             <span>Volver</span>
           </Button>
 
-          <Button
-            variant="ghost"
-            onClick={handleRefresh}
-            disabled={loading || updating}
-            className="flex items-center space-x-2"
-          >
+          <Button variant="ghost" onClick={handleRefresh} disabled={loading || updating}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refrescar</span>
           </Button>
         </div>
 
+        {/* Card de edición */}
         <Card className="max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -159,41 +114,47 @@ const ActualizarCostoME: React.FC = () => {
               <span>Actualizar Costo de Energía</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="currentValue">Valor actual (KW/h)</Label>
-                {loading ? (
-                  <div className="h-6 w-24 rounded-md bg-muted animate-pulse" />
-                ) : (
-                  <Badge variant="outline" className="font-mono text-lg px-3 py-1">
-                    ${currentDefault?.toFixed(2) || 'N/A'}
-                  </Badge>
-                )}
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nuevoCosto">Nuevo valor (KW/h)</Label>
-                <Input
-                  id="nuevoCosto"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  placeholder={currentDefault?.toFixed(2) || "0.00"}
-                  value={nuevoCosto}
-                  onChange={(e) => setNuevoCosto(e.target.value)}
-                  className="text-right text-lg font-medium"
-                  disabled={loading}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Ingrese el nuevo valor para actualizar todos los registros
-                </p>
-              </div>
+          <CardContent className="space-y-6">
+            {/* Valor actual */}
+            <div className="flex items-center justify-between">
+              <Label>Valor actual (KW/h)</Label>
+              {loading ? (
+                <div className="h-6 w-24 rounded-md bg-muted animate-pulse" />
+              ) : (
+                <Badge variant="outline" className="font-mono text-lg px-3 py-1">
+                  ${currentDefault?.toFixed(2) ?? 'N/A'}
+                </Badge>
+              )}
             </div>
 
+            {/* Input nuevo valor */}
+            <div className="space-y-2">
+              <Label htmlFor="nuevoCosto">Nuevo valor (KW/h)</Label>
+              <Input
+                id="nuevoCosto"
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={nuevoCosto}
+                onChange={(e) => setNuevoCosto(e.target.value)}
+                disabled={loading}
+                className="text-right text-lg font-medium"
+              />
+              <p className="text-sm text-muted-foreground">
+                Ingrese el nuevo valor global para actualizar todas las filas existentes.
+              </p>
+            </div>
+
+            {/* Botón */}
             <Button
               onClick={handleUpdate}
-              disabled={updating || loading || !nuevoCosto || parseFloat(nuevoCosto) === currentDefault}
+              disabled={
+                updating ||
+                loading ||
+                !nuevoCosto ||
+                parseFloat(nuevoCosto) === currentDefault
+              }
               className="w-full"
               size="lg"
             >
