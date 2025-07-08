@@ -5,6 +5,15 @@ import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  ClipboardList,
+  Package,
+  ShoppingCart,
+  HardHat,
+  Zap,
+  DollarSign,
+  Hand
+} from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -13,52 +22,56 @@ const Dashboard: React.FC = () => {
     {
       path: '/receta',
       title: 'Receta',
-      icon: '📋',
+      icon: ClipboardList,
+      iconColor: 'text-sky-400',
       description: 'Gestionar materiales, cantidades, MO y energía para fabricar productos',
       color: 'bg-blue-50 hover:bg-blue-100 border-blue-200',
-      canEdit: user?.role === 'admin'
+      canEdit: user?.role === 'admin',
     },
     {
       path: '/insumos',
       title: 'Insumos',
-      icon: '📦',
+      icon: Package,
+      iconColor: 'text-purple-400',
       description: 'Catálogo de materiales comprados externamente',
       color: 'bg-purple-50 hover:bg-purple-100 border-purple-200',
-      canEdit: user?.role === 'admin'
+      canEdit: user?.role === 'admin',
     },
     {
       path: '/producto',
       title: 'Productos',
-      icon: '🛒',
+      icon: ShoppingCart,
+      iconColor: 'text-orange-300',
       description: 'Configurar tiempos, salarios y fórmulas de trabajo humano',
       color: 'bg-orange-50 hover:bg-orange-100 border-orange-200',
-      canEdit: user?.role === 'admin'
+      canEdit: user?.role === 'admin',
     },
     {
       path: '/mano-obra',
       title: 'Mano de Obra',
-      icon: '👷',
+      icon: HardHat,
+      iconColor: 'text-orange-400',
       description: 'Configurar tiempos, salarios y fórmulas de trabajo humano',
       color: 'bg-orange-50 hover:bg-orange-100 border-orange-200',
-      canEdit: user?.role === 'admin'
+      canEdit: user?.role === 'admin',
     },
-    
-    
     {
       path: '/mano-energia',
       title: 'Mano de Energía',
-      icon: '⚡',
+      icon: Zap,
+      iconColor: 'text-yellow-400',
       description: 'Administrar recursos energéticos y sus cálculos internos',
       color: 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200',
-      canEdit: user?.role === 'admin'
+      canEdit: user?.role === 'admin',
     },
     {
       path: '/resultados-cdr',
       title: 'CDR (Código Directo de Reposición)',
-      icon: '💰',
+      icon: DollarSign,
+      iconColor: 'text-green-400',
       description: 'Visualizar costos calculados automáticamente para reposición',
       color: 'bg-green-50 hover:bg-green-100 border-green-200',
-      canEdit: false
+      canEdit: false,
     },
   ];
 
@@ -66,77 +79,45 @@ const Dashboard: React.FC = () => {
     <Layout title="Panel de Control">
       <div className="space-y-6">
         {/* Welcome Section */}
-        <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
-          <CardHeader>
-            <CardTitle className="text-2xl">
-              Bienvenido, {user?.name} 👋
-            </CardTitle>
-            <CardDescription className="text-blue-100">
-              Sistema de gestión para estructura productiva textil - Cálculo automatizado del CDR
+        <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md">
+          <CardHeader className="space-y-1">
+            <div className="flex items-center space-x-3">
+              <Hand className="w-6 h-6 text-white/90" />
+              <CardTitle className="text-2xl font-bold tracking-tight">
+                Bienvenido!
+              </CardTitle>
+            </div>
+            <CardDescription className="text-sm text-blue-100">
+              Sistema de gestión para estructura productiva textil · Cálculo automatizado del CDR
             </CardDescription>
           </CardHeader>
         </Card>
 
+
+
         {/* Modules Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {modules.map((module) => (
-            <Link key={module.path} to={module.path} className="block">
-              <Card className={`h-full transition-all duration-200 ${module.color}`}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="text-3xl">{module.icon}</div>
-                    <div className="flex space-x-2">
-                      {module.canEdit ? (
-                        <Badge variant="default">Editable</Badge>
-                      ) : (
-                        <Badge variant="secondary">Solo lectura</Badge>
-                      )}
-                      {module.path === '/resultados-cdr' && (
-                        <Badge variant="outline" className="bg-green-100">
-                          Auto-calculado
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <CardTitle className="text-lg">{module.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
-                    {module.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
+          {modules.map(({ path, title, description, icon: Icon, iconColor, color, canEdit }) => (
+            <Link
+              to={path}
+              key={path}
+              className={`border rounded-lg p-4 transition-colors ${color} block`}
+            >
+              <div className="flex items-center space-x-3 mb-2">
+                <Icon className={`w-5 h-5 ${iconColor}`} />
+                <h4 className="text-lg font-semibold">{title}</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">{description}</p>
+              {canEdit && (
+                <span className="mt-2 inline-block text-xs text-primary font-medium">
+                  Puedes editar este módulo
+                </span>
+              )}
             </Link>
           ))}
+
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">5</div>
-              <div className="text-sm text-muted-foreground">Recetas Activas</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-orange-600">12</div>
-              <div className="text-sm text-muted-foreground">Tipos de MO</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-yellow-600">8</div>
-              <div className="text-sm text-muted-foreground">Fuentes de Energía</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-purple-600">45</div>
-              <div className="text-sm text-muted-foreground">Insumos</div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </Layout>
   );

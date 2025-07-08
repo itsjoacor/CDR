@@ -82,4 +82,57 @@ export class MatrizEnergiaController {
         }
     }
 
+
+    @Put('default/valor-kw')
+    async updateDefaultValorKw(
+        @Body() body: { newValue: number }
+    ): Promise<{
+        message: string,
+        updatedRecords: number
+    }> {
+        try {
+            // Validación básica del body
+            if (typeof body.newValue !== 'number') {
+                throw new BadRequestException('El campo newValue debe ser un número');
+            }
+
+            return await this.service.updateDefaultValorKw(body.newValue);
+
+        } catch (error) {
+            // Manejo específico para errores de validación
+            if (error.message.includes('mayor que cero')) {
+                throw new BadRequestException(error.message);
+            }
+
+            // Manejo de otros errores
+            throw new HttpException(
+                {
+                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: 'Error al actualizar el valor por defecto',
+                    details: error.message
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    @Get('default/valor-kw')
+    async getDefaultValorKw(): Promise<{ defaultValue: number }> {
+        try {
+            const defaultValue = await this.service.getDefaultValorKw();
+            return { defaultValue };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    status: HttpStatus.INTERNAL_SERVER_ERROR,
+                    error: 'Error al obtener el valor por defecto'
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                {
+                    cause: error
+                }
+            );
+        }
+    }
+
 }

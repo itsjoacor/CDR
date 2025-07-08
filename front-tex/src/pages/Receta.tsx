@@ -41,6 +41,9 @@ import {
   ListboxOptions,
 } from "@headlessui/react";
 
+import { Plus, BarChart3 } from "lucide-react";
+
+
 interface RecetaItem {
   codigo_producto: string;
   descripcion_producto: string;
@@ -154,8 +157,7 @@ const Receta: React.FC = () => {
           recetasArray.map(async (receta) => {
             try {
               const cdrRes = await fetch(
-                `${import.meta.env.VITE_API_URL}/resultados-cdr/${
-                  receta.codigo_producto
+                `${import.meta.env.VITE_API_URL}/resultados-cdr/${receta.codigo_producto
                 }/base`
               );
               if (!cdrRes.ok) return;
@@ -296,23 +298,31 @@ const Receta: React.FC = () => {
           </div>
           <div className="flex space-x-2">
             {canEdit && (
-              <Button onClick={handleNewReceta}>➕ Nueva Receta</Button>
+              <Button
+                onClick={handleNewReceta}
+                className="bg-green-100 text-green-900 hover:bg-green-200 border border-green-300"
+              >
+                <Plus className="w-4 h-4 mr-2 text-emerald-600" />
+                Nueva Receta
+              </Button>
+
             )}
             <Button
               onClick={() => {
                 if (productoSeleccionado) {
-                  navigate(
-                    `/detalle-recetas?productId=${productoSeleccionado}`
-                  );
+                  navigate(`/detalle-recetas?productId=${productoSeleccionado}`);
                 } else {
                   navigate("/detalle-recetas");
                 }
               }}
               variant="outline"
+              className="border text-black"
             >
-              📊 Ver Detallado
+              <BarChart3 className="w-4 h-4 mr-2 text-[#6c63ff]" />
+              Ver Detallado
             </Button>
           </div>
+
         </div>
 
         {/* Filtros */}
@@ -328,8 +338,8 @@ const Receta: React.FC = () => {
                   <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-blue-300 flex items-center justify-between">
                     {productoSeleccionado
                       ? productosLista.find(
-                          (p) => p.codigo_producto === productoSeleccionado
-                        )?.descripcion_producto || productoSeleccionado
+                        (p) => p.codigo_producto === productoSeleccionado
+                      )?.descripcion_producto || productoSeleccionado
                       : "Filtrar por producto"}
                     <svg
                       className="w-5 h-5 text-gray-400"
@@ -343,9 +353,8 @@ const Receta: React.FC = () => {
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
                         <li
-                          className={`px-4 py-2 cursor-pointer rounded ${
-                            active ? "bg-blue-100 text-blue-800" : ""
-                          }`}
+                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-blue-100 text-blue-800" : ""
+                            }`}
                         >
                           Todos los productos
                         </li>
@@ -359,11 +368,10 @@ const Receta: React.FC = () => {
                       >
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${
-                              active
-                                ? "bg-blue-100 text-blue-800"
-                                : "text-gray-800"
-                            } ${selected ? "font-medium" : ""}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active
+                              ? "bg-blue-100 text-blue-800"
+                              : "text-gray-800"
+                              } ${selected ? "font-medium" : ""}`}
                           >
                             {p.codigo_producto} - {p.descripcion_producto}
                           </li>
@@ -396,9 +404,8 @@ const Receta: React.FC = () => {
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
                         <li
-                          className={`px-4 py-2 cursor-pointer rounded ${
-                            active ? "bg-green-100 text-green-800" : ""
-                          }`}
+                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-green-100 text-green-800" : ""
+                            }`}
                         >
                           Todos los sectores
                         </li>
@@ -408,11 +415,10 @@ const Receta: React.FC = () => {
                       <ListboxOption key={i} value={s} as={Fragment}>
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${
-                              active
-                                ? "bg-green-100 text-green-800"
-                                : "text-gray-800"
-                            } ${selected ? "font-medium" : ""}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active
+                              ? "bg-green-100 text-green-800"
+                              : "text-gray-800"
+                              } ${selected ? "font-medium" : ""}`}
                           >
                             {s}
                           </li>
@@ -459,8 +465,8 @@ const Receta: React.FC = () => {
                           editingId === receta.codigo_producto
                             ? "bg-blue-50"
                             : hasValidIngredientCosts(receta)
-                            ? "bg-green-50 hover:bg-green-100"
-                            : "bg-red-50 hover:bg-red-100"
+                              ? "bg-green-50 hover:bg-green-100"
+                              : "bg-red-50 hover:bg-red-100"
                         }
                       >
                         <TableCell className="font-medium">

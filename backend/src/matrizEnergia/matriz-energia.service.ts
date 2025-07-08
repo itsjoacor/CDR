@@ -43,4 +43,32 @@ export class MatrizEnergiaService {
     async eliminar(codigo: string): Promise<void> {
         return this.repo.eliminar(codigo);
     }
+
+    // Add to MatrizEnergiaService class
+
+    async updateDefaultValorKw(newValue: number): Promise<{
+        message: string,
+        updatedRecords: number
+    }> {
+        if (newValue <= 0) {
+            throw new Error('El valor debe ser mayor que cero');
+        }
+
+        const { updatedRecords } = await this.repo.updateDefaultValorKw(newValue);
+
+        return {
+            message: 'Valor por defecto y registros actualizados correctamente',
+            updatedRecords
+        };
+    }
+
+    async getDefaultValorKw(): Promise<number> {
+        try {
+            return await this.repo.getCurrentDefaultValorKw();
+        } catch (error) {
+            console.error('Error en servicio al obtener valor_kw:', error);
+            throw new Error('No se pudo obtener el valor por defecto');
+        }
+    }
+
 }

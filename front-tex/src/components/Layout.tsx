@@ -10,6 +10,20 @@ interface LayoutProps {
   children: React.ReactNode;
   title: string;
 }
+import {
+  Home,
+  ClipboardList,
+  ShoppingCart,
+  Package,
+  HardHat,
+  Zap,
+  RefreshCcw,
+  DollarSign,
+  UploadCloud,
+  Layers
+} from "lucide-react";
+
+
 
 const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
@@ -22,16 +36,18 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   };
 
   const navigationItems = [
-    { path: '/', label: 'Dashboard', icon: '🏠' },
-    { path: '/receta', label: 'Receta', icon: '📋' },
-    { path: '/producto', label: 'Productos', icon: '🛒' },
-    { path: '/insumos', label: 'Insumos', icon: '📦' },
-    { path: '/mano-obra', label: 'Mano de Obra', icon: '👷' },
-    { path: '/mano-energia', label: 'Mano de Energía', icon: '⚡' },
-    { path: '/actualizar', label: 'Actualizar costos', icon: '🔄' },
-    { path: '/resultados-cdr', label: 'CDR', icon: '💰' },
-    { path: '/exportacion', label: 'Exportación', icon: '📤' },
+    { path: '/', label: 'Dashboard', icon: Home },
+    { path: '/receta', label: 'Receta', icon: ClipboardList, color: 'text-sky-400' },
+    { path: '/producto', label: 'Productos', icon: ShoppingCart, color: 'text-orange-300' },
+    { path: '/insumos', label: 'Insumos', icon: Package, color: 'text-purple-300' },
+    { path: '/mano-obra', label: 'Mano de Obra', icon: HardHat, color: 'text-orange-400' },
+    { path: '/mano-energia', label: 'Mano de Energía', icon: Zap, color: 'text-yellow-300' },
+    { path: '/actualizar', label: 'Actualizar costos', icon: RefreshCcw },
+    { path: '/resultados-cdr', label: 'CDR', icon: DollarSign, color: 'text-green-400' },
+    { path: '/exportacion', label: 'Exportación', icon: UploadCloud },
   ];
+
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,7 +56,11 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-primary">🧵 TexCDR</h1>
+              <div className="flex items-center space-x-2">
+                <Layers className="w-6 h-6 text-primary" />
+                <h1 className="text-2xl font-bold text-primary">TexCDR</h1>
+              </div>
+
               <Badge variant="secondary" className="text-sm">
                 Sistema de Gestión Textil
               </Badge>
@@ -71,13 +91,15 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${
-                      location.pathname === item.path
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-muted'
-                    }`}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-md transition-colors ${location.pathname === item.path
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                      }`}
                   >
-                    <span className="text-lg">{item.icon}</span>
+                    <span className={`text-lg ${item.color ?? 'text-muted-foreground'}`}>
+                      <item.icon size={20} />
+                    </span>
+
                     <span className="font-medium">{item.label}</span>
                   </Link>
                 ))}
