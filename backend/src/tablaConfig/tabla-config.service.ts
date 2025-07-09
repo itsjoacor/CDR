@@ -25,4 +25,21 @@ export class TablaConfigService {
   eliminar(nombre: string) {
     return this.repo.eliminar(nombre);
   }
+
+  // Add specific methods
+  actualizarMatrizEnergia(valor: number) {
+    return this.repo.actualizar('matriz_energia', valor);
+  }
+
+  actualizarMatrizMano(valor: number) {
+    return this.repo.actualizar('matriz_mano', valor);
+  }
+
+  obtenerMatrizEnergia() {
+    return this.repo.obtenerPorNombre('matriz_energia');
+  }
+
+  obtenerMatrizMano() {
+    return this.repo.obtenerPorNombre('matriz_mano');
+  }
 }

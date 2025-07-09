@@ -39,13 +39,35 @@ export class TablaConfigRepository {
   }
 
   async actualizar(nombre: string, valor: number): Promise<TablaConfig> {
+    // First verify the record exists
+    const { data: existing, error: findError } = await supabase
+      .from(this.table)
+      .select('*')
+      .eq('nombre', nombre)
+      .single();
+
+    if (findError || !existing) {
+      throw new Error(`Configuration ${nombre} not found`);
+    }
+
+    // Then perform the update
     const { data, error } = await supabase
       .from(this.table)
       .update({ valor })
       .eq('nombre', nombre)
       .select()
       .single();
-    if (error) throw error;
+
+    if (error) {
+      console.error('Supabase update error:', {
+        table: this.table,
+        nombre,
+        valor,
+        error
+      });
+      throw new Error(`Update failed for ${nombre}: ${error.message}`);
+    }
+
     return data;
   }
 

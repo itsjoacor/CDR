@@ -10,6 +10,7 @@ import { MatrizEnergiaModule } from './matrizEnergia/matriz-energia.module';
 import { RecetaNormalizadaModule } from './recetaNormalizada/receta-normalizada.module';
 import { SectorProductivoModule } from './sectorProductivo/sectores-productivos.module';
 import { ExportModule } from './exportacion/export.module';
+import { TablaConfigModule } from './tablaConfig/tabla-config.module';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { ExportModule } from './exportacion/export.module';
     MatrizEnergiaModule,
     RecetaNormalizadaModule,
     SectorProductivoModule,
-
+    TablaConfigModule,
     ExportModule,
 
 

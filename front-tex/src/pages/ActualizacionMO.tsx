@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,93 +6,179 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Database } from 'lucide-react';
+import { ArrowLeft, Database, RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
-const ActualizarCostoME: React.FC = () => {
+const ActualizarCostoMO: React.FC = () => {
+  console.log('Current environment:', import.meta.env); // Debug all env vars
+  console.log('API URL:', import.meta.env.VITE_API_URL); // Specific debug
   const navigate = useNavigate();
   const { toast } = useToast();
   const [nuevoCosto, setNuevoCosto] = useState<string>('');
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [currentDefault, setCurrentDefault] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
 
-  const handleUpdate = async () => {
-    if (!nuevoCosto || isNaN(Number(nuevoCosto))) {
+  // Update the fetchDefaultValue function to match backend endpoint
+  const fetchDefaultValue = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/tabla-config/matriz_mano`,
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al obtener el valor');
+      }
+
+      const data = await response.json();
+      setCurrentDefault(data.valor);
+      setNuevoCosto(data.valor?.toString() || '');
+    } catch (error) {
       toast({
-        title: "Error",
-        description: "Por favor ingresa un valor numérico válido",
-        variant: "destructive"
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Error desconocido',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update the handleUpdate function to match backend endpoint
+  // ActualizacionME.tsx
+  const handleUpdate = async () => {
+    const numericValue = parseFloat(nuevoCosto);
+
+    if (isNaN(numericValue)) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid number',
+        variant: 'destructive',
       });
       return;
     }
 
-    setIsUpdating(true);
-    
-    // Simulate update process
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      setUpdating(true);
+      console.log('Attempting update with:', numericValue); // Debug log
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/tabla-config/matriz_mano`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valor: numericValue }),
+        }
+      );
+
+      console.log('Update response:', response); // Debug log
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Update failed');
+      }
+
       toast({
-        title: "Actualización Completada",
-        description: `Costo de Matriz Energética actualizado a $${nuevoCosto}`,
+        title: 'Success',
+        description: `Value updated to $${numericValue.toFixed(2)}`,
       });
-      
-      // Reset form
-      setNuevoCosto('');
+      await fetchDefaultValue();
     } catch (error) {
+      console.error('Update error:', error); // Debug log
       toast({
-        title: "Error",
-        description: "Ocurrió un problema durante la actualización",
-        variant: "destructive"
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Update failed',
+        variant: 'destructive',
       });
     } finally {
-      setIsUpdating(false);
+      setUpdating(false);
     }
   };
 
+  const handleRefresh = async () => {
+    await fetchDefaultValue();
+    toast({
+      title: 'Actualizado',
+      description: 'Se ha refrescado el valor actual desde la base de datos.',
+    });
+  };
+
+  useEffect(() => {
+    fetchDefaultValue();
+  }, []);
+
   return (
-    <Layout title="Actualizar ME">
+    <Layout title="Actualizar Costo Mano de Obra">
       <div className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(-1)}
-            className="flex items-center space-x-2"
-          >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <Button variant="outline" onClick={() => navigate(-1)} className="flex items-center space-x-2">
             <ArrowLeft className="h-4 w-4" />
             <span>Volver</span>
           </Button>
+
+          <Button variant="ghost" onClick={handleRefresh} disabled={loading || updating}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refrescar</span>
+          </Button>
         </div>
 
+        {/* Card de edición */}
         <Card className="max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Database className="h-5 w-5 text-yellow-600" />
-              <span>Actualizar Mano Obra</span>
+              <span>Actualizar Costo de Mano de obra</span>
             </CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-6">
+            {/* Valor actual */}
+            <div className="flex items-center justify-between">
+              <Label>Valor actual ($)</Label>
+              {loading ? (
+                <div className="h-6 w-24 rounded-md bg-muted animate-pulse" />
+              ) : (
+                <Badge variant="outline" className="font-mono text-lg px-3 py-1">
+                  ${currentDefault?.toFixed(2) ?? 'N/A'}
+                </Badge>
+              )}
+            </div>
+
+            {/* Input nuevo valor */}
             <div className="space-y-2">
-              <Label htmlFor="nuevoCosto">Nuevo Costo</Label>
+              <Label htmlFor="nuevoCosto">Nuevo valor ($)</Label>
               <Input
                 id="nuevoCosto"
                 type="number"
                 step="0.01"
-                placeholder="0.00"
+                min="0.01"
                 value={nuevoCosto}
                 onChange={(e) => setNuevoCosto(e.target.value)}
-                className="text-right"
+                disabled={loading}
+                className="text-right text-lg font-medium"
               />
-              <p className="text-xs text-muted-foreground">
-                Ingresa el nuevo costo de la mano de obra
+              <p className="text-sm text-muted-foreground">
+                Ingrese el nuevo valor global para actualizar todas las filas existentes.
               </p>
             </div>
 
-            <Button 
+            {/* Botón */}
+            <Button
               onClick={handleUpdate}
-              disabled={isUpdating || !nuevoCosto}
+              disabled={
+                updating ||
+                loading ||
+                !nuevoCosto ||
+                parseFloat(nuevoCosto) === currentDefault
+              }
               className="w-full"
               size="lg"
             >
-              {isUpdating ? (
+              {updating ? (
                 <>
                   <Database className="h-4 w-4 animate-pulse mr-2" />
                   Actualizando...
@@ -112,4 +197,4 @@ const ActualizarCostoME: React.FC = () => {
   );
 };
 
-export default ActualizarCostoME;
+export default ActualizarCostoMO;

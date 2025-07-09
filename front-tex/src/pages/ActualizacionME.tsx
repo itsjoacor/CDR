@@ -10,6 +10,8 @@ import { ArrowLeft, Database, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const ActualizarCostoME: React.FC = () => {
+  console.log('Current environment:', import.meta.env); // Debug all env vars
+  console.log('API URL:', import.meta.env.VITE_API_URL); // Specific debug
   const navigate = useNavigate();
   const { toast } = useToast();
   const [nuevoCosto, setNuevoCosto] = useState<string>('');
@@ -17,11 +19,12 @@ const ActualizarCostoME: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
+  // Update the fetchDefaultValue function to match backend endpoint
   const fetchDefaultValue = async () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/valores-globales/matriz_energia`,
+        `${import.meta.env.VITE_API_URL}/tabla-config/matriz_energia`,
         { headers: { 'Content-Type': 'application/json' } }
       );
 
@@ -44,12 +47,26 @@ const ActualizarCostoME: React.FC = () => {
     }
   };
 
+  // Update the handleUpdate function to match backend endpoint
+  // ActualizacionME.tsx
   const handleUpdate = async () => {
     const numericValue = parseFloat(nuevoCosto);
 
+    if (isNaN(numericValue)) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
+      setUpdating(true);
+      console.log('Attempting update with:', numericValue); // Debug log
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/valores-globales/energia`,
+        `${import.meta.env.VITE_API_URL}/tabla-config/matriz_energia`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -57,20 +74,23 @@ const ActualizarCostoME: React.FC = () => {
         }
       );
 
+      console.log('Update response:', response); // Debug log
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al actualizar');
+        throw new Error(errorData.message || 'Update failed');
       }
 
       toast({
-        title: 'Éxito',
-        description: `Valor de energía actualizado a $${numericValue.toFixed(2)}`,
+        title: 'Success',
+        description: `Value updated to $${numericValue.toFixed(2)}`,
       });
       await fetchDefaultValue();
     } catch (error) {
+      console.error('Update error:', error); // Debug log
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Error desconocido',
+        description: error instanceof Error ? error.message : 'Update failed',
         variant: 'destructive',
       });
     } finally {
