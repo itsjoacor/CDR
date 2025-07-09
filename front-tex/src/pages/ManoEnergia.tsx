@@ -325,7 +325,7 @@ const ManoEnergia: React.FC = () => {
                                       placeholder="Código energía"
                                     />
                                   </div>
-                                  
+
                                   <div className="space-y-2">
                                     <Label htmlFor="descripcion">Descripción</Label>
                                     <Input
@@ -335,10 +335,10 @@ const ManoEnergia: React.FC = () => {
                                       placeholder="Descripción"
                                     />
                                   </div>
-                                  
+
                                   <div className="space-y-2">
                                     <Label htmlFor="codigo_mano_obra">Código Mano de Obra</Label>
-                                    <Select 
+                                    <Select
                                       value={editForm.codigo_mano_obra || ''}
                                       onValueChange={(value) => setEditForm(prev => ({ ...prev, codigo_mano_obra: value }))}
                                     >
@@ -352,7 +352,7 @@ const ManoEnergia: React.FC = () => {
                                       </SelectContent>
                                     </Select>
                                   </div>
-                                  
+
                                   <div className="space-y-2">
                                     <Label htmlFor="sector_productivo">Sector Productivo</Label>
                                     <Select
@@ -369,7 +369,7 @@ const ManoEnergia: React.FC = () => {
                                       </SelectContent>
                                     </Select>
                                   </div>
-                                  
+
                                   <div className="space-y-2">
                                     <Label htmlFor="consumo_kw_std">Consumo kW Estándar</Label>
                                     <Input
@@ -381,7 +381,7 @@ const ManoEnergia: React.FC = () => {
                                       placeholder="Consumo kW"
                                     />
                                   </div>
-                                  
+
                                   <div className="space-y-2">
                                     <Label htmlFor="valor_kw">Valor $/kW</Label>
                                     <Input

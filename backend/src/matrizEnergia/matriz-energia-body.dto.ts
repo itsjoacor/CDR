@@ -28,5 +28,4 @@ export class MatrizEnergiaBodyDto {
   @IsOptional()
   @IsNumber()
   std_produccion?: number;
-  
 }
