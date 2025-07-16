@@ -1,11 +1,19 @@
-// sectores-productivos.repository.ts
-import { Injectable } from '@nestjs/common';
-import { supabase } from '../config/supabase.client';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
+import { getSupabaseClient } from '../config/supabase.client';
 import { SectorProductivo } from '../sectorProductivo/sectores-productivos.model';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class SectorProductivoRepository {
+  constructor(@Inject('REQUEST') private readonly request: Request) { }
+
+  private async getSupabase() {
+    const token = this.request.headers.authorization?.replace('Bearer ', '');
+    return getSupabaseClient(token);
+  }
+
   async crear(sector: SectorProductivo): Promise<SectorProductivo> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('sectores_productivos')
       .insert([{ nombre: sector.nombre }])
@@ -24,6 +32,7 @@ export class SectorProductivoRepository {
   }
 
   async obtenerTodos(): Promise<SectorProductivo[]> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('sectores_productivos')
       .select('*')
@@ -41,6 +50,7 @@ export class SectorProductivoRepository {
   }
 
   async obtenerPorNombre(nombre: string): Promise<SectorProductivo | null> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('sectores_productivos')
       .select('*')

@@ -14,8 +14,10 @@ import {
   ListboxOption,
   ListboxOptions,
 } from '@headlessui/react';
+import Cookies from 'js-cookie';
 
 const CargarProducto: React.FC = () => {
+  const token = Cookies.get('token') || '';
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -31,7 +33,13 @@ const CargarProducto: React.FC = () => {
   useEffect(() => {
     const fetchSectores = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         if (!response.ok) {
           throw new Error('Error al cargar sectores productivos');
         }
@@ -60,7 +68,12 @@ const CargarProducto: React.FC = () => {
       setValidatingCodigo(true);
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/productos/exists/${encodeURIComponent(codigoProducto)}`
+          `${import.meta.env.VITE_API_URL}/productos/exists/${encodeURIComponent(codigoProducto)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         if (!response.ok) {
@@ -129,6 +142,7 @@ const CargarProducto: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(productoData),
       });

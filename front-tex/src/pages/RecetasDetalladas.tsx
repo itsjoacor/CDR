@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router";
-import { Edit, Trash2, Save, X } from "lucide-react";
+import { Edit, Trash2, Save, X, Cookie } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -40,6 +40,8 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/react";
+import Cookies from 'js-cookie';
+
 
 const RecetasDetalladas: React.FC = () => {
   interface RecetaNormalizada {
@@ -57,7 +59,7 @@ const RecetasDetalladas: React.FC = () => {
     descripcion_producto: string;
     sector_productivo: string;
   }
-
+  const token = Cookies.get('token');
   const { user } = useAuth();
   const { toast } = useToast();
   const [recetas, setRecetas] = useState<RecetaNormalizada[]>([]);
@@ -82,7 +84,12 @@ const RecetasDetalladas: React.FC = () => {
     const fetchRecetas = async () => {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/recetas-normalizada`
+          `${import.meta.env.VITE_API_URL}/recetas-normalizada`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
         const data = await res.json();
         setRecetas(data);
@@ -106,7 +113,12 @@ const RecetasDetalladas: React.FC = () => {
 
     const fetchProductos = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/productos`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/productos`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
         const data: Producto[] = await res.json();
         setProductos(data);
         setSectores([...new Set(data.map((p) => p.sector_productivo))]);
@@ -129,7 +141,7 @@ const RecetasDetalladas: React.FC = () => {
       : true;
     const matchSector = sectorSeleccionado
       ? productos.find((p) => p.codigo_producto === r.codigo_producto)
-          ?.sector_productivo === sectorSeleccionado
+        ?.sector_productivo === sectorSeleccionado
       : true;
     return matchProducto && matchSector;
   });
@@ -155,13 +167,13 @@ const RecetasDetalladas: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/recetas-normalizada/${
-          editingId.codigo_producto
+        `${import.meta.env.VITE_API_URL}/recetas-normalizada/${editingId.codigo_producto
         }/${editingId.codigo_ingrediente}`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             cantidad_ingrediente: editForm.cantidad_ingrediente,
@@ -177,7 +189,7 @@ const RecetasDetalladas: React.FC = () => {
       setRecetas((prev) =>
         prev.map((item) =>
           item.codigo_producto === editingId.codigo_producto &&
-          item.codigo_ingrediente === editingId.codigo_ingrediente
+            item.codigo_ingrediente === editingId.codigo_ingrediente
             ? { ...item, ...updated }
             : item
         )
@@ -212,11 +224,13 @@ const RecetasDetalladas: React.FC = () => {
   ) => {
     try {
       const res = await fetch(
-        `${
-          import.meta.env.VITE_API_URL
+        `${import.meta.env.VITE_API_URL
         }/recetas-normalizada/${codigo_producto}/${codigo_ingrediente}`,
         {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -291,9 +305,8 @@ const RecetasDetalladas: React.FC = () => {
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
                         <li
-                          className={`px-4 py-2 cursor-pointer rounded ${
-                            active ? "bg-purple-100 text-purple-800" : ""
-                          }`}
+                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-purple-100 text-purple-800" : ""
+                            }`}
                         >
                           Todos los productos
                         </li>
@@ -307,11 +320,10 @@ const RecetasDetalladas: React.FC = () => {
                       >
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${
-                              active
-                                ? "bg-purple-100 text-purple-800"
-                                : "text-gray-800"
-                            } ${selected ? "font-medium" : ""}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active
+                              ? "bg-purple-100 text-purple-800"
+                              : "text-gray-800"
+                              } ${selected ? "font-medium" : ""}`}
                           >
                             {p.codigo_producto} - {p.descripcion_producto}
                           </li>
@@ -344,9 +356,8 @@ const RecetasDetalladas: React.FC = () => {
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
                         <li
-                          className={`px-4 py-2 cursor-pointer rounded ${
-                            active ? "bg-yellow-100 text-yellow-800" : ""
-                          }`}
+                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-yellow-100 text-yellow-800" : ""
+                            }`}
                         >
                           Todos los sectores
                         </li>
@@ -356,11 +367,10 @@ const RecetasDetalladas: React.FC = () => {
                       <ListboxOption key={i} value={s} as={Fragment}>
                         {({ active, selected }) => (
                           <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${
-                              active
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "text-gray-800"
-                            } ${selected ? "font-medium" : ""}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md ${active
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "text-gray-800"
+                              } ${selected ? "font-medium" : ""}`}
                           >
                             {s}
                           </li>
@@ -426,8 +436,8 @@ const RecetasDetalladas: React.FC = () => {
                         <TableCell className="text-xs text-muted-foreground">
                           {r.ultima_actualizacion
                             ? new Date(
-                                r.ultima_actualizacion
-                              ).toLocaleDateString()
+                              r.ultima_actualizacion
+                            ).toLocaleDateString()
                             : "—"}
                         </TableCell>
                         {canEdit && (
@@ -481,7 +491,7 @@ const RecetasDetalladas: React.FC = () => {
 
                       {editingId?.codigo_producto === r.codigo_producto &&
                         editingId?.codigo_ingrediente ===
-                          r.codigo_ingrediente && (
+                        r.codigo_ingrediente && (
                           <TableRow className="bg-muted/30">
                             <TableCell colSpan={canEdit ? 8 : 7}>
                               <Card className="w-full">

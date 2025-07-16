@@ -42,6 +42,8 @@ import {
 } from "@headlessui/react";
 
 import { Plus, BarChart3 } from "lucide-react";
+import Cookies from 'js-cookie';
+
 
 
 interface RecetaItem {
@@ -61,6 +63,7 @@ interface RecetaItem {
 }
 
 const Receta: React.FC = () => {
+  const token = Cookies.get('token');
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -115,7 +118,12 @@ const Receta: React.FC = () => {
         setProductosLista(productosData);
 
         const recetasResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/recetas-normalizada`
+          `${import.meta.env.VITE_API_URL}/recetas-normalizada`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
         if (!recetasResponse.ok) throw new Error("Error al obtener recetas");
         const recetasData = await recetasResponse.json();
@@ -158,7 +166,12 @@ const Receta: React.FC = () => {
             try {
               const cdrRes = await fetch(
                 `${import.meta.env.VITE_API_URL}/resultados-cdr/${receta.codigo_producto
-                }/base`
+                }/base`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
               );
               if (!cdrRes.ok) return;
               const cdrData = await cdrRes.json();

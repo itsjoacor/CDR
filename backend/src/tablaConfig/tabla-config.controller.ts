@@ -36,9 +36,7 @@ export class TablaConfigController {
   @Put('matriz_energia')
   async actualizarMatrizEnergia(@Body() body: ValorUpdateDto) {
     try {
-      console.log('Updating matriz_energia with value:', body.valor);
       const result = await this.service.actualizarMatrizEnergia(body.valor);
-      console.log('Update successful:', result);
       return result;
     } catch (error) {
       console.error('Update failed:', error);

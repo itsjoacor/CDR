@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
 import { RecetaNormalizadaRepository } from './receta-normalizada.repository';
-import { CreateRecetaNormalizadaDto } from '../recetaNormalizada/receta-nomralizada.dto';
+import { CreateRecetaNormalizadaDto } from './receta-nomralizada.dto';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class RecetaNormalizadaService {
-  constructor(private readonly repo: RecetaNormalizadaRepository) { }
+  constructor(
+    private readonly repo: RecetaNormalizadaRepository,
+    @Inject('REQUEST') private readonly request: Request
+  ) { }
 
   async crear(dto: CreateRecetaNormalizadaDto) {
     try {

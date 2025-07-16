@@ -1,13 +1,19 @@
-// src/export/export.service.ts
-import { Injectable } from '@nestjs/common';
-import { supabase } from '../config/supabase.client';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
+import { getSupabaseClient } from '../config/supabase.client';
 import * as XLSX from 'xlsx';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ExportService {
+  constructor(@Inject('REQUEST') private readonly request: Request) {}
 
+  private async getSupabase() {
+    const token = this.request.headers.authorization?.replace('Bearer ', '');
+    return getSupabaseClient(token);
+  }
 
   async exportTable(tableName: string, format: 'csv' | 'xlsx') {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from(tableName)
       .select('*');
@@ -44,6 +50,7 @@ export class ExportService {
   }
 
   async exportMultipleTables(tables: string[]) {
+    const supabase = await this.getSupabase();
     const workbook = XLSX.utils.book_new();
 
     for (const table of tables) {

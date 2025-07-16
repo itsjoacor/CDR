@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Save, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import Cookies from 'js-cookie';
 
 interface Ingredient {
   codigo_ingrediente: string;
@@ -35,11 +36,9 @@ const CargarReceta: React.FC = () => {
   const [ingredienteValido, setIngredienteValido] = useState(false);
 
 
-  console.log('Datos a enviar:', {
-    codigo_producto: codigoProducto,
-    codigo_ingrediente: newIngredient.codigo_ingrediente,
-    cantidad_ingrediente: newIngredient.cantidad_ingrediente
-  });
+  // Define token (replace this with your actual token retrieval logic)
+  const token = Cookies.get('token') || '';
+
   // FETCH INFO PRODUCTO
   useEffect(() => {
     const codigo = codigoProducto.trim().toUpperCase();
@@ -50,12 +49,16 @@ const CargarReceta: React.FC = () => {
       return;
     }
 
-    fetch(`${import.meta.env.VITE_API_URL}/productos/${codigo}`)
-      .then(res => {
+    fetch(`${import.meta.env.VITE_API_URL}/productos/${codigo}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
       })
-      .then(data => {
+      .then((data) => {
         setDescripcionProducto(data.descripcion_producto || '');
         setSectorProductivo(data.sector_productivo || '');
         setProductoValido(true);
@@ -65,7 +68,7 @@ const CargarReceta: React.FC = () => {
         setSectorProductivo('No encontrado');
         setProductoValido(false);
       });
-  }, [codigoProducto]);
+  }, [codigoProducto, token]);
 
   // FETCH INFO INGREDIENTE
   useEffect(() => {
@@ -80,12 +83,16 @@ const CargarReceta: React.FC = () => {
     setDescripcionIngrediente('Buscando...');
 
     const timer = setTimeout(() => {
-      fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${codigo}`)
-        .then(res => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${codigo}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((res) => {
           if (!res.ok) throw new Error('No encontrado');
           return res.json();
         })
-        .then(data => {
+        .then((data) => {
           if (data && data.descripcion) {
             setDescripcionIngrediente(data.descripcion.trim());
             setIngredienteValido(true);
@@ -100,7 +107,7 @@ const CargarReceta: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [newIngredient.codigo_ingrediente]);
+  }, [newIngredient.codigo_ingrediente, token]);
 
 
   const addIngredient = () => {
@@ -209,7 +216,9 @@ const CargarReceta: React.FC = () => {
           try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas-normalizada`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json' ,
+                Authorization : `Bearer ${token}`
+              },
               body: JSON.stringify({
                 codigo_producto: codigoProductoUpper,
                 codigo_ingrediente: codigoIngrediente,

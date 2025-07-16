@@ -4,7 +4,7 @@ import { AutocompleteController } from './autocomplete.controller';
 import { InsumoRepository } from '../insumo/insumo.repository';
 import { MatrizManoRepository } from '../matrizMano/matiz-mano.repository';
 import { MatrizEnergiaRepository } from '../matrizEnergia/matiz-energia.repository';
-import { ProductoRepository } from 'src/productos/producto.repository';
+import { ProductoRepository } from '../productos/producto.repository';
 
 @Module({
   controllers: [AutocompleteController],
@@ -16,4 +16,4 @@ import { ProductoRepository } from 'src/productos/producto.repository';
     MatrizEnergiaRepository,
   ],
 })
-export class AutocompleteModule {}
+export class AutocompleteModule { }

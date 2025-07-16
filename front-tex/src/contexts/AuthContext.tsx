@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import Cookies from 'js-cookie';
@@ -18,14 +24,13 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isLoading: boolean;
   initialAuthCheck: boolean;
-  isAuthenticated: boolean; // Add this new property
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
@@ -40,51 +45,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // ⏱ Auto logout tras 1 hora
+  useEffect(() => {
+    if (!user) return;
+
+    const logoutTimer = setTimeout(() => {
+      toast({
+        title: 'Sesión cerrada por inactividad',
+        description: 'Debes volver a iniciar sesión',
+      });
+      logout();
+    }, 1000 * 60 * 60); // 1 hora
+
+    return () => clearTimeout(logoutTimer);
+  }, [user]);
+
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/autorizacion/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Credenciales inválidas');
+      if (authError) {
+        let message = 'Credenciales inválidas';
+        if (authError.message.includes('Invalid login credentials')) {
+          message = 'Correo o contraseña incorrectos';
+        } else if (authError.message.includes('Email not confirmed')) {
+          message = 'Por favor verifica tu correo electrónico primero';
+        }
+        throw new Error(message);
       }
 
-      const data = await res.json();
+      const userId = authData.user?.id;
+      const token = authData.session?.access_token;
+
+      const { data: perfil, error: perfilError } = await supabase
+        .from('perfiles')
+        .select('rol')
+        .eq('id', userId)
+        .single();
+
+      if (perfilError || !perfil) {
+        throw new Error('Perfil de usuario no encontrado');
+      }
+
       const userData: User = {
-        id: data.user?.id || '',
+        id: userId!,
         email,
-        role: data.rol,
-        token: data.token,
+        role: perfil.rol,
+        token: token!,
         name: ''
       };
 
       setUser(userData);
-      Cookies.set('token', data.token);
+      setIsAuthenticated(true);
+      Cookies.set('token', token!);
       return true;
     } catch (error) {
       console.error('Login error:', error);
-      throw error; // Make sure to re-throw the error
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
+
   const logout = async () => {
     setIsLoading(true);
     try {
-      // Clear Supabase session first
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
-      // Then clear local state
       setUser(null);
+      setIsAuthenticated(false);
       Cookies.remove('token');
-
-      // Force full page reload to clear any state
       window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
@@ -94,39 +129,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const verifySession = async () => {
-    const token = Cookies.get('token');
-    if (!token) {
+    const { data: sessionData, error } = await supabase.auth.getSession();
+    const session = sessionData.session;
+
+    if (!session || error) {
       setInitialAuthCheck(true);
       setIsAuthenticated(false);
       return;
     }
 
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/autorizacion/verificarSesion`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    const userId = session.user?.id;
+    const email = session.user?.email;
+    const token = session.access_token;
 
-      if (res.ok) {
-        const { rol, email } = await res.json();
-        setUser({
-          id: '', // Get from backend if needed
-          email,
-          role: rol,
-          token,
-          name: ''
-        });
-        setIsAuthenticated(true);
-      } else {
-        Cookies.remove('token');
-        setIsAuthenticated(false);
-      }
-    } catch (error) {
-      console.error('Session verification error:', error);
+    const { data: perfil, error: perfilError } = await supabase
+      .from('perfiles')
+      .select('rol')
+      .eq('id', userId)
+      .single();
+
+    if (perfilError || !perfil) {
       Cookies.remove('token');
-      setIsAuthenticated(false);
-    } finally {
       setInitialAuthCheck(true);
+      setIsAuthenticated(false);
+      return;
     }
+
+    setUser({
+      id: userId!,
+      email: email!,
+      role: perfil.rol,
+      token,
+      name: ''
+    });
+
+    setIsAuthenticated(true);
+    Cookies.set('token', token);
+    setInitialAuthCheck(true);
   };
 
   useEffect(() => {
@@ -136,6 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'SIGNED_OUT') {
         Cookies.remove('token');
         setUser(null);
+        setIsAuthenticated(false);
       }
     });
 
@@ -151,7 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout,
       isLoading,
       initialAuthCheck,
-      isAuthenticated // Add this
+      isAuthenticated,
     }}>
       {children}
     </AuthContext.Provider>

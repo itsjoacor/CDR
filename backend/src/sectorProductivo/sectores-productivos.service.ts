@@ -1,11 +1,14 @@
-// sectores-productivos.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
 import { SectorProductivo } from '../sectorProductivo/sectores-productivos.model';
 import { SectorProductivoRepository } from '../sectorProductivo/sectores-productivos.repository';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class SectorProductivoService {
-  constructor(private readonly sectorProductivoRepository: SectorProductivoRepository) {}
+  constructor(
+    private readonly sectorProductivoRepository: SectorProductivoRepository,
+    @Inject('REQUEST') private readonly request: Request
+  ) { }
 
   async crear(sector: SectorProductivo): Promise<SectorProductivo> {
     const existe = await this.sectorProductivoRepository.obtenerPorNombre(sector.nombre);

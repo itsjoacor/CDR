@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Save, ArrowLeft, Plus, Minus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import Cookies from 'js-cookie';
 
 const CargarInsumo: React.FC = () => {
+    const token = Cookies.get('token') || '';
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -36,6 +38,7 @@ const CargarInsumo: React.FC = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     grupo: grupo.trim(),

@@ -8,10 +8,10 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Database, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import Cookies from 'js-cookie';
 
 const ActualizarCostoMO: React.FC = () => {
-  console.log('Current environment:', import.meta.env); // Debug all env vars
-  console.log('API URL:', import.meta.env.VITE_API_URL); // Specific debug
+  const token = Cookies.get('token') || '';
   const navigate = useNavigate();
   const { toast } = useToast();
   const [nuevoCosto, setNuevoCosto] = useState<string>('');
@@ -25,7 +25,12 @@ const ActualizarCostoMO: React.FC = () => {
       setLoading(true);
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/tabla-config/matriz_mano`,
-        { headers: { 'Content-Type': 'application/json' } }
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        }
       );
 
       if (!response.ok) {
@@ -63,18 +68,19 @@ const ActualizarCostoMO: React.FC = () => {
 
     try {
       setUpdating(true);
-      console.log('Attempting update with:', numericValue); // Debug log
+
 
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/tabla-config/matriz_mano`,
         {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
           body: JSON.stringify({ valor: numericValue }),
         }
       );
-
-      console.log('Update response:', response); // Debug log
 
       if (!response.ok) {
         const errorData = await response.json();

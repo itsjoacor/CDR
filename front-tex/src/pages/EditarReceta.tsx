@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Save, ArrowLeft, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Cookies from 'js-cookie';
 
 interface Ingredient {
   codigo_ingrediente: string;
@@ -24,6 +25,7 @@ interface RecetaData {
 }
 
 const EditarReceta: React.FC = () => {
+  const token = Cookies.get('token') || '';
   const { codigo_producto } = useParams<{ codigo_producto: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -34,7 +36,13 @@ const EditarReceta: React.FC = () => {
 useEffect(() => {
   const fetchReceta = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas?codigo_producto=${codigo_producto}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas?codigo_producto=${codigo_producto}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
       
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
@@ -118,7 +126,9 @@ useEffect(() => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/recetas/${codigo_producto}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+         },
         body: JSON.stringify(receta),
       });
 

@@ -1,11 +1,19 @@
-// producto.repository.ts
-import { Injectable } from '@nestjs/common';
-import { supabase } from '../config/supabase.client';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
+import { getSupabaseClient } from '../config/supabase.client';
 import { Producto } from '../productos/producto.model';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ProductoRepository {
+  constructor(@Inject('REQUEST') private readonly request: Request) {}
+
+  private async getSupabase() {
+    const token = this.request.headers.authorization?.replace('Bearer ', '');
+    return getSupabaseClient(token);
+  }
+
   async crear(producto: Producto): Promise<Producto> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('productos')
       .insert([{
@@ -30,6 +38,7 @@ export class ProductoRepository {
   }
 
   async obtenerTodos(): Promise<Producto[]> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('productos')
       .select('*')
@@ -49,6 +58,7 @@ export class ProductoRepository {
   }
 
   async obtenerPorCodigo(codigo: string): Promise<Producto | null> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('productos')
       .select('*')
@@ -72,6 +82,7 @@ export class ProductoRepository {
   }
 
   async actualizar(codigo: string, producto: Partial<Producto>): Promise<Producto> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('productos')
       .update({
@@ -97,6 +108,7 @@ export class ProductoRepository {
   }
 
   async eliminar(codigo: string): Promise<void> {
+    const supabase = await this.getSupabase();
     const { error } = await supabase
       .from('productos')
       .delete()

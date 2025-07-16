@@ -41,6 +41,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import Cookies from 'js-cookie';
+
 
 interface ProductoItem {
   codigo_producto: string;
@@ -52,6 +54,7 @@ interface ProductoItem {
 
 const Producto: React.FC = () => {
   const { user } = useAuth();
+  const token = Cookies.get('token');
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -75,7 +78,12 @@ const Producto: React.FC = () => {
     const fetchProductos = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/productos`
+          `${import.meta.env.VITE_API_URL}/productos`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
         if (!response.ok) throw new Error("Error al cargar productos");
         const data = await response.json();
@@ -115,7 +123,12 @@ const Producto: React.FC = () => {
     const fetchSectores = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/sectores-productivos`
+          `${import.meta.env.VITE_API_URL}/sectores-productivos`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
         if (!response.ok) throw new Error("Error al cargar sectores");
         const data = await response.json();
@@ -181,6 +194,8 @@ const Producto: React.FC = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+
           },
           body: JSON.stringify({
             descripcion_producto: editForm.descripcion_producto,
@@ -324,8 +339,8 @@ const Producto: React.FC = () => {
                         {({ active, selected }) => (
                           <li
                             className={`cursor-pointer px-4 py-2 rounded-md ${active
-                                ? "bg-blue-100 text-blue-800"
-                                : "text-gray-800"
+                              ? "bg-blue-100 text-blue-800"
+                              : "text-gray-800"
                               } ${selected ? "font-medium" : ""}`}
                           >
                             {p.codigo_producto} - {p.descripcion_producto}
@@ -371,8 +386,8 @@ const Producto: React.FC = () => {
                         {({ active, selected }) => (
                           <li
                             className={`cursor-pointer px-4 py-2 rounded-md ${active
-                                ? "bg-green-100 text-green-800"
-                                : "text-gray-800"
+                              ? "bg-green-100 text-green-800"
+                              : "text-gray-800"
                               } ${selected ? "font-medium" : ""}`}
                           >
                             {s}
@@ -522,8 +537,8 @@ const Producto: React.FC = () => {
                                               {({ active, selected }) => (
                                                 <li
                                                   className={`cursor-pointer px-4 py-2 rounded-md ${active
-                                                      ? "bg-gray-100 text-gray-900"
-                                                      : "text-gray-800"
+                                                    ? "bg-gray-100 text-gray-900"
+                                                    : "text-gray-800"
                                                     } ${selected ? "font-medium" : ""}`}
                                                 >
                                                   {sector}

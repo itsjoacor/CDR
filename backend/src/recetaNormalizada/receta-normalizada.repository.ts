@@ -1,11 +1,20 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { supabase } from '../config/supabase.client';
+import { Injectable, Inject, Scope, HttpException, HttpStatus } from '@nestjs/common';
+import { Request } from 'express';
+import { getSupabaseClient } from '../config/supabase.client';
 import { RecetaNormalizada } from './receta-normalizada.model';
 import { CreateRecetaNormalizadaDto } from './receta-nomralizada.dto';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class RecetaNormalizadaRepository {
+  constructor(@Inject('REQUEST') private readonly request: Request) {}
+
+  private async getSupabase() {
+    const token = this.request.headers.authorization?.replace('Bearer ', '');
+    return getSupabaseClient(token);
+  }
+
   private async existeEnTabla(tabla: string, campo: string, valor: string): Promise<boolean> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from(tabla)
       .select(campo)
@@ -21,7 +30,6 @@ export class RecetaNormalizadaRepository {
   }
 
   private async existeEnAlgunaTabla(codigo: string): Promise<boolean> {
-    // Verifica en cascada con short-circuit
     return (await this.existeEnTabla('productos', 'codigo_producto', codigo)) ||
       (await this.existeEnTabla('insumos', 'codigo', codigo)) ||
       (await this.existeEnTabla('mano', 'codigo_mano', codigo)) ||
@@ -29,6 +37,7 @@ export class RecetaNormalizadaRepository {
   }
 
   async crear(dto: CreateRecetaNormalizadaDto) {
+    const supabase = await this.getSupabase();
     try {
       const { codigo_producto, codigo_ingrediente, cantidad_ingrediente } = dto;
 
@@ -65,7 +74,6 @@ export class RecetaNormalizadaRepository {
       }
 
       if (!ingredienteExiste) {
-        // Verificación detallada para mensaje de error más informativo
         const tablas = ['productos', 'insumos', 'mano', 'energia'];
         const resultados = await Promise.all(
           tablas.map(tabla => this.existeEnTabla(tabla, this.getCampoId(tabla), codIngrediente))
@@ -78,7 +86,7 @@ export class RecetaNormalizadaRepository {
         );
       }
 
-      // Prevenir recursión (producto que se contiene a sí mismo)
+      // Prevenir recursión
       if (codProducto === codIngrediente) {
         throw new HttpException(
           'Un producto no puede ser ingrediente de sí mismo',
@@ -94,7 +102,6 @@ export class RecetaNormalizadaRepository {
       });
 
       if (error) {
-        // Manejo específico para error de duplicado
         if (error.code === '23505') {
           throw new HttpException(
             `La combinación "${codProducto}" (producto) y "${codIngrediente}" (ingrediente) ya existe en la receta`,
@@ -102,7 +109,6 @@ export class RecetaNormalizadaRepository {
           );
         }
 
-        // Manejo genérico de otros errores de Supabase
         console.error('Error de Supabase:', error);
         throw new HttpException(
           `Ocurrió un error al guardar la receta: ${error.message}`,
@@ -121,12 +127,10 @@ export class RecetaNormalizadaRepository {
       };
 
     } catch (error) {
-      // Si el error ya es una HttpException, simplemente lo relanzamos
       if (error instanceof HttpException) {
         throw error;
       }
 
-      // Para errores inesperados
       console.error('Error inesperado en crear receta:', error);
       throw new HttpException(
         'Ocurrió un error inesperado al procesar la receta',
@@ -145,10 +149,8 @@ export class RecetaNormalizadaRepository {
     return map[tabla] || 'codigo';
   }
 
-
-
-
   async obtenerTodas(): Promise<RecetaNormalizada[]> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase.from('recetas_normalizada').select('*');
     if (error) {
       throw new HttpException('Error al obtener recetas: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -157,6 +159,7 @@ export class RecetaNormalizadaRepository {
   }
 
   async eliminar(codigo_producto: string, codigo_ingrediente: string) {
+    const supabase = await this.getSupabase();
     const { error } = await supabase
       .from('recetas_normalizada')
       .delete()
@@ -172,6 +175,7 @@ export class RecetaNormalizadaRepository {
     codigo_ingrediente: string,
     cantidad_ingrediente: number
   ) {
+    const supabase = await this.getSupabase();
     const { error } = await supabase
       .from('recetas_normalizada')
       .update({ cantidad_ingrediente })
@@ -181,8 +185,4 @@ export class RecetaNormalizadaRepository {
       throw new HttpException('Error al actualizar receta: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-
-
-
 }

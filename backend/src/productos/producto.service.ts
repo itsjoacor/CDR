@@ -1,14 +1,16 @@
-// producto.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
 import { Producto } from '../productos/producto.model';
 import { ProductoRepository } from '../productos/producto.repository';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ProductoService {
-  constructor(private readonly productoRepository: ProductoRepository) {}
+  constructor(
+    private readonly productoRepository: ProductoRepository,
+    @Inject('REQUEST') private readonly request: Request
+  ) {}
 
   async crear(producto: Producto): Promise<Producto> {
-    // Verificar si ya existe
     const existe = await this.productoRepository.obtenerPorCodigo(producto.codigo_producto);
     if (existe) {
       throw new Error('Ya existe un producto con este código');

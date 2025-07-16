@@ -1,69 +1,79 @@
-import { Injectable } from '@nestjs/common';
-import { supabase } from '../config/supabase.client';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
+import { getSupabaseClient } from '../config/supabase.client';
 import { MatrizEnergia } from './matriz-energia.model';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class MatrizEnergiaRepository {
-    async obtenerTodos(): Promise<MatrizEnergia[]> {
-        const { data, error } = await supabase.from('matriz_energia').select('*');
-        if (error) throw new Error(error.message);
-        return data as MatrizEnergia[];
-    }
+  constructor(@Inject('REQUEST') private readonly request: Request) {}
 
-    async obtenerPorCodigo(codigo: string): Promise<MatrizEnergia | null> {
-        const { data, error } = await supabase
-            .from('matriz_energia')
-            .select('*')
-            .eq('codigo_energia', codigo)
-            .maybeSingle();
-        if (error) throw new Error(error.message);
-        return data as MatrizEnergia | null;
-    }
+  private async getSupabase() {
+    const token = this.request.headers.authorization?.replace('Bearer ', '');
+    return getSupabaseClient(token);
+  }
 
-    async crear(data: MatrizEnergia): Promise<MatrizEnergia> {
-        try {
-            // Eliminar std_produccion para que lo maneje el trigger
-            const { std_produccion, ...insertData } = data;
+  async obtenerTodos(): Promise<MatrizEnergia[]> {
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase.from('matriz_energia').select('*');
+    if (error) throw new Error(error.message);
+    return data as MatrizEnergia[];
+  }
 
-            const { data: insertedData, error } = await supabase
-                .from('matriz_energia')
-                .insert([insertData])
-                .select()
-                .single();
+  async obtenerPorCodigo(codigo: string): Promise<MatrizEnergia | null> {
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
+      .from('matriz_energia')
+      .select('*')
+      .eq('codigo_energia', codigo)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data as MatrizEnergia | null;
+  }
 
-            if (error) {
-                // Manejo de errores específicos
-                if (error.code === '23505') {
-                    throw new Error('Código de energía ya existente');
-                }
-                if (error.code === '23502') {
-                    throw new Error('Datos requeridos faltantes');
-                }
+  async crear(data: MatrizEnergia): Promise<MatrizEnergia> {
+    try {
+      const supabase = await this.getSupabase();
+      // Eliminar std_produccion para que lo maneje el trigger
+      const { std_produccion, ...insertData } = data;
 
-                // Otro error
-                throw new Error(error.message);
-            }
+      const { data: insertedData, error } = await supabase
+        .from('matriz_energia')
+        .insert([insertData])
+        .select()
+        .single();
 
-            return insertedData;
-        } catch (error: any) {
-            // Propagar error para que el controller lo transforme
-            throw error;
+      if (error) {
+        // Manejo de errores específicos
+        if (error.code === '23505') {
+          throw new Error('Código de energía ya existente');
         }
-    }
+        if (error.code === '23502') {
+          throw new Error('Datos requeridos faltantes');
+        }
+        throw new Error(error.message);
+      }
 
-    async actualizar(codigo: string, data: Partial<MatrizEnergia>): Promise<void> {
-        const { error } = await supabase
-            .from('matriz_energia')
-            .update(data)
-            .eq('codigo_energia', codigo);  // Changed from codigo_mano_obra
-        if (error) throw new Error(error.message);
+      return insertedData;
+    } catch (error: any) {
+      throw error;
     }
+  }
 
-    async eliminar(codigo: string): Promise<void> {
-        const { error } = await supabase
-            .from('matriz_energia')
-            .delete()
-            .eq('codigo_energia', codigo);  // Changed from codigo_mano_obra
-        if (error) throw new Error(error.message);
-    }
+  async actualizar(codigo: string, data: Partial<MatrizEnergia>): Promise<void> {
+    const supabase = await this.getSupabase();
+    const { error } = await supabase
+      .from('matriz_energia')
+      .update(data)
+      .eq('codigo_energia', codigo);
+    if (error) throw new Error(error.message);
+  }
+
+  async eliminar(codigo: string): Promise<void> {
+    const supabase = await this.getSupabase();
+    const { error } = await supabase
+      .from('matriz_energia')
+      .delete()
+      .eq('codigo_energia', codigo);
+    if (error) throw new Error(error.message);
+  }
 }

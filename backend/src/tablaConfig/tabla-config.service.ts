@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
 import { TablaConfigRepository } from './tabla-config.repository';
 import { TablaConfigBodyDto } from './tabla-config.dto';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class TablaConfigService {
-  constructor(private readonly repo: TablaConfigRepository) { }
+  constructor(
+    private readonly repo: TablaConfigRepository,
+    @Inject('REQUEST') private readonly request: Request
+  ) { }
 
   listarTodos() {
     return this.repo.listarTodos();

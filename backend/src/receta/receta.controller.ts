@@ -9,14 +9,14 @@ import {
   Query,
   Param,
   Put,
-  Delete
+  Delete,
+  Inject,
+  Scope
 } from '@nestjs/common';
 import { RecetaService } from './receta.service';
 import { plainToInstance } from 'class-transformer';
 import { RecetaBody } from './receta-body.dto';
 import { Receta } from './receta.model';
-import { supabase } from 'src/config/supabase.client';
-
 
 @Controller('recetas')
 export class RecetaController {
@@ -27,7 +27,6 @@ export class RecetaController {
   @Post('registrar')
   async registro(@Body() body: RecetaBody): Promise<Receta> {
     try {
-      console.log('BODY RECIBIDO:', body); // 🔍 agregá esto
       const recetaBody = plainToInstance(RecetaBody, body);
       const receta: Receta = recetaBody.aModelo();
       const recetaRegistrada = await this.recetaService.guardarReceta(receta);
@@ -40,7 +39,6 @@ export class RecetaController {
       );
     }
   }
-
 
   @Get('buscar')
   async buscarRecetas(
@@ -60,10 +58,8 @@ export class RecetaController {
     @Param('codigo_producto') codigo_producto: string,
     @Param('codigo_ingrediente') codigo_ingrediente: string,
   ) {
-    return this.recetaService.obtenerRecetaPorClaves(codigo_producto, codigo_ingrediente)
+    return this.recetaService.obtenerRecetaPorClaves(codigo_producto, codigo_ingrediente);
   }
-
-
 
   @Get()
   async listarRecetas(): Promise<Receta[]> {
@@ -91,24 +87,4 @@ export class RecetaController {
       );
     }
   }
-
-  @Get('/sectores')
-  async obtenerSectores(): Promise<{ nombre: string }[]> {
-    const { data, error } = await supabase.from('sectores_productivos').select('nombre')
-
-    console.log('RESULTADO de sectores_productivos:', data)
-
-    if (error) {
-      console.error('Error al consultar sectores_productivos', error.message)
-      throw new HttpException('Error al obtener sectores', HttpStatus.INTERNAL_SERVER_ERROR)
-    }
-
-    return data as { nombre: string }[]
-  }
-
-  
-
-
-
 }
-

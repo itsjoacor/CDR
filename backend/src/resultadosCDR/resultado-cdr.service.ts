@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { ResultadosCdrRepository } from '../resultadosCDR/resultado-cdr.reposiroty';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
+import { ResultadosCdrRepository } from './resultado-cdr.reposiroty';
 import { ResultadosCdr } from './resultado-cdr.interface';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ResultadosCdrService {
-  constructor(private readonly repository: ResultadosCdrRepository) {}
+  constructor(
+    private readonly repository: ResultadosCdrRepository,
+    @Inject('REQUEST') private readonly request: Request
+  ) { }
 
   async findAll(): Promise<ResultadosCdr[]> {
     return this.repository.findAll();
@@ -27,8 +31,7 @@ export class ResultadosCdrService {
   }
 
   async getBaseCdr(codigo_producto: string): Promise<number | null> {
-  const record = await this.repository.findOne(codigo_producto);
-  return record?.base_cdr ?? null;
-}
-
+    const record = await this.repository.findOne(codigo_producto);
+    return record?.base_cdr ?? null;
+  }
 }

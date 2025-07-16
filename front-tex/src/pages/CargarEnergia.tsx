@@ -14,8 +14,10 @@ import {
   ListboxOption,
   ListboxOptions,
 } from '@headlessui/react';
+import Cookies from 'js-cookie';
 
 const CargarEnergia: React.FC = () => {
+  const token = Cookies.get('token') || '';
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -38,7 +40,13 @@ const CargarEnergia: React.FC = () => {
   useEffect(() => {
     const fetchSectores = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         if (!response.ok) {
           throw new Error('Error al cargar sectores productivos');
         }
@@ -67,7 +75,12 @@ const CargarEnergia: React.FC = () => {
       setValidatingManoObra(true);
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/matriz-mano/exists/${encodeURIComponent(codigoManoObra)}`
+          `${import.meta.env.VITE_API_URL}/matriz-mano/exists/${encodeURIComponent(codigoManoObra)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         if (!response.ok) {
@@ -100,7 +113,12 @@ const CargarEnergia: React.FC = () => {
       setValidatingCodigoEnergia(true);
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/matriz-energia/exists/${encodeURIComponent(codigoEnergia)}`
+          `${import.meta.env.VITE_API_URL}/matriz-energia/exists/${encodeURIComponent(codigoEnergia)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         if (!response.ok) {
@@ -211,6 +229,7 @@ const CargarEnergia: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(matrizEnergiaData),
       });

@@ -1,24 +1,28 @@
-import { Injectable } from '@nestjs/common';
-import { createClient } from '@supabase/supabase-js';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
+import { getSupabaseClient } from '../config/supabase.client';
 import { TablaConfig } from './tabla-config.model';
 import { TablaConfigBodyDto } from './tabla-config.dto';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!
-);
-
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class TablaConfigRepository {
+  constructor(@Inject('REQUEST') private readonly request: Request) { }
   private table = 'tabla_config';
 
+  private async getSupabase() {
+    const token = this.request.headers.authorization?.replace('Bearer ', '');
+    return getSupabaseClient(token);
+  }
+
   async listarTodos(): Promise<TablaConfig[]> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase.from(this.table).select('*');
     if (error) throw error;
     return data;
   }
 
   async obtenerPorNombre(nombre: string): Promise<TablaConfig> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from(this.table)
       .select('*')
@@ -29,6 +33,7 @@ export class TablaConfigRepository {
   }
 
   async crear(dto: TablaConfigBodyDto): Promise<TablaConfig> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from(this.table)
       .insert(dto)
@@ -39,6 +44,7 @@ export class TablaConfigRepository {
   }
 
   async actualizar(nombre: string, valor: number): Promise<TablaConfig> {
+    const supabase = await this.getSupabase();
     // First verify the record exists
     const { data: existing, error: findError } = await supabase
       .from(this.table)
@@ -72,6 +78,7 @@ export class TablaConfigRepository {
   }
 
   async eliminar(nombre: string): Promise<void> {
+    const supabase = await this.getSupabase();
     const { error } = await supabase
       .from(this.table)
       .delete()

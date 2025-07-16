@@ -28,6 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import Cookies from 'js-cookie';
+
 
 interface MatrizEnergia {
   codigo_mano_obra: string;
@@ -42,6 +44,7 @@ interface MatrizEnergia {
 }
 
 const ManoEnergia: React.FC = () => {
+  const token = Cookies.get('token') || '';
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -57,10 +60,23 @@ const ManoEnergia: React.FC = () => {
     const fetchData = async () => {
       try {
         const [energiaRes, sectoresRes, manoRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/matriz-energia`),
-          fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`),
-          fetch(`${import.meta.env.VITE_API_URL}/matriz-mano`)
+          fetch(`${import.meta.env.VITE_API_URL}/matriz-energia`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${import.meta.env.VITE_API_URL}/matriz-mano`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
         ]);
+
 
         if (!energiaRes.ok || !sectoresRes.ok || !manoRes.ok) {
           throw new Error('Error al cargar los datos');
@@ -129,6 +145,7 @@ const ManoEnergia: React.FC = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             codigo_energia: editForm.codigo_energia,
@@ -179,6 +196,9 @@ const ManoEnergia: React.FC = () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/matriz-energia/${id}`, {
         method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {

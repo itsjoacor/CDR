@@ -45,8 +45,10 @@ interface Insumo {
   stockMinimo?: number;
   fechaActualizacion?: string;
 }
+import Cookies from "js-cookie";
 
 const Insumos: React.FC = () => {
+  const token = Cookies.get('token') || '';
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -60,7 +62,13 @@ const Insumos: React.FC = () => {
   useEffect(() => {
     const fetchInsumos = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/insumos`);
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/insumos`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         if (!res.ok) throw new Error("Error al obtener insumos");
         const data = await res.json();
         setInsumos(data);
@@ -153,6 +161,9 @@ const Insumos: React.FC = () => {
         `${import.meta.env.VITE_API_URL}/insumos/${codigo}`,
         {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${user?.token}`, // Asegúrate de enviar el token si es necesario
+          },
         }
       );
 

@@ -1,14 +1,23 @@
-import { Injectable } from '@nestjs/common';
-import { supabase } from '../config/supabase.client';
+import { Injectable, Inject, Scope } from '@nestjs/common';
+import { Request } from 'express';
+import { getSupabaseClient } from '../config/supabase.client';
 import { Insumo } from './insumo.model';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class InsumoRepository {
+  constructor(@Inject('REQUEST') private readonly request: Request) { }
+
+  private async getSupabase() {
+    const token = this.request.headers.authorization?.replace('Bearer ', '');
+    return getSupabaseClient(token);
+  }
+
   async buscarPorFiltros(filtros: {
     codigo?: string;
     grupo?: string;
     detalle?: string;
   }): Promise<Insumo[]> {
+    const supabase = await this.getSupabase();
     let query = supabase
       .from('insumos')
       .select('*');
@@ -26,6 +35,7 @@ export class InsumoRepository {
   }
 
   async guardar(insumo: Insumo): Promise<Insumo> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('insumos')
       .insert([
@@ -48,6 +58,7 @@ export class InsumoRepository {
   }
 
   async buscarPorCodigo(codigo: string): Promise<Insumo | null> {
+    const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('insumos')
       .select('*')
