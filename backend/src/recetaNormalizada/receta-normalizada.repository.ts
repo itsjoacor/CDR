@@ -170,6 +170,26 @@ export class RecetaNormalizadaRepository {
     }
   }
 
+  async eliminarRecetaCompleta(codigo_producto: string): Promise<{ affected: number }> {
+    const supabase = await this.getSupabase();
+    
+    const { data, error } = await supabase
+      .from('recetas_normalizada')
+      .delete()
+      .eq('codigo_producto', codigo_producto)
+      .select();
+
+    if (error) {
+      throw new HttpException(
+        `Error al eliminar receta completa: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+
+    return { affected: data?.length || 0 };
+  }
+
+
   async actualizar(
     codigo_producto: string,
     codigo_ingrediente: string,

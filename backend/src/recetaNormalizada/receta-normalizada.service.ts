@@ -34,6 +34,9 @@ export class RecetaNormalizadaService {
   async eliminar(codigo_producto: string, codigo_ingrediente: string) {
     return this.repo.eliminar(codigo_producto, codigo_ingrediente);
   }
+  async eliminarRecetaCompleta(codigo_producto: string){
+    return this.repo.eliminarRecetaCompleta(codigo_producto);
+  }
 
   async actualizar(dto: CreateRecetaNormalizadaDto) {
     return this.repo.actualizar(

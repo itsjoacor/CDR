@@ -41,6 +41,14 @@ export class RecetaNormalizadaController {
     return this.service.eliminar(codigo_producto, codigo_ingrediente);
   }
 
+  @Delete(':codigo_producto')
+  async eliminarRecetaCompleta(
+    @Param('codigo_producto') codigo_producto: string
+  ) {
+    return this.service.eliminarRecetaCompleta(codigo_producto);
+  }
+
+
   @Put()
   actualizar(@Body() dto: CreateRecetaNormalizadaDto) {
     return this.service.actualizar(dto);

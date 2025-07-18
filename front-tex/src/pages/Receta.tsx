@@ -226,6 +226,9 @@ const Receta: React.FC = () => {
   const handleEdit = (receta: RecetaItem) => {
     navigate(`/detalle-recetas?productId=${receta.codigo_producto}`);
   };
+  const handleView = (receta: RecetaItem) => {
+    navigate(`/detalle-recetas?productId=${receta.codigo_producto}`);
+  };
 
   const handleSave = () => {
     if (!editForm.descripcion_producto) {
@@ -259,12 +262,43 @@ const Receta: React.FC = () => {
     setEditForm({});
   };
 
-  const handleDelete = (id: string) => {
-    setRecetas((prev) => prev.filter((item) => item.codigo_producto !== id));
-    toast({
-      title: "Eliminado",
-      description: "La receta se ha eliminado correctamente.",
-    });
+  const handleDelete = async (
+    codigo_producto: string,
+  ) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL
+        }/recetas-normalizada/${codigo_producto}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error();
+
+      setRecetas((prev) =>
+        prev.filter(
+          (r) =>
+            !(
+              r.codigo_producto === codigo_producto
+            )
+        )
+      );
+
+      toast({
+        title: "Eliminado",
+        description: `La receta fue eliminada correctamente.`,
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la receta. Intenta nuevamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleNewReceta = () => {
@@ -467,7 +501,7 @@ const Receta: React.FC = () => {
                     <TableHead>Sector</TableHead>
                     <TableHead>CDR</TableHead>
                     <TableHead>Fecha</TableHead>
-                    {canEdit && <TableHead>Acciones</TableHead>}
+                    <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -520,33 +554,21 @@ const Receta: React.FC = () => {
                         <TableCell className="text-sm text-muted-foreground">
                           {receta.fecha_creacion}
                         </TableCell>
-                        {canEdit && (
-                          <TableCell>
-                            <div className="flex space-x-2">
+                        <TableCell className="text-center">
+                          {canEdit ? (
+                            <div className="flex space-x-2 justify-center">
                               {editingId === receta.codigo_producto ? (
                                 <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleSave}
-                                  >
+                                  <Button variant="outline" size="sm" onClick={handleSave}>
                                     <Save className="h-4 w-4" />
                                   </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleCancel}
-                                  >
+                                  <Button variant="outline" size="sm" onClick={handleCancel}>
                                     <X className="h-4 w-4" />
                                   </Button>
                                 </>
                               ) : (
                                 <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEdit(receta)}
-                                  >
+                                  <Button variant="outline" size="sm" onClick={() => handleEdit(receta)}>
                                     <Edit className="h-4 w-4" />
                                   </Button>
                                   <AlertDialog>
@@ -557,24 +579,14 @@ const Receta: React.FC = () => {
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                       <AlertDialogHeader>
-                                        <AlertDialogTitle>
-                                          ¿Estás seguro?
-                                        </AlertDialogTitle>
+                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                          Esta acción no se puede deshacer. Se
-                                          eliminará permanentemente la receta "
-                                          {receta.descripcion_producto}".
+                                          Esta acción no se puede deshacer. Se eliminará permanentemente la receta "{receta.descripcion_producto}".
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
-                                        <AlertDialogCancel>
-                                          Cancelar
-                                        </AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={() =>
-                                            handleDelete(receta.codigo_producto)
-                                          }
-                                        >
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDelete(receta.codigo_producto)}>
                                           Eliminar
                                         </AlertDialogAction>
                                       </AlertDialogFooter>
@@ -583,8 +595,14 @@ const Receta: React.FC = () => {
                                 </>
                               )}
                             </div>
-                          </TableCell>
-                        )}
+                          ) : (
+                            <div className="flex justify-center">
+                              <Button variant="outline" size="sm" onClick={() => handleView(receta)}>
+                                <Search className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
                       </TableRow>
 
                       {editingId === receta.codigo_producto && (
