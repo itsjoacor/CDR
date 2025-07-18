@@ -15,7 +15,7 @@ import { MatrizMano } from './matriz-mano.model';
 
 @Controller('matriz-mano')
 export class MatrizManoController {
-  constructor(private readonly service: MatrizManoService) {}
+  constructor(private readonly service: MatrizManoService) { }
 
   @Get()
   obtenerTodos(): Promise<MatrizMano[]> {
@@ -49,33 +49,35 @@ export class MatrizManoController {
 
   @Delete(':codigo')
   async eliminar(@Param('codigo') codigo: string): Promise<void> {
-
     try {
       await this.service.eliminar(codigo);
-    } catch (error) {
-      console.error('❌ Error al eliminar:', error);
-
+    } catch (error: any) {
       const message = error?.message || '';
       const detail = error?.detail || '';
-      const fullText = `${message} ${detail}`;
+      const fullText = `${message} ${detail}`.toLowerCase();
 
+      // Captura ambos casos: trigger personalizado o FK nativa
       if (
-        fullText.includes('violates foreign key constraint') ||
-        fullText.includes('constraint') ||
-        fullText.includes('matriz_energia')
+        fullText.includes('foreign_key_violation') ||
+        fullText.includes('está siendo utilizado') ||
+        fullText.includes('violates foreign key') ||
+        fullText.includes('constraint')
       ) {
         throw new HttpException(
-          'No se puede eliminar: el registro está siendo utilizado en otra parte del sistema.',
+          {
+            message: 'No se puede eliminar, se está utilizando en otra tabla.',
+          },
           HttpStatus.CONFLICT,
         );
       }
 
       throw new HttpException(
-        'Error interno al intentar eliminar el registro.',
+        { message: 'Error interno al intentar eliminar el registro.' },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
+
 
   @Get('exists/:codigo')
   async validarCodigo(
