@@ -168,13 +168,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setIsAuthenticated(false);
       setInitialAuthCheck(true);
-      toast({
-        title: 'Sesión expirada',
-        description: 'Debes volver a iniciar sesión.',
-        variant: 'destructive',
-      });
+
+      // Solo mostrar toast si hubo una sesión antes
+      if (token) {
+        toast({
+          title: 'Sesión expirada',
+          description: 'Debes volver a iniciar sesión.',
+          variant: 'destructive',
+        });
+      }
+
       return;
     }
+
 
     const userId = session.user?.id;
     const email = session.user?.email;
