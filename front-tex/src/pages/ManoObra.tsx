@@ -41,6 +41,7 @@ import {
   ListboxOptions,
 } from "@headlessui/react";
 import Cookies from 'js-cookie';
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 type ManoObraAPI = {
@@ -342,7 +343,11 @@ const ManoObra: React.FC = () => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-muted-foreground">Cargando...</p>
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
             ) : (
               <Table>
                 <TableHeader>

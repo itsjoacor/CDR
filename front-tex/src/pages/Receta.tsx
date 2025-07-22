@@ -43,6 +43,7 @@ import {
 
 import { Plus, BarChart3 } from "lucide-react";
 import Cookies from 'js-cookie';
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 
@@ -133,8 +134,11 @@ const Receta: React.FC = () => {
         for (const item of recetasData) {
           if (!recetasGrouped[item.codigo_producto]) {
             const prod = productosData.find(
-              (p: any) => p.codigo_producto === item.codigo_producto
+              (p: any) =>
+                p.codigo_producto?.toString().trim().toLowerCase() ===
+                item.codigo_producto?.toString().trim().toLowerCase()
             );
+
             recetasGrouped[item.codigo_producto] = {
               codigo_producto: item.codigo_producto,
               descripcion_producto:
@@ -320,15 +324,10 @@ const Receta: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Layout title="Gestión de Recetas">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      </Layout>
-    );
-  }
+  // Replace the current loading state in Receta.tsx with this:
+
+  // Replace the current loading state in Receta.tsx with this:
+
 
   return (
     <Layout title="Gestión de Recetas">
@@ -492,178 +491,185 @@ const Receta: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[600px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Sector</TableHead>
-                    <TableHead>CDR</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedRecetas.map((receta) => (
-                    <React.Fragment key={receta.codigo_producto}>
-                      <TableRow
-                        className={
-                          editingId === receta.codigo_producto
-                            ? "bg-blue-50"
-                            : hasValidIngredientCosts(receta)
-                              ? "bg-green-50 hover:bg-green-100"
-                              : "bg-red-50 hover:bg-red-100"
-                        }
-                      >
-                        <TableCell className="font-medium">
-                          {receta.codigo_producto}
-                        </TableCell>
-                        <TableCell>
-                          {editingId === receta.codigo_producto ? (
-                            <Input
-                              value={editForm.descripcion_producto || ""}
-                              onChange={(e) =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  descripcion_producto: e.target.value,
-                                }))
-                              }
-                              className="min-w-[250px]"
-                            />
-                          ) : (
-                            <div className="max-w-[250px] truncate">
-                              {receta.descripcion_producto}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={getSectorColor(receta.sector_productivo)}
-                          >
-                            {receta.sector_productivo}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-semibold text-green-600">
-                            $
-                            {cdrValues[receta.codigo_producto]?.toFixed(2) ||
-                              "0.00"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {receta.fecha_creacion}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {canEdit ? (
-                            <div className="flex space-x-2 justify-center">
-                              {editingId === receta.codigo_producto ? (
-                                <>
-                                  <Button variant="outline" size="sm" onClick={handleSave}>
-                                    <Save className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="outline" size="sm" onClick={handleCancel}>
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              ) : (
-                                <>
-                                  <Button variant="outline" size="sm" onClick={() => handleEdit(receta)}>
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="outline" size="sm">
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Esta acción no se puede deshacer. Se eliminará permanentemente la receta "{receta.descripcion_producto}".
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDelete(receta.codigo_producto)}>
-                                          Eliminar
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex justify-center">
-                              <Button variant="outline" size="sm" onClick={() => handleView(receta)}>
-                                <Search className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
+            {loading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : (
+              <ScrollArea className="h-[600px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead>Sector</TableHead>
+                      <TableHead>CDR</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedRecetas.map((receta) => (
+                      <React.Fragment key={receta.codigo_producto}>
+                        <TableRow
+                          className={
+                            editingId === receta.codigo_producto
+                              ? "bg-blue-50"
+                              : hasValidIngredientCosts(receta)
+                                ? "bg-green-50 hover:bg-green-100"
+                                : "bg-red-50 hover:bg-red-100"
+                          }
+                        >
+                          <TableCell className="font-medium">
+                            {receta.codigo_producto}
+                          </TableCell>
+                          <TableCell>
+                            {editingId === receta.codigo_producto ? (
+                              <Input
+                                value={editForm.descripcion_producto || ""}
+                                onChange={(e) =>
+                                  setEditForm((prev) => ({
+                                    ...prev,
+                                    descripcion_producto: e.target.value,
+                                  }))
+                                }
+                                className="min-w-[250px]"
+                              />
+                            ) : (
+                              <div className="max-w-[250px] truncate">
+                                {receta.descripcion_producto}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className={getSectorColor(receta.sector_productivo)}
+                            >
+                              {receta.sector_productivo}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-green-600">
+                              $
+                              {cdrValues[receta.codigo_producto]?.toFixed(2) ||
+                                "0.00"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {receta.fecha_creacion}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {canEdit ? (
+                              <div className="flex space-x-2 justify-center">
+                                {editingId === receta.codigo_producto ? (
+                                  <>
+                                    <Button variant="outline" size="sm" onClick={handleSave}>
+                                      <Save className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={handleCancel}>
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button variant="outline" size="sm" onClick={() => handleEdit(receta)}>
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Esta acción no se puede deshacer. Se eliminará permanentemente la receta "{receta.descripcion_producto}".
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => handleDelete(receta.codigo_producto)}>
+                                            Eliminar
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex justify-center">
+                                <Button variant="outline" size="sm" onClick={() => handleView(receta)}>
+                                  <Search className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
 
-                      {editingId === receta.codigo_producto && (
-                        <TableRow className="bg-blue-50">
-                          <TableCell colSpan={canEdit ? 7 : 6}>
-                            <div className="p-4 space-y-4">
-                              <div className="grid md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                  <h4 className="font-medium text-sm text-blue-700">
-                                    COSTOS
-                                  </h4>
-                                  <div className="space-y-1">
-                                    <div className="text-xs">
-                                      💰 Mano de obra: $
-                                      {receta.costo_mano_obra?.toFixed(2) ||
-                                        "0.00"}
-                                    </div>
-                                    <div className="text-xs">
-                                      ⚡ Matriz energética: $
-                                      {receta.costo_matriz_energetica?.toFixed(
-                                        2
-                                      ) || "0.00"}
-                                    </div>
-                                    <div className="text-xs font-semibold">
-                                      🏷️ Total: $
-                                      {receta.costo_total?.toFixed(2) || "0.00"}
+                        {editingId === receta.codigo_producto && (
+                          <TableRow className="bg-blue-50">
+                            <TableCell colSpan={canEdit ? 7 : 6}>
+                              <div className="p-4 space-y-4">
+                                <div className="grid md:grid-cols-3 gap-6">
+                                  <div className="space-y-2">
+                                    <h4 className="font-medium text-sm text-blue-700">
+                                      COSTOS
+                                    </h4>
+                                    <div className="space-y-1">
+                                      <div className="text-xs">
+                                        💰 Mano de obra: $
+                                        {receta.costo_mano_obra?.toFixed(2) ||
+                                          "0.00"}
+                                      </div>
+                                      <div className="text-xs">
+                                        ⚡ Matriz energética: $
+                                        {receta.costo_matriz_energetica?.toFixed(
+                                          2
+                                        ) || "0.00"}
+                                      </div>
+                                      <div className="text-xs font-semibold">
+                                        🏷️ Total: $
+                                        {receta.costo_total?.toFixed(2) || "0.00"}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
 
-                                <div className="space-y-2">
-                                  <h4 className="font-medium text-sm text-blue-700">
-                                    INGREDIENTES
-                                  </h4>
-                                  <div className="space-y-1">
-                                    {receta.ingredientes.map(
-                                      (ingrediente, index) => (
-                                        <div key={index} className="text-xs">
-                                          📦{" "}
-                                          {ingrediente.descripcion_ingrediente}:{" "}
-                                          {ingrediente.cantidad_ingrediente} ($
-                                          {ingrediente.costo_ingrediente?.toFixed(
-                                            2
-                                          ) || "0.00"}
-                                          )
-                                        </div>
-                                      )
-                                    )}
+                                  <div className="space-y-2">
+                                    <h4 className="font-medium text-sm text-blue-700">
+                                      INGREDIENTES
+                                    </h4>
+                                    <div className="space-y-1">
+                                      {receta.ingredientes.map(
+                                        (ingrediente, index) => (
+                                          <div key={index} className="text-xs">
+                                            📦{" "}
+                                            {ingrediente.descripcion_ingrediente}:{" "}
+                                            {ingrediente.cantidad_ingrediente} ($
+                                            {ingrediente.costo_ingrediente?.toFixed(
+                                              2
+                                            ) || "0.00"}
+                                            )
+                                          </div>
+                                        )
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            )}
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-muted-foreground">
@@ -696,18 +702,7 @@ const Receta: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-blue-600">ℹ️</span>
-              <span className="text-sm text-blue-800">
-                Las recetas son fundamentales para el cálculo automático del
-                CDR. Cualquier modificación se reflejará automáticamente en los
-                costos de reposición.
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+
       </div>
     </Layout>
   );

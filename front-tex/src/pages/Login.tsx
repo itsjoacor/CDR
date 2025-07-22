@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, } from 'lucide-react';
+import Whool from '../../public/TexCDR.png';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -56,12 +57,20 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 text-6xl">🧵</div>
-          <CardTitle className="text-2xl font-bold">TexCDR</CardTitle>
+          <div className="flex justify-center">
+            <img
+              src={Whool}
+              alt="Whool"
+              className="h-20 w-20 mb-[-8px] translate-x-3"
+            />
+          </div>
+
+          <CardTitle className="text-3xl font-bold leading-tight">TexCDR</CardTitle>
           <CardDescription>
             Sistema de Gestión de Estructura Productiva Textil
           </CardDescription>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">

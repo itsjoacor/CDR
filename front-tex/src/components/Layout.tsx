@@ -19,9 +19,10 @@ import {
   Zap,
   RefreshCcw,
   DollarSign,
-  UploadCloud,
-  Layers
+  UploadCloud
 } from "lucide-react";
+
+import Whool from '../../public/TexCDR.png';
 
 
 
@@ -57,7 +58,12 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <Layers className="w-6 h-6 text-primary" />
+            <img
+              src={Whool}
+              alt="Whool"
+              className='h-8 w-8'
+            />
+
                 <h1 className="text-2xl font-bold text-primary">TexCDR</h1>
               </div>
 

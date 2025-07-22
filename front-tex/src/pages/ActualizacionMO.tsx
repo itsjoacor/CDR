@@ -131,18 +131,15 @@ const ActualizarCostoMO: React.FC = () => {
             <span>Refrescar</span>
           </Button>
         </div>
-
-        {/* Card de edición */}
         <Card className="max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Database className="h-5 w-5 text-yellow-600" />
-              <span>Actualizar Costo de Mano de obra</span>
+              <span>Valor Actual Mano de Obra</span>
             </CardTitle>
           </CardHeader>
 
-          <CardContent className="space-y-6">
-            {/* Valor actual */}
+          <CardContent>
             <div className="flex items-center justify-between">
               <Label>Valor actual ($)</Label>
               {loading ? (
@@ -153,6 +150,20 @@ const ActualizarCostoMO: React.FC = () => {
                 </Badge>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+
+        {/* Card de edición */}
+        <Card className="max-w-md mx-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+
+              <span>Actualizar Costo de Mano de obra</span>
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
 
             {/* Input nuevo valor */}
             <div className="space-y-2">

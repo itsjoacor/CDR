@@ -46,6 +46,7 @@ interface Insumo {
   fechaActualizacion?: string;
 }
 import Cookies from "js-cookie";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Insumos: React.FC = () => {
   const token = Cookies.get('token') || '';
@@ -234,7 +235,11 @@ const Insumos: React.FC = () => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-muted-foreground">Cargando insumos...</p>
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
             ) : (
               <Table>
                 <TableHeader>

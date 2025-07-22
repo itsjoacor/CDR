@@ -45,19 +45,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const isTokenExpired = (token: string | null): boolean => {
+    if (!token) return true;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const now = Math.floor(Date.now() / 1000);
+      return payload.exp < now;
+    } catch {
+      return true;
+    }
+  };
+
+
   // ⏱ Auto logout tras 1 hora
   useEffect(() => {
     if (!user) return;
 
-    const logoutTimer = setTimeout(() => {
-      toast({
-        title: 'Sesión cerrada por inactividad',
-        description: 'Debes volver a iniciar sesión',
-      });
-      logout();
-    }, 1000 * 60 * 60); // 1 hora
+    const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutos
 
-    return () => clearTimeout(logoutTimer);
+    let inactivityTimeout: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      clearTimeout(inactivityTimeout);
+      inactivityTimeout = setTimeout(() => {
+        toast({
+          title: 'Sesión cerrada por inactividad',
+          description: 'Debes volver a iniciar sesión',
+        });
+        logout();
+      }, INACTIVITY_LIMIT);
+    };
+
+    // Eventos que reinician el contador de inactividad
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach((event) => window.addEventListener(event, resetTimer));
+
+    resetTimer(); // Inicializa el contador al entrar
+
+    return () => {
+      clearTimeout(inactivityTimeout);
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
+    };
   }, [user]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -132,15 +160,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: sessionData, error } = await supabase.auth.getSession();
     const session = sessionData.session;
 
-    if (!session || error) {
-      setInitialAuthCheck(true);
+    const token = session?.access_token || Cookies.get('token') || null;
+
+    // ⛔ Cerrar sesión si el token ya expiró
+    if (!token || isTokenExpired(token)) {
+      Cookies.remove('token');
+      setUser(null);
       setIsAuthenticated(false);
+      setInitialAuthCheck(true);
+      toast({
+        title: 'Sesión expirada',
+        description: 'Debes volver a iniciar sesión.',
+        variant: 'destructive',
+      });
       return;
     }
 
     const userId = session.user?.id;
     const email = session.user?.email;
-    const token = session.access_token;
 
     const { data: perfil, error: perfilError } = await supabase
       .from('perfiles')
@@ -150,8 +187,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (perfilError || !perfil) {
       Cookies.remove('token');
-      setInitialAuthCheck(true);
+      setUser(null);
       setIsAuthenticated(false);
+      setInitialAuthCheck(true);
       return;
     }
 
@@ -167,6 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     Cookies.set('token', token);
     setInitialAuthCheck(true);
   };
+
 
   useEffect(() => {
     verifySession();

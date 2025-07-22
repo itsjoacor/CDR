@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Cookies from 'js-cookie';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 interface MatrizEnergia {
@@ -222,11 +223,11 @@ const ManoEnergia: React.FC = () => {
   };
 
   return (
-    <Layout title="Mano de Energía">
+    <Layout title="Matriz Energética">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <Badge variant="outline" className="bg-yellow-50">⚡ Mano de Energía - Recursos Energéticos</Badge>
+            <Badge variant="outline" className="bg-yellow-50">⚡ Matriz Energética - Recursos Energéticos</Badge>
             <p className="text-sm text-muted-foreground mt-2">Gestión de consumo energético y costos</p>
           </div>
           <div className="flex space-x-2">
@@ -248,8 +249,10 @@ const ManoEnergia: React.FC = () => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <p className="text-muted-foreground">Cargando...</p>
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
               </div>
             ) : data.length === 0 ? (
               <div className="flex justify-center items-center h-64">

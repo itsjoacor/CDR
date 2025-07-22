@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import Cookies from 'js-cookie';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 interface ResultadoCDR {
@@ -62,15 +63,6 @@ const ResultadosCDR: React.FC = () => {
     });
   };
 
-  if (isLoading) {
-    return (
-      <Layout title="Cargando...">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      </Layout>
-    );
-  }
 
   if (error) {
     return (
@@ -97,7 +89,13 @@ const ResultadosCDR: React.FC = () => {
             <Button onClick={handleRefresh} variant="outline">Refrescar</Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent> {isLoading? (
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -118,6 +116,7 @@ const ResultadosCDR: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+        )}
         </CardContent>
       </Card>
     </Layout>
