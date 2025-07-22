@@ -38,11 +38,11 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
   const navigationItems = [
     { path: '/', label: 'Dashboard', icon: Home },
-    { path: '/receta', label: 'Receta', icon: ClipboardList, color: 'text-sky-400' },
+    { path: '/composicion', label: 'Composición', icon: ClipboardList, color: 'text-sky-400' },
     { path: '/producto', label: 'Productos', icon: ShoppingCart, color: 'text-orange-300' },
     { path: '/insumos', label: 'Insumos', icon: Package, color: 'text-purple-300' },
     { path: '/mano-obra', label: 'Mano de Obra', icon: HardHat, color: 'text-orange-400' },
-    { path: '/mano-energia', label: 'Mano de Energía', icon: Zap, color: 'text-yellow-300' },
+    { path: '/matriz-energetica', label: 'Matriz Energética', icon: Zap, color: 'text-yellow-300' },
     { path: '/actualizar', label: 'Actualizar costos', icon: RefreshCcw },
     { path: '/resultados-cdr', label: 'CDR', icon: DollarSign, color: 'text-green-400' },
     { path: '/exportacion', label: 'Exportación', icon: UploadCloud },

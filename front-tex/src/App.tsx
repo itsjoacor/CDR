@@ -7,16 +7,15 @@ import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Receta from "./pages/Receta";
-import EditarReceta from "./pages/EditarReceta";
+import Composicion from "./pages/Composicion";
 import ManoObra from "./pages/ManoObra";
-import ManoEnergia from "./pages/ManoEnergia";
+import MatrizEnergetica from "./pages/MatrizEnergetica";
 import Insumos from "./pages/Insumos";
 import CDR from "./pages/CDR";
-import RecetasDetalladas from "./pages/RecetasDetalladas";
+import ComposicionDetallada from "./pages/ComposicionDetallada";
 import NotFound from "./pages/NotFound";
 import { UnauthenticatedOnlyWrapper } from "./components/UnauthenticatedOnlyWrapper";
-import CargarReceta from "./pages/CargarReceta";
+import CargarComposicion from "./pages/CargarComposicion";
 import CargarInsumo from "./pages/CargarInsumo";
 import CargarProducto from "./pages/CargarProducto";
 import PaginaEnProduccion from "./components/PaginaConstruccion";
@@ -50,23 +49,23 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
 
               <Route path="/" element={<Dashboard />} />
-              <Route path="/receta" element={<Receta />} />
+              <Route path="/composicion" element={<Composicion />} />
               <Route path="/producto" element={<Producto />} />
-              <Route path="/detalle-recetas" element={<RecetasDetalladas />} />
+              <Route path="/detalle-composicion" element={<ComposicionDetallada />} />
 
               <Route path="/mano-obra" element={<ManoObra />} />
-              <Route path="/mano-energia" element={<ManoEnergia />} />
+              <Route path="/matriz-energetica" element={<MatrizEnergetica />} />
               <Route path="/exportacion" element={<Exportacion />} />
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
                 {/* <Route path="/editarReceta/:codigo_producto" element={<EditarReceta />} /> 
                  */}
-                <Route path="/cargarReceta" element={<CargarReceta />} />
+                <Route path="/cargarComposicion" element={<CargarComposicion />} />
                 <Route path="/cargarInsumo" element={<CargarInsumo />} />
                 <Route path="/cargarProducto" element={<CargarProducto />} />
                 <Route path="/cargarEnergia" element={<CargarEnergia />} />
                 <Route path="/cargarManoObra" element={<CargarManoObra />} />
-                <Route path="/editarReceta/:codigo_producto" element={<PaginaEnProduccion />} />
+                <Route path="/editarComposicion/:codigo_producto" element={<PaginaEnProduccion />} />
                 <Route path="/actualizar" element={<Actualizacion/>}/>
                 <Route path="/actualizarME"  element={<ActualizacionME/>}/>
                 <Route path="/actualizarMO"  element={<ActualizacionMO/>}/>

@@ -147,7 +147,7 @@ const CargarReceta: React.FC = () => {
     if (existeEnLista) {
       toast({
         title: "Error",
-        description: "Este ingrediente ya está en la lista",
+        description: "Este componente ya está en la lista",
         variant: "destructive"
       });
       return;
@@ -161,12 +161,12 @@ const CargarReceta: React.FC = () => {
     setNewIngredient({ codigo_ingrediente: '', cantidad_ingrediente: 0 });
     setDescripcionIngrediente('');
 
-    toast({ title: "Ingrediente agregado", variant: "default" });
+    toast({ title: "Componente agregado", variant: "default" });
   };
 
   const removeIngredient = (index: number) => {
     setIngredientes(prev => prev.filter((_, i) => i !== index));
-    toast({ title: "Ingrediente eliminado" });
+    toast({ title: "Componente eliminado" });
   };
 
   const updateIngredient = (index: number, field: keyof Ingredient, value: any) => {
@@ -203,8 +203,8 @@ const CargarReceta: React.FC = () => {
 
     try {
       const loadingToast = toast({
-        title: "Guardando receta...",
-        description: "Validando ingredientes",
+        title: "Guardando componente...",
+        description: "Validando componente",
         variant: "default",
         duration: Infinity
       });
@@ -281,8 +281,8 @@ const CargarReceta: React.FC = () => {
 
       // Éxito
       toast({
-        title: "✅ Receta guardada",
-        description: `La receta se guardó correctamente con ${ingredientes.length} ingredientes`,
+        title: "✅ Composición guardada",
+        description: `La composición se guardó correctamente con ${ingredientes.length} componentes`,
         variant: 'default'
       });
 
@@ -307,12 +307,12 @@ const CargarReceta: React.FC = () => {
 
 
   return (
-    <Layout title="Nueva Receta">
+    <Layout title="Nueva Composición">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => navigate('/receta')} className="flex items-center space-x-2">
+          <Button variant="outline" onClick={() => navigate('/composicion')} className="flex items-center space-x-2">
             <ArrowLeft className="h-4 w-4" />
-            <span>Volver a Recetas</span>
+            <span>Volver atrás</span>
           </Button>
         </div>
 
@@ -360,7 +360,7 @@ const CargarReceta: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-blue-800">
               <Plus className="h-5 w-5" />
-              <span>Agregar Ingrediente</span>
+              <span>Agregar Componente</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -483,7 +483,7 @@ const CargarReceta: React.FC = () => {
         <div className="flex space-x-2 justify-end">
           <Button onClick={handleSave} className="flex items-center space-x-2">
             <Save className="h-4 w-4" />
-            <span>Guardar Producto</span>
+            <span>Guardar Componente</span>
           </Button>
         </div>
       </div>

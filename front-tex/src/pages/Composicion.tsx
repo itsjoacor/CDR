@@ -40,12 +40,9 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/react";
-
 import { Plus, BarChart3 } from "lucide-react";
 import Cookies from 'js-cookie';
 import { Skeleton } from "@/components/ui/skeleton";
-
-
 
 interface RecetaItem {
   codigo_producto: string;
@@ -76,18 +73,13 @@ const Receta: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<RecetaItem>>({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [productoSeleccionado, setProductoSeleccionado] = useState<
-    string | null
-  >(null);
-  const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(
-    null
-  );
+  const [productoSeleccionado, setProductoSeleccionado] = useState<string | null>(null);
+  const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const canEdit = user?.role === "admin";
 
-  // Helper function to check if all ingredients have valid costs
   const hasValidIngredientCosts = (receta: RecetaItem): boolean => {
     if (!receta.ingredientes || receta.ingredientes.length === 0) return false;
     return receta.ingredientes.every(
@@ -103,12 +95,16 @@ const Receta: React.FC = () => {
       try {
         setLoading(true);
 
-        // Fetch productos first to get sectors and product list
+        // 1. First fetch all productos
         const productosResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/productos`
+          `${import.meta.env.VITE_API_URL}/productos`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
-        if (!productosResponse.ok)
-          throw new Error("Error al obtener productos");
+        if (!productosResponse.ok) throw new Error("Error al obtener productos");
         const productosData = await productosResponse.json();
 
         // Extract unique sectors
@@ -118,6 +114,7 @@ const Receta: React.FC = () => {
         setSectores(sectoresUnicos);
         setProductosLista(productosData);
 
+        // 2. Then fetch recetas
         const recetasResponse = await fetch(
           `${import.meta.env.VITE_API_URL}/recetas-normalizada`,
           {
@@ -129,27 +126,29 @@ const Receta: React.FC = () => {
         if (!recetasResponse.ok) throw new Error("Error al obtener recetas");
         const recetasData = await recetasResponse.json();
 
+        // Process and combine the data
         const recetasGrouped: Record<string, RecetaItem> = {};
 
         for (const item of recetasData) {
-          if (!recetasGrouped[item.codigo_producto]) {
-            const prod = productosData.find(
-              (p: any) =>
-                p.codigo_producto?.toString().trim().toLowerCase() ===
-                item.codigo_producto?.toString().trim().toLowerCase()
-            );
+          const producto = productosData.find(
+            (p: any) => p.codigo_producto === item.codigo_producto
+          );
 
+          if (!producto) {
+            console.warn(`Producto no encontrado para código: ${item.codigo_producto}`);
+            continue;
+          }
+
+          if (!recetasGrouped[item.codigo_producto]) {
             recetasGrouped[item.codigo_producto] = {
               codigo_producto: item.codigo_producto,
-              descripcion_producto:
-                prod?.descripcion_producto || "Producto no encontrado",
-              sector_productivo: prod?.sector_productivo || "Desconocido",
+              descripcion_producto: producto.descripcion_producto || "Producto no encontrado",
+              sector_productivo: producto.sector_productivo || "Desconocido",
               ingredientes: [],
               costo_mano_obra: item.costo_mano_obra,
               costo_matriz_energetica: item.costo_matriz_energetica,
               costo_total: item.costo_total,
-              fecha_creacion:
-                item.fecha_creacion || new Date().toISOString().split("T")[0],
+              fecha_creacion: item.fecha_creacion || new Date().toISOString().split("T")[0],
             };
           }
 
@@ -161,16 +160,17 @@ const Receta: React.FC = () => {
           });
         }
 
+        // Convert to array and set state
         const recetasArray = Object.values(recetasGrouped);
         setRecetas(recetasArray);
 
+        // Fetch CDR values
         const cdrMap: Record<string, number> = {};
         await Promise.all(
           recetasArray.map(async (receta) => {
             try {
               const cdrRes = await fetch(
-                `${import.meta.env.VITE_API_URL}/resultados-cdr/${receta.codigo_producto
-                }/base`,
+                `${import.meta.env.VITE_API_URL}/resultados-cdr/${receta.codigo_producto}/base`,
                 {
                   headers: {
                     Authorization: `Bearer ${token}`,
@@ -228,10 +228,10 @@ const Receta: React.FC = () => {
 
 
   const handleEdit = (receta: RecetaItem) => {
-    navigate(`/detalle-recetas?productId=${receta.codigo_producto}`);
+    navigate(`/detalle-composicion?productId=${receta.codigo_producto}`);
   };
   const handleView = (receta: RecetaItem) => {
-    navigate(`/detalle-recetas?productId=${receta.codigo_producto}`);
+    navigate(`/detalle-composicion?productId=${receta.codigo_producto}`);
   };
 
   const handleSave = () => {
@@ -294,19 +294,19 @@ const Receta: React.FC = () => {
 
       toast({
         title: "Eliminado",
-        description: `La receta fue eliminada correctamente.`,
+        description: `Composición fue eliminada correctamente.`,
       });
     } catch {
       toast({
         title: "Error",
-        description: "No se pudo eliminar la receta. Intenta nuevamente.",
+        description: "No se pudo eliminar la composicion. Intenta nuevamente.",
         variant: "destructive",
       });
     }
   };
 
   const handleNewReceta = () => {
-    navigate("/cargarReceta");
+    navigate("/cargarComposicion");
   };
 
   const getSectorColor = (sector: string) => {
@@ -330,12 +330,12 @@ const Receta: React.FC = () => {
 
 
   return (
-    <Layout title="Gestión de Recetas">
+    <Layout title="Gestión de Composiciones">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <Badge variant="outline" className="bg-blue-50">
-              📋 Recetas - Corazón del cálculo CDR
+              📋 Composicion - componentes central del CDR
             </Badge>
             <p className="text-sm text-muted-foreground mt-2">
               Define materiales, cantidades, mano de obra y energía necesarios
@@ -349,16 +349,16 @@ const Receta: React.FC = () => {
                 className="bg-green-100 text-green-900 hover:bg-green-200 border border-green-300"
               >
                 <Plus className="w-4 h-4 mr-2 text-emerald-600" />
-                Nueva Receta
+                Nueva Composición
               </Button>
 
             )}
             <Button
               onClick={() => {
                 if (productoSeleccionado) {
-                  navigate(`/detalle-recetas?productId=${productoSeleccionado}`);
+                  navigate(`/detalle-composicion?productId=${productoSeleccionado}`);
                 } else {
-                  navigate("/detalle-recetas");
+                  navigate("/detalle-composicion");
                 }
               }}
               variant="outline"
@@ -482,10 +482,10 @@ const Receta: React.FC = () => {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>Lista de Recetas</CardTitle>
-                <CardDescription>
+                <CardTitle >Composiciones</CardTitle>
+                <CardDescription className="pt-1">
                   Mostrando {paginatedRecetas.length} de{" "}
-                  {filteredRecetas.length} recetas
+                  {filteredRecetas.length} productos
                 </CardDescription>
               </div>
             </div>
@@ -498,7 +498,7 @@ const Receta: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <ScrollArea className="h-[600px]">
+              <ScrollArea>
                 <Table>
                   <TableHeader>
                     <TableRow>

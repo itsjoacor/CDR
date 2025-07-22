@@ -274,8 +274,8 @@ const RecetasDetalladas: React.FC = () => {
           </div>
           <div className="flex space-x-2">
             {canEdit && (
-              <Button onClick={() => navigate(`/cargarReceta`)}>
-                ➕ Agregar Receta
+              <Button onClick={() => navigate(`/cargarComposicion`)}>
+                ➕ Agregar Componente
               </Button>
             )}
           </div>

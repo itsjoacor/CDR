@@ -230,7 +230,7 @@ const Insumos: React.FC = () => {
           <CardHeader>
             <CardTitle>Catálogo de Insumos</CardTitle>
             <CardDescription>
-              Información de insumos utilizada en recetas y cálculos CDR
+              Información de insumos utilizada en composicion y cálculos CDR
             </CardDescription>
           </CardHeader>
           <CardContent>

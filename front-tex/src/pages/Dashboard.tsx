@@ -20,8 +20,8 @@ const Dashboard: React.FC = () => {
 
   const modules = [
     {
-      path: '/receta',
-      title: 'Receta',
+      path: '/composicion',
+      title: 'Composición',
       icon: ClipboardList,
       iconColor: 'text-sky-400',
       description: 'Gestionar materiales, cantidades, MO y energía para fabricar productos',
@@ -56,8 +56,8 @@ const Dashboard: React.FC = () => {
       canEdit: user?.role === 'admin',
     },
     {
-      path: '/mano-energia',
-      title: 'Mano de Energía',
+      path: '/matriz-energetica',
+      title: 'Matriz Energética',
       icon: Zap,
       iconColor: 'text-yellow-400',
       description: 'Administrar recursos energéticos y sus cálculos internos',

@@ -44,7 +44,7 @@ interface MatrizEnergia {
   costo_energia_unidad?: number;
 }
 
-const ManoEnergia: React.FC = () => {
+const MatrizEnergia: React.FC = () => {
   const token = Cookies.get('token') || '';
   const { user } = useAuth();
   const { toast } = useToast();
@@ -441,4 +441,4 @@ const ManoEnergia: React.FC = () => {
   );
 };
 
-export default ManoEnergia;
+export default MatrizEnergia;

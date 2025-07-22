@@ -20,8 +20,8 @@ const Exportacion: React.FC = () => {
 
     const exportTables = [
         {
-            name: 'Recetas',
-            description: 'Exportar todas las recetas con sus insumos y procesos',
+            name: 'Composicion',
+            description: 'Exportar la composicion de productos con insumos y procesos',
             icon: ClipboardList,
             iconColor: 'text-sky-400',
             color: 'bg-blue-50 border-blue-200',
@@ -77,7 +77,7 @@ const Exportacion: React.FC = () => {
             case 'Mano de Obra': return 'matriz_mano';
             case 'Mano de Energia': return 'matriz_energia';
             case 'CDR': return 'resultados_cdr';
-            case 'Recetas': return 'recetas_normalizada';
+            case 'Composicion': return 'recetas_normalizada';
             default: return nombreVisual.toLowerCase();
         }
     };

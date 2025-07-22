@@ -49,14 +49,7 @@ const Actualizacion: React.FC = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate(-1)}
-              className="flex items-center space-x-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Volver</span>
-            </Button>
+
             <div>
               <Badge variant="outline" className="bg-indigo-50">
                 {currentUpdate.icon} Centro de Actualización
