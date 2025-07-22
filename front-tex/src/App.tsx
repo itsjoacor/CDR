@@ -56,23 +56,23 @@ const App = () => (
               <Route path="/mano-obra" element={<ManoObra />} />
               <Route path="/matriz-energetica" element={<MatrizEnergetica />} />
               <Route path="/exportacion" element={<Exportacion />} />
+              <Route path="/resultados-cdr" element={<CDR />} />
+              <Route path="/insumos" element={<Insumos />} />
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
-                {/* <Route path="/editarReceta/:codigo_producto" element={<EditarReceta />} /> 
-                 */}
                 <Route path="/cargarComposicion" element={<CargarComposicion />} />
                 <Route path="/cargarInsumo" element={<CargarInsumo />} />
                 <Route path="/cargarProducto" element={<CargarProducto />} />
                 <Route path="/cargarEnergia" element={<CargarEnergia />} />
                 <Route path="/cargarManoObra" element={<CargarManoObra />} />
                 <Route path="/editarComposicion/:codigo_producto" element={<PaginaEnProduccion />} />
-                <Route path="/actualizar" element={<Actualizacion/>}/>
-                <Route path="/actualizarME"  element={<ActualizacionME/>}/>
-                <Route path="/actualizarMO"  element={<ActualizacionMO/>}/>
+                <Route path="/actualizar" element={<Actualizacion />} />
+                <Route path="/actualizarME" element={<ActualizacionME />} />
+                <Route path="/actualizarMO" element={<ActualizacionMO />} />
 
 
-                <Route path="/insumos" element={<Insumos />} />
-                <Route path="/resultados-cdr" element={<CDR />} />
+
+
               </Route>
             </Route>
 
