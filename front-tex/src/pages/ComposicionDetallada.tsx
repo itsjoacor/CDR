@@ -260,13 +260,13 @@ const RecetasDetalladas: React.FC = () => {
   };
 
   return (
-    <Layout title="Recetas Detalladas">
+    <Layout title="Composición detallada">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
             <Badge variant="outline" className="bg-pink-50">
-              🍲 Recetas Normalizadas - Estructura de Costos
+              🍲 Composición - Estructura de Costos
             </Badge>
             <p className="text-sm text-muted-foreground mt-2">
               Detalle de insumos utilizados por producto
@@ -387,7 +387,7 @@ const RecetasDetalladas: React.FC = () => {
         {/* Tabla */}
         <Card>
           <CardHeader>
-            <CardTitle>Recetas Normalizadas</CardTitle>
+            <CardTitle>Composición</CardTitle>
             <CardDescription>
               Incluye cantidades, costos y valor CDR
             </CardDescription>
@@ -554,14 +554,7 @@ const RecetasDetalladas: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Info */}
-        <Card className="bg-pink-50 border-pink-200">
-          <CardContent className="p-4 text-pink-800 text-sm">
-            💡 Cada vez que se modifica una receta, el sistema recalcula
-            automáticamente los costos y el valor CDR gracias a los triggers
-            configurados en la base de datos.
-          </CardContent>
-        </Card>
+
       </div>
     </Layout>
   );
