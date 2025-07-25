@@ -22,7 +22,7 @@ import {
   UploadCloud
 } from "lucide-react";
 
-import Whool from '../../public/TexCDR.png';
+import Whool from '../TexCDR.png';
 
 
 

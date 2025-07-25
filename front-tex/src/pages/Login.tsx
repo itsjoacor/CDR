@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, } from 'lucide-react';
-import Whool from '../../public/TexCDR.png';
+import Whool from '../TexCDR.png';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
