@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Delete, Param, Put, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Get, Delete, Param, Put, HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
 import { RecetaNormalizadaService } from '../recetaNormalizada/receta-normalizada.service';
 import { CreateRecetaNormalizadaDto } from '../recetaNormalizada/receta-nomralizada.dto';
 
@@ -53,4 +53,35 @@ export class RecetaNormalizadaController {
   actualizar(@Body() dto: CreateRecetaNormalizadaDto) {
     return this.service.actualizar(dto);
   }
+
+  @Put(':codigo_producto/:codigo_ingrediente')
+  async actualizarPorRuta(
+    @Param('codigo_producto') codigo_producto: string,
+    @Param('codigo_ingrediente') codigo_ingrediente: string,
+    @Body('cantidad_ingrediente') cantidad_ingrediente: number,
+  ) {
+    if (
+      cantidad_ingrediente === undefined ||
+      cantidad_ingrediente === null ||
+      isNaN(Number(cantidad_ingrediente))
+    ) {
+      throw new BadRequestException(
+        'cantidad_ingrediente debe enviarse en el body como número',
+      );
+    }
+
+    await this.service.actualizarPorIds(
+      codigo_producto,
+      codigo_ingrediente,
+      Number(cantidad_ingrediente),
+    );
+
+    // Devolvemos exactamente lo que el front puede mergear sin romper nada
+    return {
+      codigo_producto,
+      codigo_ingrediente,
+      cantidad_ingrediente: Number(cantidad_ingrediente),
+    };
+  }
+
 }

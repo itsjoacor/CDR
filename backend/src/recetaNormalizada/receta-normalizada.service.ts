@@ -34,7 +34,7 @@ export class RecetaNormalizadaService {
   async eliminar(codigo_producto: string, codigo_ingrediente: string) {
     return this.repo.eliminar(codigo_producto, codigo_ingrediente);
   }
-  async eliminarRecetaCompleta(codigo_producto: string){
+  async eliminarRecetaCompleta(codigo_producto: string) {
     return this.repo.eliminarRecetaCompleta(codigo_producto);
   }
 
@@ -45,4 +45,17 @@ export class RecetaNormalizadaService {
       dto.cantidad_ingrediente
     );
   }
+
+  async actualizarPorIds(
+    codigo_producto: string,
+    codigo_ingrediente: string,
+    cantidad_ingrediente: number,
+  ) {
+    return this.repo.actualizar(
+      codigo_producto,
+      codigo_ingrediente,
+      cantidad_ingrediente,
+    );
+  }
+
 }
