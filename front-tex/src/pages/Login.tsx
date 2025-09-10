@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import Whool from '../TexCDR.png';
 
 const Login: React.FC = () => {
@@ -14,7 +14,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
-  const [error, setError] = useState(''); // Add this line
+  const [error, setError] = useState(''); // keep the state version
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -23,33 +23,31 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLogging(true);
-    setError(''); // Reset error state
+    setError('');
 
     try {
       const success = await login(email, password);
       if (success) {
         toast({
-          title: "Inicio de sesión exitoso",
-          description: "Bienvenido al sistema TexCDR",
+          title: 'Inicio de sesión exitoso',
+          description: 'Bienvenido al sistema TexCDR',
         });
-        const returnTo = location.state?.from?.pathname || '/';
+        const returnTo = (location.state as any)?.from?.pathname || '/';
         navigate(returnTo, { replace: true });
       }
-    } catch (error) {
-      let errorMessage = "Error al iniciar sesión";
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-        setError(errorMessage); // Set error state
+    } catch (err) {
+      let errorMessage = 'Error al iniciar sesión';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        setError(errorMessage);
       }
-
       toast({
-        title: "Error de autenticación",
+        title: 'Error de autenticación',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
-      setIsLogging(false); // Ensure loading state is always reset
+      setIsLogging(false);
     }
   };
 
@@ -106,16 +104,10 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLogging}
-            >
+            <Button type="submit" className="w-full" disabled={isLogging}>
               {isLogging ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
           </form>
-
-
         </CardContent>
       </Card>
     </div>
@@ -123,7 +115,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-
-function setError(arg0: string) {
-  throw new Error('Function not implemented.');
-}
