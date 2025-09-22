@@ -1,3 +1,5 @@
+// ComposicionDetallada.tsx — highlight por ingrediente con cantidad 0 (plug & play)
+
 import React, { useEffect, useState, Fragment, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
@@ -22,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router";
-import { Edit, Trash2, Save, X } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -72,6 +74,11 @@ const RecetasDetalladas: React.FC = () => {
   const [editForm, setEditForm] = useState<Partial<RecetaNormalizada>>({});
   const canEdit = user?.role === "admin";
   const navigate = useNavigate();
+
+  // 🔴 Highlight: fila roja cuando la cantidad del ingrediente es 0
+  const isZeroQty = (r: RecetaNormalizada) => Number(r?.cantidad_ingrediente ?? 0) === 0;
+  const rowClass = (r: RecetaNormalizada) => (isZeroQty(r) ? "bg-red-50 hover:bg-red-100" : "");
+  const qtyTextClass = (r: RecetaNormalizada) => (isZeroQty(r) ? "text-red-700 font-medium" : "");
 
   // Re-fetch de recetas para refrescar cálculos automáticos
   const cargarRecetas = useCallback(async () => {
@@ -133,11 +140,10 @@ const RecetasDetalladas: React.FC = () => {
       codigo_producto: item.codigo_producto,
       codigo_ingrediente: item.codigo_ingrediente,
     });
-    // dejamos el resto de datos pero sin cantidad para que el input esté vacío
     setEditForm({
       ...item,
-      cantidad_ingrediente: undefined,
-    });
+      cantidad_ingrediente: undefined, // input vacío
+    } as Partial<RecetaNormalizada>);
   };
 
   const handleSave = async () => {
@@ -351,22 +357,24 @@ const RecetasDetalladas: React.FC = () => {
                 <TableBody>
                   {filtered.map((r) => (
                     <Fragment key={`${r.codigo_producto}-${r.codigo_ingrediente}`}>
-                      <TableRow>
+                      {/* Fila de visualización con highlight si cantidad = 0 */}
+                      <TableRow className={rowClass(r)}>
                         <TableCell className="font-mono">{r.codigo_producto}</TableCell>
                         <TableCell className="font-mono">{r.codigo_ingrediente}</TableCell>
-                        <TableCell>{r.cantidad_ingrediente}</TableCell>
+                        <TableCell className={qtyTextClass(r)}>{r.cantidad_ingrediente}</TableCell>
                         <TableCell className="font-mono text-green-700">
-                          ${r.costo_ingrediente?.toLocaleString("es-CO") ?? "—"}
+                          {r.costo_ingrediente != null ? `$${r.costo_ingrediente.toLocaleString("es-CO")}` : "—"}
                         </TableCell>
                         <TableCell className="font-mono font-semibold text-black">
-                          ${r.costo_total?.toLocaleString("es-CO") ?? "—"}
+                          {r.costo_total != null ? `$${r.costo_total.toLocaleString("es-CO")}` : "—"}
                         </TableCell>
                         <TableCell className="font-mono text-orange-600 font-semibold">
-                          ${r.valor_cdr?.toLocaleString("es-CO") ?? "—"}
+                          {r.valor_cdr != null ? `$${r.valor_cdr.toLocaleString("es-CO")}` : "—"}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {r.ultima_actualizacion ? new Date(r.ultima_actualizacion).toLocaleDateString() : "—"}
                         </TableCell>
+
                         {canEdit && (
                           <TableCell>
                             <div className="flex space-x-2">
@@ -400,6 +408,7 @@ const RecetasDetalladas: React.FC = () => {
                         )}
                       </TableRow>
 
+                      {/* Fila de edición (mantiene tu estructura y colSpan original) */}
                       {editingId?.codigo_producto === r.codigo_producto &&
                         editingId?.codigo_ingrediente === r.codigo_ingrediente && (
                           <TableRow className="bg-muted/30">
@@ -414,39 +423,32 @@ const RecetasDetalladas: React.FC = () => {
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                       <Label htmlFor="cantidad">Cantidad del Ingrediente</Label>
-                                      {/* Sin flechas y sin valor por defecto */}
                                       <Input
                                         id="cantidad"
                                         type="text"
                                         inputMode="decimal"
+                                        placeholder="Ingresar cantidad…"
                                         value={
-                                          editForm.cantidad_ingrediente === undefined
+                                          editForm.cantidad_ingrediente === undefined || editForm.cantidad_ingrediente === null
                                             ? ""
                                             : String(editForm.cantidad_ingrediente)
                                         }
                                         onChange={(e) => {
-                                          const v = e.target.value.trim();
-                                          if (v === "") {
-                                            setEditForm((prev) => ({ ...prev, cantidad_ingrediente: undefined }));
-                                          } else {
-                                            // Permite coma o punto como decimal
-                                            const parsed = Number(v.replace(",", "."));
-                                            setEditForm((prev) => ({
-                                              ...prev,
-                                              cantidad_ingrediente: Number.isNaN(parsed) ? undefined : parsed,
-                                            }));
-                                          }
+                                          const raw = e.target.value.replace(",", ".");
+                                          const parsed = raw === "" ? undefined : Number(raw);
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            cantidad_ingrediente: raw === "" || Number.isNaN(parsed) ? undefined : parsed,
+                                          }));
                                         }}
-                                        placeholder="Cantidad"
                                       />
                                     </div>
                                   </div>
-                                  <div className="flex justify-end mt-4 space-x-2">
-                                    <Button variant="outline" size="sm" onClick={handleSave}>
-                                      <Save className="h-4 w-4 mr-1" /> Guardar
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={handleCancel}>
-                                      <X className="h-4 w-4 mr-1" /> Cancelar
+
+                                  <div className="mt-6 flex items-center gap-2">
+                                    <Button onClick={handleSave}>Guardar</Button>
+                                    <Button variant="outline" onClick={handleCancel}>
+                                      Cancelar
                                     </Button>
                                   </div>
                                 </CardContent>

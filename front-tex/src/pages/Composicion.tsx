@@ -86,9 +86,11 @@ const Receta: React.FC = () => {
       (ing) =>
         ing.costo_ingrediente !== null &&
         ing.costo_ingrediente !== undefined &&
-        ing.costo_ingrediente > 0
+        ing.costo_ingrediente > 0 &&
+        ing.cantidad_ingrediente > 0
     );
   };
+
 
   useEffect(() => {
     const fetchData = async () => {
