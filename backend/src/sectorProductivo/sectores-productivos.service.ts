@@ -25,4 +25,18 @@ export class SectorProductivoService {
   async obtenerPorNombre(nombre: string): Promise<SectorProductivo | null> {
     return this.sectorProductivoRepository.obtenerPorNombre(nombre);
   }
+
+  // === V2: passthrough a repositorio (no rompe lo anterior) ===
+  listarSectoresMantencionV2() {
+    return this.sectorProductivoRepository.listarSectoresMantencionV2();
+  }
+
+  getPorcentajeMantencionV2(nombre: string) {
+    return this.sectorProductivoRepository.getPorcentajeMantencionV2(nombre);
+  }
+
+  updatePorcentajeMantencionV2(nombre: string, porcentaje: number) {
+    return this.sectorProductivoRepository.updatePorcentajeMantencionV2(nombre, porcentaje);
+  }
+
 }

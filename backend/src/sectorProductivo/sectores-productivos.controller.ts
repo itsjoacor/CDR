@@ -6,8 +6,12 @@ import {
   Get,
   HttpException,
   HttpStatus,
-  Logger
+  Logger,
+  Param,
+  Put
 } from '@nestjs/common';
+import { UpdatePorcentajeMantencionV2Dto } from './sectores-productivos-body.dto';
+
 
 import { SectorProductivo } from '../sectorProductivo/sectores-productivos.model';
 import { SectorProductivoBody } from './sectores-productivos-body.dto';
@@ -17,7 +21,7 @@ import { SectorProductivoService } from './sectores-productivos.service';
 export class SectorProductivoController {
   private readonly logger = new Logger(SectorProductivoController.name);
 
-  constructor(private readonly sectorProductivoService: SectorProductivoService) {}
+  constructor(private readonly sectorProductivoService: SectorProductivoService) { }
 
   @Post()
   async crear(@Body() body: SectorProductivoBody): Promise<SectorProductivo> {
@@ -44,5 +48,32 @@ export class SectorProductivoController {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+
+  // === V2: LISTADO de sectores con porcentaje (endpoint nuevo) ===
+  // GET /sectores-productivos/mantencion
+  @Get('mantencion')
+  async listarMantencionV2() {
+    // devuelve: [{ nombre, porcentaje_mantencion }, ...]
+    return this.sectorProductivoService.listarSectoresMantencionV2();
+  }
+
+  // === V2: GET un sector (endpoint nuevo) ===
+  // GET /sectores-productivos/:nombre/porcentaje-mantencion-v2
+  @Get(':nombre/porcentaje-mantencion-v2')
+  async getPorcentajeMantencionV2(@Param('nombre') nombre: string) {
+    const porcentaje = await this.sectorProductivoService.getPorcentajeMantencionV2(nombre);
+    return { nombre, porcentajeMantencion: porcentaje };
+  }
+
+  // === V2: PUT un sector (endpoint nuevo) ===
+  // PUT /sectores-productivos/:nombre/porcentaje-mantencion-v2
+  @Put(':nombre/porcentaje-mantencion-v2')
+  async updatePorcentajeMantencionV2(
+    @Param('nombre') nombre: string,
+    @Body() body: UpdatePorcentajeMantencionV2Dto,
+  ) {
+    return this.sectorProductivoService.updatePorcentajeMantencionV2(nombre, body.porcentajeMantencion);
   }
 }
