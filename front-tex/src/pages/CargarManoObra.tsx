@@ -289,7 +289,7 @@ const CargarManoObra: React.FC = () => {
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
-            onClick={() => navigate('/matriz-mano')}
+            onClick={() => navigate('/mano-obra')}
             className="flex items-center space-x-2"
           >
             <ArrowLeft className="h-4 w-4" />
