@@ -10,6 +10,7 @@ import { RecetaNormalizadaModule } from './recetaNormalizada/receta-normalizada.
 import { SectorProductivoModule } from './sectorProductivo/sectores-productivos.module';
 import { ExportModule } from './exportacion/export.module';
 import { TablaConfigModule } from './tablaConfig/tabla-config.module';
+import { ImportacionModule } from './importacion/importacion.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TablaConfigModule } from './tablaConfig/tabla-config.module';
     SectorProductivoModule,
     TablaConfigModule,
     ExportModule,
+    ImportacionModule,
 
 
   ],
