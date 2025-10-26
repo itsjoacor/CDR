@@ -47,6 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     { path: '/actualizarMantencion', label: 'Actualizar Mantención', icon: RefreshCcw },
     { path: '/resultados-cdr', label: 'CDR', icon: DollarSign, color: 'text-green-400' },
     { path: '/resultados-cdr-mantencion', label: 'CDR Sectorizado', icon: DollarSign },
+    { path: '/importacion', label: 'importacion', icon: UploadCloud },
     { path: '/exportacion', label: 'Exportación', icon: UploadCloud },
   ];
 

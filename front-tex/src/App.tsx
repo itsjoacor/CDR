@@ -28,6 +28,7 @@ import ActualizacionME from "./pages/ActualizacionME";
 import ActualizacionMO from "./pages/ActualizacionMO";
 import ActualizarMantencion from "./pages/ActualizarMantencion";
 import CDRPorSector from "./pages/CDRPorSector";
+import Importacion from "./pages/Importacion";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ const App = () => (
                 <Route path="/actualizarME" element={<ActualizacionME />} />
                 <Route path="/actualizarMO" element={<ActualizacionMO />} />
                 <Route path="/actualizarMantencion" element={<ActualizarMantencion />} />
+                <Route path="/importacion" element={<Importacion />} />
 
 
 
