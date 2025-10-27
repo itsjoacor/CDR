@@ -1,4 +1,16 @@
-import { Controller, Post, Body, Get, Delete, Param, Put, HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Delete,
+  Param,
+  Put,
+  HttpException,
+  HttpStatus,
+  BadRequestException,
+  Query,
+} from '@nestjs/common';
 import { RecetaNormalizadaService } from '../recetaNormalizada/receta-normalizada.service';
 import { CreateRecetaNormalizadaDto } from '../recetaNormalizada/receta-nomralizada.dto';
 
@@ -15,16 +27,16 @@ export class RecetaNormalizadaController {
         {
           status: HttpStatus.BAD_REQUEST,
           error: result.message,
-          details: result.error
+          details: result.error,
         },
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
     }
 
     return {
       status: 'success',
       data: result.data,
-      message: result.message
+      message: result.message,
     };
   }
 
@@ -33,25 +45,40 @@ export class RecetaNormalizadaController {
     return this.service.obtenerTodas();
   }
 
+  /** NUEVO: GET por producto */
+  @Get('por-producto/:codigo_producto')
+  async obtenerPorProducto(@Param('codigo_producto') codigo_producto: string) {
+    if (!codigo_producto) {
+      throw new BadRequestException('codigo_producto es requerido');
+    }
+    return this.service.obtenerPorProducto(codigo_producto);
+  }
+
+  /**
+   * NUEVO: flags/zero-cost
+   * - Sin query -> devuelve todos los { codigo_producto } con algún costo_total 0/NULL
+   * - Con ?codigo=ABC -> devuelve [] o [{ codigo_producto: 'ABC' }]
+   */
+  @Get('flags/zero-cost')
+  async productosConCostoTotalCero(@Query('codigo') codigo?: string) {
+    return this.service.productosConCostoTotalCero(codigo);
+  }
+
   @Delete(':codigo_producto/:codigo_ingrediente')
   eliminar(
     @Param('codigo_producto') codigo_producto: string,
-    @Param('codigo_ingrediente') codigo_ingrediente: string
+    @Param('codigo_ingrediente') codigo_ingrediente: string,
   ) {
     return this.service.eliminar(codigo_producto, codigo_ingrediente);
   }
 
-  @Delete(':codigo_producto')
-  async eliminarRecetaCompleta(
-    @Param('codigo_producto') codigo_producto: string
-  ) {
+  /** NUEVO: DELETE por producto (eliminar receta completa) */
+  @Delete('por-producto/:codigo_producto')
+  async eliminarPorProducto(@Param('codigo_producto') codigo_producto: string) {
+    if (!codigo_producto) {
+      throw new BadRequestException('codigo_producto es requerido');
+    }
     return this.service.eliminarRecetaCompleta(codigo_producto);
-  }
-
-
-  @Put()
-  actualizar(@Body() dto: CreateRecetaNormalizadaDto) {
-    return this.service.actualizar(dto);
   }
 
   @Put(':codigo_producto/:codigo_ingrediente')
@@ -76,7 +103,6 @@ export class RecetaNormalizadaController {
       Number(cantidad_ingrediente),
     );
 
-    // Devolvemos exactamente lo que el front puede mergear sin romper nada
     return {
       codigo_producto,
       codigo_ingrediente,
@@ -84,4 +110,22 @@ export class RecetaNormalizadaController {
     };
   }
 
+  // receta-normalizada.controller.ts - Agregar este endpoint
+  @Get(':codigo_producto/tiene-cdr-cero')
+  async tieneValorCdrCero(@Param('codigo_producto') codigo_producto: string) {
+    const result = await this.service.tieneValorCdrCero(codigo_producto);
+
+    if (!result.success) {
+      throw new HttpException(
+        { status: HttpStatus.BAD_REQUEST, error: result.message },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    return {
+      status: 'success',
+      tieneCdrCero: result.tieneCdrCero,
+      message: result.message
+    };
+  }
 }

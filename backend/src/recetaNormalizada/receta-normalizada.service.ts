@@ -15,14 +15,14 @@ export class RecetaNormalizadaService {
       const resultado = await this.repo.crear(dto);
       return {
         success: true,
-        data: resultado,
-        message: 'Receta creada exitosamente'
+        message: resultado.message,
+        data: resultado.data
       };
     } catch (error) {
       return {
         success: false,
-        message: error.message || 'Error al crear la receta',
-        error: error.response || error
+        message: error?.message || 'Error creando receta',
+        error,
       };
     }
   }
@@ -31,19 +31,21 @@ export class RecetaNormalizadaService {
     return this.repo.obtenerTodas();
   }
 
+  async obtenerPorProducto(codigo_producto: string) {
+    return this.repo.obtenerPorProducto(codigo_producto);
+  }
+
+  async productosConCostoTotalCero(codigo?: string) {
+    return this.repo.productosConCostoTotalCero(codigo);
+  }
+
   async eliminar(codigo_producto: string, codigo_ingrediente: string) {
     return this.repo.eliminar(codigo_producto, codigo_ingrediente);
   }
-  async eliminarRecetaCompleta(codigo_producto: string) {
-    return this.repo.eliminarRecetaCompleta(codigo_producto);
-  }
 
-  async actualizar(dto: CreateRecetaNormalizadaDto) {
-    return this.repo.actualizar(
-      dto.codigo_producto,
-      dto.codigo_ingrediente,
-      dto.cantidad_ingrediente
-    );
+  async eliminarRecetaCompleta(codigo_producto: string) {
+    const affected = await this.repo.eliminarPorProducto(codigo_producto);
+    return { affected };
   }
 
   async actualizarPorIds(
@@ -58,4 +60,21 @@ export class RecetaNormalizadaService {
     );
   }
 
+  // receta-normalizada.service.ts - Agregar este método
+  async tieneValorCdrCero(codigo_producto: string) {
+    try {
+      const resultado = await this.repo.tieneValorCdrCero(codigo_producto);
+      return {
+        success: true,
+        tieneCdrCero: resultado,
+        message: resultado ? 'Tiene CDR en cero' : 'No tiene CDR en cero'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        tieneCdrCero: false,
+        message: error.message || 'Error al verificar CDR cero'
+      };
+    }
+  }
 }

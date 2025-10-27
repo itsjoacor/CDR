@@ -1,11 +1,10 @@
-import React, { useState, useEffect, Fragment } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -13,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Edit, Trash2, Save, X, Search, Filter } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -34,168 +32,73 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions,
-} from "@headlessui/react";
-import { Plus, BarChart3 } from "lucide-react";
-import Cookies from 'js-cookie';
+import Cookies from "js-cookie";
+import { Edit, Trash2, Search, Filter, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface RecetaItem {
+type Producto = {
   codigo_producto: string;
   descripcion_producto: string;
   sector_productivo: string;
-  ingredientes: {
-    codigo_ingrediente: string;
-    descripcion_ingrediente: string;
-    cantidad_ingrediente: number;
-    costo_ingrediente?: number;
-  }[];
-  costo_mano_obra?: number;
-  costo_matriz_energetica?: number;
-  costo_total?: number;
-  fecha_creacion: string;
-}
+  updated_at: string | null;
+};
 
-const Receta: React.FC = () => {
-  const token = Cookies.get('token');
+type ZeroCostMap = Record<string, boolean>;
+
+const Composicion: React.FC = () => {
+  const token = Cookies.get("token");
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [recetas, setRecetas] = useState<RecetaItem[]>([]);
-  const [productosLista, setProductosLista] = useState<any[]>([]);
+
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [zeroCostMap, setZeroCostMap] = useState<ZeroCostMap>({});
   const [sectores, setSectores] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [cdrValues, setCdrValues] = useState<Record<string, number>>({});
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<RecetaItem>>({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [productoSeleccionado, setProductoSeleccionado] = useState<string | null>(null);
   const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const canEdit = user?.role === "admin";
 
-  const hasValidIngredientCosts = (receta: RecetaItem): boolean => {
-    if (!receta.ingredientes || receta.ingredientes.length === 0) return false;
-    return receta.ingredientes.every(
-      (ing) =>
-        ing.costo_ingrediente !== null &&
-        ing.costo_ingrediente !== undefined &&
-        ing.costo_ingrediente > 0 &&
-        ing.cantidad_ingrediente > 0
-    );
-  };
-
-
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAll = async () => {
       try {
         setLoading(true);
 
-        // 1. First fetch all productos
-        const productosResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/productos`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        if (!productosResponse.ok) throw new Error("Error al obtener productos");
-        const productosData = await productosResponse.json();
+        // 1) Productos (base)
+        const resProd = await fetch(`${import.meta.env.VITE_API_URL}/productos`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resProd.ok) throw new Error("Error al obtener productos");
+        const prodData: Producto[] = await resProd.json();
+        setProductos(prodData);
 
-        // Extract unique sectors
         const sectoresUnicos = [
-          ...new Set(productosData.map((p: any) => p.sector_productivo)),
-        ] as string[];
+          ...new Set(prodData.map((p) => p.sector_productivo)),
+        ];
         setSectores(sectoresUnicos);
-        setProductosLista(productosData);
 
-        // 2. Then fetch recetas
-        const recetasResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/recetas-normalizada`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        // 2) Flags costo_total 0/null por producto
+        const resZero = await fetch(
+          `${import.meta.env.VITE_API_URL}/recetas-normalizada/flags/zero-cost`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-        if (!recetasResponse.ok) throw new Error("Error al obtener recetas");
-        const recetasData = await recetasResponse.json();
+        if (!resZero.ok) throw new Error("Error al obtener flags de costos");
+        const zeroArr: { codigo_producto: string }[] = await resZero.json();
 
-        // Process and combine the data
-        const recetasGrouped: Record<string, RecetaItem> = {};
-
-        for (const item of recetasData) {
-          const producto = productosData.find(
-            (p: any) => p.codigo_producto === item.codigo_producto
-          );
-
-          if (!producto) {
-            console.warn(`Producto no encontrado para código: ${item.codigo_producto}`);
-            continue;
-          }
-
-          if (!recetasGrouped[item.codigo_producto]) {
-            recetasGrouped[item.codigo_producto] = {
-              codigo_producto: item.codigo_producto,
-              descripcion_producto: producto.descripcion_producto || "Producto no encontrado",
-              sector_productivo: producto.sector_productivo || "Desconocido",
-              ingredientes: [],
-              costo_mano_obra: item.costo_mano_obra,
-              costo_matriz_energetica: item.costo_matriz_energetica,
-              costo_total: item.costo_total,
-              fecha_creacion: item.fecha_creacion || new Date().toISOString().split("T")[0],
-            };
-          }
-
-          recetasGrouped[item.codigo_producto].ingredientes.push({
-            codigo_ingrediente: item.codigo_ingrediente,
-            descripcion_ingrediente: item.descripcion_ingrediente,
-            cantidad_ingrediente: item.cantidad_ingrediente,
-            costo_ingrediente: item.costo_ingrediente,
-          });
-        }
-
-        // Convert to array and set state
-        const recetasArray = Object.values(recetasGrouped);
-        setRecetas(recetasArray);
-
-        // Fetch CDR values
-        const cdrMap: Record<string, number> = {};
-        await Promise.all(
-          recetasArray.map(async (receta) => {
-            try {
-              const cdrRes = await fetch(
-                `${import.meta.env.VITE_API_URL}/resultados-cdr/${receta.codigo_producto}/base`,
-                {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
-                }
-              );
-              if (!cdrRes.ok) return;
-              const cdrData = await cdrRes.json();
-              cdrMap[receta.codigo_producto] = cdrData.base_cdr || 0;
-            } catch (_) {
-              cdrMap[receta.codigo_producto] = 0;
-            }
-          })
-        );
-
-        setCdrValues(cdrMap);
-      } catch (error) {
+        const map: ZeroCostMap = {};
+        zeroArr.forEach((r) => {
+          map[r.codigo_producto] = true;
+        });
+        setZeroCostMap(map);
+      } catch (err) {
         toast({
           title: "Error",
           description:
-            error instanceof Error
-              ? error.message
-              : "Fallo en la carga de datos.",
+            err instanceof Error ? err.message : "Fallo al cargar datos.",
           variant: "destructive",
         });
       } finally {
@@ -203,294 +106,149 @@ const Receta: React.FC = () => {
       }
     };
 
-    fetchData();
+    fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filteredRecetas = recetas.filter((receta) => {
+  // Filtros
+  const filtered = productos.filter((p) => {
     const matchesSearch =
-      receta.descripcion_producto
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      receta.codigo_producto.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesProducto = productoSeleccionado
-      ? receta.codigo_producto === productoSeleccionado
-      : true;
+      p.descripcion_producto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.codigo_producto.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSector = sectorSeleccionado
-      ? receta.sector_productivo === sectorSeleccionado
+      ? p.sector_productivo === sectorSeleccionado
       : true;
-    return matchesSearch && matchesProducto && matchesSector;
+    return matchesSearch && matchesSector;
   });
 
-  const totalPages = Math.ceil(filteredRecetas.length / itemsPerPage);
+  // Paginación
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedRecetas = filteredRecetas.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  const page = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-
-  const handleEdit = (receta: RecetaItem) => {
-    navigate(`/detalle-composicion?productId=${receta.codigo_producto}`);
-  };
-  const handleView = (receta: RecetaItem) => {
-    navigate(`/detalle-composicion?productId=${receta.codigo_producto}`);
+  const handleEdit = (producto: Producto) => {
+    // Abre detalle con SELECT * de recetas_normalizada por producto
+    navigate(`/detalle-composicion?productId=${producto.codigo_producto}`);
   };
 
-  const handleSave = () => {
-    if (!editForm.descripcion_producto) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setRecetas((prev) =>
-      prev.map((item) =>
-        item.codigo_producto === editingId
-          ? ({ ...item, ...editForm } as RecetaItem)
-          : item
-      )
-    );
-
-    toast({
-      title: "Guardado exitoso",
-      description: "Los cambios se han guardado correctamente.",
-    });
-
-    setEditingId(null);
-    setEditForm({});
-  };
-
-  const handleCancel = () => {
-    setEditingId(null);
-    setEditForm({});
-  };
-
-  const handleDelete = async (
-    codigo_producto: string,
-  ) => {
+  const handleDelete = async (producto: Producto) => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL
-        }/recetas-normalizada/${codigo_producto}`,
+        `${import.meta.env.VITE_API_URL}/recetas-normalizada/por-producto/${producto.codigo_producto}`,
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(
+          `Error al eliminar la receta completa (${producto.codigo_producto}): ${body}`
+        );
+      }
 
-      if (!res.ok) throw new Error();
-
-      setRecetas((prev) =>
-        prev.filter(
-          (r) =>
-            !(
-              r.codigo_producto === codigo_producto
-            )
-        )
+      // Refrescar flag del producto eliminado
+      const check = await fetch(
+        `${import.meta.env.VITE_API_URL}/recetas-normalizada/flags/zero-cost?codigo=${encodeURIComponent(
+          producto.codigo_producto
+        )}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
+      if (check.ok) {
+        const arr: { codigo_producto: string }[] = await check.json();
+        setZeroCostMap((prev) => ({
+          ...prev,
+          [producto.codigo_producto]: arr.length > 0,
+        }));
+      } else {
+        setZeroCostMap((prev) => ({ ...prev, [producto.codigo_producto]: false }));
+      }
 
       toast({
         title: "Eliminado",
-        description: `Composición fue eliminada correctamente.`,
+        description: `Se eliminaron todas las filas de la receta ${producto.codigo_producto}.`,
       });
-    } catch {
+    } catch (err) {
       toast({
         title: "Error",
-        description: "No se pudo eliminar la composicion. Intenta nuevamente.",
+        description:
+          err instanceof Error ? err.message : "No se pudo eliminar la receta.",
         variant: "destructive",
       });
     }
   };
 
-  const handleNewReceta = () => {
-    navigate("/cargarComposicion");
-  };
-
-  const getSectorColor = (sector: string) => {
-    switch (sector) {
-      case "Confección":
-        return "bg-blue-100 text-blue-800";
-      case "Textil":
-        return "bg-green-100 text-green-800";
-      case "Marroquinería":
-        return "bg-purple-100 text-purple-800";
-      case "Calzado":
-        return "bg-orange-100 text-orange-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  // Replace the current loading state in Receta.tsx with this:
-
-  // Replace the current loading state in Receta.tsx with this:
-
-
   return (
-    <Layout title="Gestión de Composiciones">
+    <Layout title="Composicion">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <div>
-            <Badge variant="outline" className="bg-blue-50">
-              📋 Composicion - componentes central del CDR
-            </Badge>
-            <p className="text-sm text-muted-foreground mt-2">
-              Define materiales, cantidades, mano de obra y energía necesarios
-              para fabricar productos
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Composición por Producto
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Lista basada en <b>productos</b>. Los productos con ingredientes
+              con <b>costo_total = 0</b> se muestran en <b className="text-red-600">rojo</b>.
             </p>
           </div>
-          <div className="flex space-x-2">
-            {canEdit && (
-              <Button
-                onClick={handleNewReceta}
-                className="bg-green-100 text-green-900 hover:bg-green-200 border border-green-300"
-              >
-                <Plus className="w-4 h-4 mr-2 text-emerald-600" />
-                Nueva Composición
-              </Button>
 
-            )}
+          {/* Agregar componente: Cargar composición */}
+          <div className="flex space-x-2">
             <Button
-              onClick={() => {
-                if (productoSeleccionado) {
-                  navigate(`/detalle-composicion?productId=${productoSeleccionado}`);
-                } else {
-                  navigate("/detalle-composicion");
-                }
-              }}
-              variant="outline"
-              className="border text-black"
+              onClick={() => navigate("/cargarComposicion")}
+              className="gap-2"
             >
-              <BarChart3 className="w-4 h-4 mr-2 text-[#6c63ff]" />
-              Ver Detallado
+              <Plus className="w-4 h-4" />
+              Cargar composición
             </Button>
           </div>
-
         </div>
 
         {/* Filtros */}
         <Card>
-          <CardContent className="p-4 flex flex-col md:flex-row gap-4">
-            {/* Filtro por Producto */}
-            <div className="flex-1">
-              <Listbox
-                value={productoSeleccionado}
-                onChange={setProductoSeleccionado}
-              >
-                <div className="relative w-full">
-                  <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-blue-300 flex items-center justify-between">
-                    {productoSeleccionado
-                      ? productosLista.find(
-                        (p) => p.codigo_producto === productoSeleccionado
-                      )?.descripcion_producto || productoSeleccionado
-                      : "Filtrar por producto"}
-                    <svg
-                      className="w-5 h-5 text-gray-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                    </svg>
-                  </ListboxButton>
-                  <ListboxOptions className="absolute mt-1 w-full bg-white border rounded-md shadow-md z-10 max-h-60 overflow-auto">
-                    <ListboxOption value={null} as={Fragment}>
-                      {({ active }) => (
-                        <li
-                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-blue-100 text-blue-800" : ""
-                            }`}
-                        >
-                          Todos los productos
-                        </li>
-                      )}
-                    </ListboxOption>
-                    {productosLista.map((p, i) => (
-                      <ListboxOption
-                        key={i}
-                        value={p.codigo_producto}
-                        as={Fragment}
-                      >
-                        {({ active, selected }) => (
-                          <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${active
-                              ? "bg-blue-100 text-blue-800"
-                              : "text-gray-800"
-                              } ${selected ? "font-medium" : ""}`}
-                          >
-                            {p.codigo_producto} - {p.descripcion_producto}
-                          </li>
-                        )}
-                      </ListboxOption>
-                    ))}
-                  </ListboxOptions>
-                </div>
-              </Listbox>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Filtros</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <div className="flex-1 min-w-[220px]">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por código o descripción..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setCurrentPage(1);
+                    setSearchTerm(e.target.value);
+                  }}
+                />
+              </div>
             </div>
-
-            {/* Filtro por Sector */}
-            <div className="flex-1">
-              <Listbox
-                value={sectorSeleccionado}
-                onChange={setSectorSeleccionado}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <select
+                className="border rounded-md px-2 h-9"
+                value={sectorSeleccionado || ""}
+                onChange={(e) => {
+                  setCurrentPage(1);
+                  setSectorSeleccionado(e.target.value || null);
+                }}
               >
-                <div className="relative w-full">
-                  <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-green-300 flex items-center justify-between">
-                    {sectorSeleccionado || "Filtrar por sector"}
-                    <svg
-                      className="w-5 h-5 text-gray-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                    </svg>
-                  </ListboxButton>
-                  <ListboxOptions className="absolute mt-1 w-full bg-white border rounded-md shadow-md z-10 max-h-60 overflow-auto">
-                    <ListboxOption value={null} as={Fragment}>
-                      {({ active }) => (
-                        <li
-                          className={`px-4 py-2 cursor-pointer rounded ${active ? "bg-green-100 text-green-800" : ""
-                            }`}
-                        >
-                          Todos los sectores
-                        </li>
-                      )}
-                    </ListboxOption>
-                    {sectores.map((s, i) => (
-                      <ListboxOption key={i} value={s} as={Fragment}>
-                        {({ active, selected }) => (
-                          <li
-                            className={`cursor-pointer px-4 py-2 rounded-md ${active
-                              ? "bg-green-100 text-green-800"
-                              : "text-gray-800"
-                              } ${selected ? "font-medium" : ""}`}
-                          >
-                            {s}
-                          </li>
-                        )}
-                      </ListboxOption>
-                    ))}
-                  </ListboxOptions>
-                </div>
-              </Listbox>
+                <option value="">Todos los sectores</option>
+                {sectores.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
             </div>
           </CardContent>
         </Card>
 
+        {/* Tabla */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle >Composiciones</CardTitle>
-                <CardDescription className="pt-1">
-                  Mostrando {paginatedRecetas.length} de{" "}
-                  {filteredRecetas.length} productos
-                </CardDescription>
-              </div>
-            </div>
+            <CardTitle className="text-base">Productos</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -507,183 +265,100 @@ const Receta: React.FC = () => {
                       <TableHead>Código</TableHead>
                       <TableHead>Descripción</TableHead>
                       <TableHead>Sector</TableHead>
-                      <TableHead>CDR</TableHead>
-                      <TableHead>Fecha</TableHead>
+                      <TableHead>Actualizado</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedRecetas.map((receta) => (
-                      <React.Fragment key={receta.codigo_producto}>
+                    {page.map((p) => {
+                      const red = !!zeroCostMap[p.codigo_producto];
+                      return (
                         <TableRow
+                          key={p.codigo_producto}
                           className={
-                            editingId === receta.codigo_producto
-                              ? "bg-blue-50"
-                              : hasValidIngredientCosts(receta)
-                                ? "bg-green-50 hover:bg-green-100"
-                                : "bg-red-50 hover:bg-red-100"
+                            red
+                              ? "bg-red-50 hover:bg-red-100"
+                              : "bg-white hover:bg-muted/30"
                           }
                         >
                           <TableCell className="font-medium">
-                            {receta.codigo_producto}
+                            {p.codigo_producto}
+                          </TableCell>
+                          <TableCell>{p.descripcion_producto}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{p.sector_productivo}</Badge>
                           </TableCell>
                           <TableCell>
-                            {editingId === receta.codigo_producto ? (
-                              <Input
-                                value={editForm.descripcion_producto || ""}
-                                onChange={(e) =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    descripcion_producto: e.target.value,
-                                  }))
-                                }
-                                className="min-w-[250px]"
-                              />
-                            ) : (
-                              <div className="max-w-[250px] truncate">
-                                {receta.descripcion_producto}
-                              </div>
-                            )}
+                            {p.updated_at
+                              ? new Date(p.updated_at).toLocaleString()
+                              : "-"}
                           </TableCell>
-                          <TableCell>
-                            <Badge
-                              className={getSectorColor(receta.sector_productivo)}
+                          <TableCell className="space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(p)}
                             >
-                              {receta.sector_productivo}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-semibold text-green-600">
-                              $
-                              {cdrValues[receta.codigo_producto]?.toFixed(2) ||
-                                "0.00"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {receta.fecha_creacion}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {canEdit ? (
-                              <div className="flex space-x-2 justify-center">
-                                {editingId === receta.codigo_producto ? (
-                                  <>
-                                    <Button variant="outline" size="sm" onClick={handleSave}>
-                                      <Save className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={handleCancel}>
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Button variant="outline" size="sm" onClick={() => handleEdit(receta)}>
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="outline" size="sm">
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Esta acción no se puede deshacer. Se eliminará permanentemente la receta "{receta.descripcion_producto}".
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => handleDelete(receta.codigo_producto)}>
-                                            Eliminar
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="flex justify-center">
-                                <Button variant="outline" size="sm" onClick={() => handleView(receta)}>
-                                  <Search className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              <Edit className="w-4 h-4 mr-1" />
+                              Editar
+                            </Button>
+
+                            {canEdit && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 border-red-300"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-1" />
+                                    Eliminar
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Eliminar receta completa
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esto eliminará <b>todas</b> las filas de
+                                      la receta del producto{" "}
+                                      <b>{p.codigo_producto}</b>. ¿Deseás
+                                      continuar?
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDelete(p)}
+                                    >
+                                      Sí, eliminar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             )}
                           </TableCell>
                         </TableRow>
-
-                        {editingId === receta.codigo_producto && (
-                          <TableRow className="bg-blue-50">
-                            <TableCell colSpan={canEdit ? 7 : 6}>
-                              <div className="p-4 space-y-4">
-                                <div className="grid md:grid-cols-3 gap-6">
-                                  <div className="space-y-2">
-                                    <h4 className="font-medium text-sm text-blue-700">
-                                      COSTOS
-                                    </h4>
-                                    <div className="space-y-1">
-                                      <div className="text-xs">
-                                        💰 Mano de obra: $
-                                        {receta.costo_mano_obra?.toFixed(2) ||
-                                          "0.00"}
-                                      </div>
-                                      <div className="text-xs">
-                                        ⚡ Matriz energética: $
-                                        {receta.costo_matriz_energetica?.toFixed(
-                                          2
-                                        ) || "0.00"}
-                                      </div>
-                                      <div className="text-xs font-semibold">
-                                        🏷️ Total: $
-                                        {receta.costo_total?.toFixed(2) || "0.00"}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <h4 className="font-medium text-sm text-blue-700">
-                                      INGREDIENTES
-                                    </h4>
-                                    <div className="space-y-1">
-                                      {receta.ingredientes.map(
-                                        (ingrediente, index) => (
-                                          <div key={index} className="text-xs">
-                                            📦{" "}
-                                            {ingrediente.descripcion_ingrediente}:{" "}
-                                            {ingrediente.cantidad_ingrediente} ($
-                                            {ingrediente.costo_ingrediente?.toFixed(
-                                              2
-                                            ) || "0.00"}
-                                            )
-                                          </div>
-                                        )
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </React.Fragment>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </ScrollArea>
             )}
-            {totalPages > 1 && (
+
+            {/* Paginación */}
+            {!loading && (
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-muted-foreground">
-                  Página {currentPage} de {totalPages}
+                  Página {currentPage} de {totalPages} — {filtered.length}{" "}
+                  productos
                 </div>
-                <div className="flex space-x-2">
+                <div className="space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(prev - 1, 1))
-                    }
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
                     Anterior
@@ -692,7 +367,7 @@ const Receta: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
                     }
                     disabled={currentPage === totalPages}
                   >
@@ -703,11 +378,9 @@ const Receta: React.FC = () => {
             )}
           </CardContent>
         </Card>
-
-
       </div>
     </Layout>
   );
 };
 
-export default Receta;
+export default Composicion;

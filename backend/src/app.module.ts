@@ -11,6 +11,7 @@ import { SectorProductivoModule } from './sectorProductivo/sectores-productivos.
 import { ExportModule } from './exportacion/export.module';
 import { TablaConfigModule } from './tablaConfig/tabla-config.module';
 import { ImportacionModule } from './importacion/importacion.module';
+import { ReferenciasModule } from './referencias/referencias.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ImportacionModule } from './importacion/importacion.module';
     TablaConfigModule,
     ExportModule,
     ImportacionModule,
+      ReferenciasModule,
 
 
   ],
