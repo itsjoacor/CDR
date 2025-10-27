@@ -281,8 +281,8 @@ const CargarReceta: React.FC = () => {
 
       // Éxito
       toast({
-        title: "✅ Composición guardada",
-        description: `La composición se guardó correctamente con ${ingredientes.length} componentes`,
+        title: "✅ Receta guardada",
+        description: `La receta se guardó correctamente con ${ingredientes.length} componentes`,
         variant: 'default'
       });
 
@@ -307,10 +307,10 @@ const CargarReceta: React.FC = () => {
 
 
   return (
-    <Layout title="Nueva Composición">
+    <Layout title="Nueva Receta">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => navigate('/composicion')} className="flex items-center space-x-2">
+          <Button variant="outline" onClick={() => navigate('/receta')} className="flex items-center space-x-2">
             <ArrowLeft className="h-4 w-4" />
             <span>Volver atrás</span>
           </Button>

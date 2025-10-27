@@ -20,8 +20,8 @@ const Dashboard: React.FC = () => {
 
   const modules = [
     {
-      path: '/composicion',
-      title: 'Composición',
+      path: '/Receta',
+      title: 'Receta',
       icon: ClipboardList,
       iconColor: 'text-sky-400',
       description: 'Gestionar materiales, cantidades, MO y energía para fabricar productos',

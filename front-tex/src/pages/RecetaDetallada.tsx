@@ -51,7 +51,7 @@ type EditState = {
 };
 
 /** ===== Componente ===== */
-const ComposicionDetallada: React.FC = () => {
+const RecetaDetallada: React.FC = () => {
   const token = Cookies.get("token");
   const { user } = useAuth();
   const { toast } = useToast();
@@ -317,13 +317,13 @@ const ComposicionDetallada: React.FC = () => {
 
   /** ===== Render ===== */
   const titulo = productId
-    ? `Composición detallada — ${productId}`
-    : "Composición detallada";
+    ? `Estas viendo el producto con codigo: ${productId} `
+    : "Receta detallada";
 
   const descDe = (codigo: string) => nombres[codigo] ?? "";
 
   return (
-    <Layout title="Composicion Detallada">
+    <Layout title="Receta Detallada">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -340,8 +340,8 @@ const ComposicionDetallada: React.FC = () => {
             )}
           </div>
 
-          <Button onClick={() => window.location.assign("/cargarComposicion")}>
-            Cargar composición
+          <Button onClick={() => window.location.assign("/cargarReceta")}>
+            Cargar receta
           </Button>
         </div>
 
@@ -502,4 +502,4 @@ const ComposicionDetallada: React.FC = () => {
   );
 };
 
-export default ComposicionDetallada;
+export default RecetaDetallada;

@@ -46,7 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   // Mantengo tus rutas e íconos
   const navigationItems = [
     { path: '/', label: 'Dashboard', icon: Home },
-    { path: '/composicion', label: 'Composición', icon: ClipboardList, color: 'text-sky-400' },
+    { path: '/receta', label: 'Receta', icon: ClipboardList, color: 'text-sky-400' },
     { path: '/producto', label: 'Productos', icon: ShoppingCart, color: 'text-orange-300' },
     { path: '/insumos', label: 'Insumos', icon: Package, color: 'text-purple-300' },
     { path: '/mano-obra', label: 'Mano de Obra', icon: HardHat, color: 'text-orange-400' },

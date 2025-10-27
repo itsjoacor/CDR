@@ -44,8 +44,9 @@ type Producto = {
 };
 
 type ZeroCostMap = Record<string, boolean>;
+type CdrCeroMap = Record<string, boolean>;
 
-const Composicion: React.FC = () => {
+const Receta: React.FC = () => {
   const token = Cookies.get("token");
   const { user } = useAuth();
   const { toast } = useToast();
@@ -53,6 +54,7 @@ const Composicion: React.FC = () => {
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [zeroCostMap, setZeroCostMap] = useState<ZeroCostMap>({});
+  const [cdrCeroMap, setCdrCeroMap] = useState<CdrCeroMap>({});
   const [sectores, setSectores] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
@@ -62,6 +64,59 @@ const Composicion: React.FC = () => {
   const itemsPerPage = 10;
 
   const canEdit = user?.role === "admin";
+
+  // Función para verificar CDR cero
+  const verificarCdrCero = async (codigoProducto: string): Promise<boolean> => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/recetas-normalizada/${codigoProducto}/tiene-cdr-cero`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      if (!response.ok) throw new Error('Error en la consulta');
+      
+      const data = await response.json();
+      return data.tieneCdrCero;
+      
+    } catch (error) {
+      console.error('Error al verificar CDR cero:', error);
+      return false;
+    }
+  };
+
+  // Función para verificar CDR cero para todos los productos
+  const verificarTodosLosCDR = async (productosList: Producto[]) => {
+    const results: CdrCeroMap = {};
+    
+    // Verificar en lotes para no saturar
+    const CHUNK_SIZE = 10;
+    
+    for (let i = 0; i < productosList.length; i += CHUNK_SIZE) {
+      const chunk = productosList.slice(i, i + CHUNK_SIZE);
+      
+      const batchResults = await Promise.all(
+        chunk.map(async (producto) => {
+          try {
+            const tieneCdrCero = await verificarCdrCero(producto.codigo_producto);
+            return { codigo: producto.codigo_producto, tieneCdrCero };
+          } catch (error) {
+            return { codigo: producto.codigo_producto, tieneCdrCero: false };
+          }
+        })
+      );
+      
+      // Actualizar el mapa con los resultados del lote
+      batchResults.forEach(result => {
+        results[result.codigo] = result.tieneCdrCero;
+      });
+    }
+    
+    setCdrCeroMap(results);
+  };
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -94,6 +149,10 @@ const Composicion: React.FC = () => {
           map[r.codigo_producto] = true;
         });
         setZeroCostMap(map);
+
+        // 3) Verificar CDR cero para todos los productos
+        await verificarTodosLosCDR(prodData);
+
       } catch (err) {
         toast({
           title: "Error",
@@ -127,8 +186,7 @@ const Composicion: React.FC = () => {
   const page = filtered.slice(startIndex, startIndex + itemsPerPage);
 
   const handleEdit = (producto: Producto) => {
-    // Abre detalle con SELECT * de recetas_normalizada por producto
-    navigate(`/detalle-composicion?productId=${producto.codigo_producto}`);
+    navigate(`/detalle-receta?productId=${producto.codigo_producto}`);
   };
 
   const handleDelete = async (producto: Producto) => {
@@ -164,6 +222,13 @@ const Composicion: React.FC = () => {
         setZeroCostMap((prev) => ({ ...prev, [producto.codigo_producto]: false }));
       }
 
+      // También refrescar estado CDR cero
+      const tieneCdrCero = await verificarCdrCero(producto.codigo_producto);
+      setCdrCeroMap((prev) => ({
+        ...prev,
+        [producto.codigo_producto]: tieneCdrCero
+      }));
+
       toast({
         title: "Eliminado",
         description: `Se eliminaron todas las filas de la receta ${producto.codigo_producto}.`,
@@ -178,28 +243,38 @@ const Composicion: React.FC = () => {
     }
   };
 
+  // Función para determinar el color de la fila
+  const getRowColor = (producto: Producto): string => {
+    const tieneCostoCero = !!zeroCostMap[producto.codigo_producto];
+    const tieneCdrCero = !!cdrCeroMap[producto.codigo_producto];
+
+    // PRIORIDAD: CDR cero (rojo) sobre costo cero (rojo)
+    if (tieneCdrCero) {
+      return "bg-red-50 hover:bg-red-100";
+    }
+    
+    // Si no tiene CDR cero pero tiene costo cero, también rojo
+    if (tieneCostoCero) {
+      return "bg-red-50 hover:bg-red-100";
+    }
+
+    // Si no tiene ni CDR cero ni costo cero, verde
+    return "bg-green-50 hover:bg-green-100";
+  };
+
   return (
-    <Layout title="Composicion">
+    <Layout title="Recetas">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Composición por Producto
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Lista basada en <b>productos</b>. Los productos con ingredientes
-              con <b>costo_total = 0</b> se muestran en <b className="text-red-600">rojo</b>.
-            </p>
-          </div>
 
-          {/* Agregar componente: Cargar composición */}
+          {/* Agregar componente: Cargar receta */}
           <div className="flex space-x-2">
             <Button
-              onClick={() => navigate("/cargarComposicion")}
+              onClick={() => navigate("/cargarReceta")}
               className="gap-2"
             >
               <Plus className="w-4 h-4" />
-              Cargar composición
+              Cargar receta
             </Button>
           </div>
         </div>
@@ -265,21 +340,21 @@ const Composicion: React.FC = () => {
                       <TableHead>Código</TableHead>
                       <TableHead>Descripción</TableHead>
                       <TableHead>Sector</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead>Actualizado</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {page.map((p) => {
-                      const red = !!zeroCostMap[p.codigo_producto];
+                      const rowColor = getRowColor(p);
+                      const tieneCostoCero = !!zeroCostMap[p.codigo_producto];
+                      const tieneCdrCero = !!cdrCeroMap[p.codigo_producto];
+                      
                       return (
                         <TableRow
                           key={p.codigo_producto}
-                          className={
-                            red
-                              ? "bg-red-50 hover:bg-red-100"
-                              : "bg-white hover:bg-muted/30"
-                          }
+                          className={rowColor}
                         >
                           <TableCell className="font-medium">
                             {p.codigo_producto}
@@ -287,6 +362,21 @@ const Composicion: React.FC = () => {
                           <TableCell>{p.descripcion_producto}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{p.sector_productivo}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {tieneCdrCero ? (
+                              <Badge variant="destructive" className="bg-red-500">
+                                INCOMPLETO
+                              </Badge>
+                            ) : tieneCostoCero ? (
+                              <Badge variant="destructive" className="bg-red-500">
+                                Costo Cero
+                              </Badge>
+                            ) : (
+                              <Badge variant="default" className="bg-green-500">
+                                COMPLETO
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             {p.updated_at
@@ -383,4 +473,4 @@ const Composicion: React.FC = () => {
   );
 };
 
-export default Composicion;
+export default Receta;

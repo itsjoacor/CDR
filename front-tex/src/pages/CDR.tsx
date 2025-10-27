@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import Cookies from 'js-cookie';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Search } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
 
 interface ResultadoCDR {
   codigo_producto: string;
@@ -27,6 +29,7 @@ const ResultadosCDR: React.FC = () => {
 
   const [sectores, setSectores] = useState<string[]>([]);
   const [sectorSeleccionado, setSectorSeleccionado] = useState<string>(''); // '' = Todos
+  const navigate = useNavigate();
 
   /** ===== Carga de datos base + verificación CDR ===== */
   const fetchData = async () => {
@@ -93,6 +96,9 @@ const ResultadosCDR: React.FC = () => {
     setCdrStatus(results);
   };
 
+  const handleShow = (producto: ResultadoCDR) => {
+    navigate(`/detalle-receta?productId=${producto.codigo_producto}`);
+  };
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -180,6 +186,7 @@ const ResultadosCDR: React.FC = () => {
                   <TableHead>Sector Productivo</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-right">Base CDR</TableHead>
+                  <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -199,12 +206,22 @@ const ResultadosCDR: React.FC = () => {
                           maximumFractionDigits: 2,
                         })}
                       </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleShow(item)}
+                          className="flex items-center justify-center mx-auto"
+                        >
+                          <Search className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
                 {visibles === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
                       No hay productos para el filtro seleccionado.
                     </TableCell>
                   </TableRow>

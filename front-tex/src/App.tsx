@@ -7,15 +7,15 @@ import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Composicion from "./pages/Composicion";
+import Receta from "./pages/Receta";
 import ManoObra from "./pages/ManoObra";
 import MatrizEnergetica from "./pages/MatrizEnergetica";
 import Insumos from "./pages/Insumos";
 import CDR from "./pages/CDR";
-import ComposicionDetallada from "./pages/ComposicionDetallada";
+import RecetaDetallada from "./pages/RecetaDetallada";
 import NotFound from "./pages/NotFound";
 import { UnauthenticatedOnlyWrapper } from "./components/UnauthenticatedOnlyWrapper";
-import CargarComposicion from "./pages/CargarComposicion";
+import CargarReceta from "./pages/CargarReceta";
 import CargarInsumo from "./pages/CargarInsumo";
 import CargarProducto from "./pages/CargarProducto";
 import PaginaEnProduccion from "./components/PaginaConstruccion";
@@ -52,9 +52,9 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
 
               <Route path="/" element={<Dashboard />} />
-              <Route path="/composicion" element={<Composicion />} />
+              <Route path="/receta" element={<Receta />} />
               <Route path="/producto" element={<Producto />} />
-              <Route path="/detalle-composicion" element={<ComposicionDetallada />} />
+              <Route path="/detalle-receta" element={<RecetaDetallada />} />
 
               <Route path="/mano-obra" element={<ManoObra />} />
               <Route path="/matriz-energetica" element={<MatrizEnergetica />} />
@@ -64,12 +64,12 @@ const App = () => (
               <Route path="/resultados-cdr-mantencion" element={<CDRPorSector />} />
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
-                <Route path="/cargarComposicion" element={<CargarComposicion />} />
+                <Route path="/cargarReceta" element={<CargarReceta />} />
                 <Route path="/cargarInsumo" element={<CargarInsumo />} />
                 <Route path="/cargarProducto" element={<CargarProducto />} />
                 <Route path="/cargarEnergia" element={<CargarEnergia />} />
                 <Route path="/cargarManoObra" element={<CargarManoObra />} />
-                <Route path="/editarComposicion/:codigo_producto" element={<PaginaEnProduccion />} />
+                <Route path="/editarReceta/:codigo_producto" element={<PaginaEnProduccion />} />
                 <Route path="/actualizar" element={<Actualizacion />} />
                 <Route path="/actualizarME" element={<ActualizacionME />} />
                 <Route path="/actualizarMO" element={<ActualizacionMO />} />
