@@ -44,12 +44,20 @@ const Exportacion: React.FC = () => {
             buttonColor: 'bg-yellow-600 hover:bg-yellow-700',
         },
         {
-            name: 'Insumos',
-            description: 'Exportar inventario de materiales e insumos',
+            name: 'Insumos Totales',
+            description: 'Exportar inventario de insumos',
             icon: Package,
             iconColor: 'text-purple-400',
             color: 'bg-purple-50 border-purple-200',
             buttonColor: 'bg-purple-600 hover:bg-purple-700',
+        },
+        {
+            name: 'Insumos Recetas',
+            description: 'Exportar insumos SOLAMENTE utilizado en recetas',
+            icon: Package,
+            iconColor: 'text-red-400',
+            color: 'bg-red-50 border-red-200',
+            buttonColor: 'bg-red-600 hover:bg-red-700',
         },
         {
             name: 'Productos',
@@ -73,7 +81,8 @@ const Exportacion: React.FC = () => {
     const normalizarNombreTabla = (nombreVisual: string) => {
         switch (nombreVisual) {
             case 'Productos': return 'productos';
-            case 'Insumos': return 'insumos';
+            case 'Insumos Totales': return 'insumos';
+            case 'Insumos Recetas': return 'insumosutilizados';
             case 'Mano de Obra': return 'matriz_mano';
             case 'Mano de Energia': return 'matriz_energia';
             case 'CDR': return 'resultados_cdr';
