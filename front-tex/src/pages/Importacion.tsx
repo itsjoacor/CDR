@@ -28,11 +28,19 @@ const Importacion: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Insumos
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [result, setResult] = useState<ImportSummary | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Productos
+  const [selectedFileProd, setSelectedFileProd] = useState<File | null>(null);
+  const [uploadingProd, setUploadingProd] = useState(false);
+  const [uploadProgressProd, setUploadProgressProd] = useState(0);
+  const [resultProd, setResultProd] = useState<ImportSummary | null>(null);
+  const [errorMsgProd, setErrorMsgProd] = useState<string | null>(null);
 
   // --- helpers ---
   const parseCsv = async (file: File) =>
@@ -65,6 +73,80 @@ const Importacion: React.FC = () => {
       detalle: (r.detalle ?? '').toString().trim(),
       costo: normCosto,
     };
+  };
+
+  const normalizeProductoRow = (r: Record<string, any>) => ({
+    codigo_producto:      (r.codigo_producto ?? '').toString().trim(),
+    descripcion_producto: (r.descripcion_producto ?? '').toString().trim(),
+    sector_productivo:    (r.sector_productivo ?? '').toString().trim(),
+  });
+
+  const handleFileChangeProd = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setResultProd(null);
+    setErrorMsgProd(null);
+    if (!file) return;
+    const isCsv = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+    if (!isCsv) {
+      setSelectedFileProd(null);
+      toast({ title: 'Formato inválido', description: 'Seleccioná un archivo .csv', variant: 'destructive' });
+      return;
+    }
+    setSelectedFileProd(file);
+    toast({ title: 'Archivo seleccionado', description: `${file.name} (${(file.size / 1024).toFixed(2)} KB)` });
+  };
+
+  const handleClearFileProd = () => {
+    setSelectedFileProd(null);
+    setUploadProgressProd(0);
+    setResultProd(null);
+    setErrorMsgProd(null);
+  };
+
+  const handleUploadProductos = async () => {
+    if (!selectedFileProd) {
+      toast({ title: 'No hay archivo', description: 'Seleccioná un CSV primero.', variant: 'destructive' });
+      return;
+    }
+    setUploadingProd(true);
+    setUploadProgressProd(10);
+    setResultProd(null);
+    setErrorMsgProd(null);
+    try {
+      const rawRows = await parseCsv(selectedFileProd);
+      if (!rawRows.length) throw new Error('El CSV está vacío.');
+      setUploadProgressProd(40);
+
+      const rows = rawRows
+        .map(normalizeProductoRow)
+        .filter((r) => r.codigo_producto && r.descripcion_producto && r.sector_productivo);
+
+      if (!rows.length) throw new Error('No se encontraron filas válidas con columnas: codigo_producto, descripcion_producto, sector_productivo.');
+      setUploadProgressProd(70);
+
+      const { error: upsertError, count } = await supabase
+        .from('productos')
+        .upsert(rows, { onConflict: 'codigo_producto', ignoreDuplicates: false, count: 'exact' });
+
+      if (upsertError) throw new Error(upsertError.message);
+      setUploadProgressProd(100);
+
+      const res: ImportSummary = {
+        mode: 'upsert',
+        total_rows: rows.length,
+        inserted_or_updated: count ?? rows.length,
+        message: `UPSERT completado: ${count ?? rows.length} productos insertados/actualizados.`,
+      };
+      setResultProd(res);
+      toast({ title: 'Importación completada', description: res.message });
+      setSelectedFileProd(null);
+    } catch (err: any) {
+      const msg = err?.message || 'Error importando CSV';
+      setErrorMsgProd(msg);
+      toast({ title: 'Error al importar', description: msg, variant: 'destructive' });
+    } finally {
+      setUploadingProd(false);
+    }
   };
 
   // --- UI handlers ---
@@ -278,6 +360,98 @@ const Importacion: React.FC = () => {
                   <div><strong>Modo:</strong> {result.mode}</div>
                   <div><strong>Filas válidas:</strong> {result.total_rows}</div>
                   <div className="col-span-2"><strong>Mensaje:</strong> {result.message}</div>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ===== IMPORTAR PRODUCTOS ===== */}
+        <Card className="bg-orange-50 border-orange-200">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-3">
+              <span className="text-2xl">🏭</span>
+              <div className="text-lg font-semibold">Importar Productos</div>
+            </CardTitle>
+            <CardDescription className="text-sm">
+              Subí un CSV con <code>codigo_producto,descripcion_producto,sector_productivo</code>. El modo <strong>Seguro (UPSERT)</strong> no borra nada.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="csv-upload-prod" className="block text-sm font-medium">
+                  Seleccionar archivo CSV
+                </label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="csv-upload-prod"
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileChangeProd}
+                    disabled={uploadingProd}
+                    className="flex-1"
+                  />
+                  {selectedFileProd && !uploadingProd && (
+                    <Button variant="outline" size="icon" onClick={handleClearFileProd}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {selectedFileProd && (
+                <div className="p-3 bg-white rounded-md border border-orange-200">
+                  <div className="flex items-start space-x-3">
+                    <FileSpreadsheet className="h-5 w-5 text-orange-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{selectedFileProd.name}</p>
+                      <p className="text-xs text-muted-foreground">{(selectedFileProd.size / 1024).toFixed(2)} KB</p>
+                    </div>
+                    <CheckCircle2 className="h-5 w-5 text-orange-600" />
+                  </div>
+                </div>
+              )}
+
+              {uploadingProd && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Importando…</span>
+                    <span>{uploadProgressProd}%</span>
+                  </div>
+                  <Progress value={uploadProgressProd} />
+                </div>
+              )}
+
+              <Button
+                onClick={handleUploadProductos}
+                disabled={!selectedFileProd || uploadingProd}
+                className="w-full text-white bg-orange-600 hover:bg-orange-700 flex items-center space-x-2"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Importar Productos (Seguro - UPSERT)</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {(resultProd || errorMsgProd) && (
+          <Card className="border">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                {errorMsgProd
+                  ? <><AlertCircle className="h-5 w-5 text-red-600" /><span>Error en importación de Productos</span></>
+                  : <><CheckCircle2 className="h-5 w-5 text-green-600" /><span>Resultado importación de Productos</span></>
+                }
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {errorMsgProd ? (
+                <p className="text-sm text-red-700">{errorMsgProd}</p>
+              ) : resultProd ? (
+                <div className="text-sm grid grid-cols-2 gap-2">
+                  <div><strong>Filas válidas:</strong> {resultProd.total_rows}</div>
+                  <div className="col-span-2"><strong>Mensaje:</strong> {resultProd.message}</div>
                 </div>
               ) : null}
             </CardContent>
