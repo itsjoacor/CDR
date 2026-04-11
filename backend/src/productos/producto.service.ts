@@ -33,4 +33,8 @@ export class ProductoService {
   async eliminar(codigo: string): Promise<void> {
     return this.productoRepository.eliminar(codigo);
   }
+
+  async obtenerTodosConEstado() {
+    return this.productoRepository.obtenerTodosConEstado();
+  }
 }

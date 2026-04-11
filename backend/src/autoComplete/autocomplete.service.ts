@@ -24,21 +24,17 @@ export class AutocompleteService {
   }
 
   async autocompleteIngrediente(codigo: string) {
-    // 1. Productos 
-    const producto = await this.productoRepo.obtenerPorCodigo(codigo);
-    if (producto) return { descripcion: producto?.descripcion_producto || 'Ingrediente no encontrado' };
+    const [producto, insumo, mano, energia] = await Promise.all([
+      this.productoRepo.obtenerPorCodigo(codigo),
+      this.insumoRepo.buscarPorCodigo(codigo),
+      this.matrizManoRepo.obtenerPorCodigo(codigo),
+      this.matrizEnergiaRepo.obtenerPorCodigo(codigo),
+    ]);
 
-    // 2. Insumos
-    const insumo = await this.insumoRepo.buscarPorCodigo(codigo);
-    if (insumo) return { descripcion: insumo.detalle || 'Ingrediente no encontrado' };
-
-    // 3. Mano de Obra
-    const mano = await this.matrizManoRepo.obtenerPorCodigo(codigo);
-    if (mano) return { descripcion: mano.descripcion || 'Ingrediente no encontrado' };
-
-    // 4. Matriz Energética
-    const energia = await this.matrizEnergiaRepo.obtenerPorCodigo(codigo);
-    if (energia) return { descripcion: energia.descripcion || 'Ingrediente no encontrado' };
+    if (producto) return { descripcion: producto.descripcion_producto || 'Ingrediente no encontrado' };
+    if (insumo)   return { descripcion: insumo.detalle              || 'Ingrediente no encontrado' };
+    if (mano)     return { descripcion: mano.descripcion            || 'Ingrediente no encontrado' };
+    if (energia)  return { descripcion: energia.descripcion         || 'Ingrediente no encontrado' };
 
     return { descripcion: '' };
   }

@@ -65,57 +65,33 @@ const Receta: React.FC = () => {
 
   const canEdit = user?.role === "admin";
 
-  // Función para verificar CDR cero
   const verificarCdrCero = async (codigoProducto: string): Promise<boolean> => {
     try {
-      const response = await fetch(
+      const res = await fetch(
         `${import.meta.env.VITE_API_URL}/recetas-normalizada/${codigoProducto}/tiene-cdr-cero`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      if (!response.ok) throw new Error('Error en la consulta');
-      
-      const data = await response.json();
+      if (!res.ok) throw new Error('Error en la consulta');
+      const data = await res.json();
       return data.tieneCdrCero;
-      
-    } catch (error) {
-      console.error('Error al verificar CDR cero:', error);
+    } catch {
       return false;
     }
   };
 
-  // Función para verificar CDR cero para todos los productos
   const verificarTodosLosCDR = async (productosList: Producto[]) => {
-    const results: CdrCeroMap = {};
-    
-    // Verificar en lotes para no saturar
-    const CHUNK_SIZE = 10;
-    
-    for (let i = 0; i < productosList.length; i += CHUNK_SIZE) {
-      const chunk = productosList.slice(i, i + CHUNK_SIZE);
-      
-      const batchResults = await Promise.all(
-        chunk.map(async (producto) => {
-          try {
-            const tieneCdrCero = await verificarCdrCero(producto.codigo_producto);
-            return { codigo: producto.codigo_producto, tieneCdrCero };
-          } catch (error) {
-            return { codigo: producto.codigo_producto, tieneCdrCero: false };
-          }
-        })
+    const codigos = productosList.map(p => p.codigo_producto).join(',');
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/recetas-normalizada/batch/cdr-cero?codigos=${encodeURIComponent(codigos)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      // Actualizar el mapa con los resultados del lote
-      batchResults.forEach(result => {
-        results[result.codigo] = result.tieneCdrCero;
-      });
+      if (!res.ok) throw new Error('Error en batch CDR');
+      const data: Record<string, boolean> = await res.json();
+      setCdrCeroMap(data);
+    } catch {
+      setCdrCeroMap({});
     }
-    
-    setCdrCeroMap(results);
   };
 
   useEffect(() => {
@@ -123,41 +99,28 @@ const Receta: React.FC = () => {
       try {
         setLoading(true);
 
-        // 1) Productos (base)
-        const resProd = await fetch(`${import.meta.env.VITE_API_URL}/productos`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/productos/con-estado`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!resProd.ok) throw new Error("Error al obtener productos");
-        const prodData: Producto[] = await resProd.json();
-        setProductos(prodData);
+        if (!res.ok) throw new Error("Error al obtener productos");
+        const data = await res.json();
 
-        const sectoresUnicos = [
-          ...new Set(prodData.map((p) => p.sector_productivo)),
-        ];
-        setSectores(sectoresUnicos);
+        setProductos(data);
+        setSectores([...new Set<string>(data.map((p: any) => p.sector_productivo))]);
 
-        // 2) Flags costo_total 0/null por producto
-        const resZero = await fetch(
-          `${import.meta.env.VITE_API_URL}/recetas-normalizada/flags/zero-cost`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!resZero.ok) throw new Error("Error al obtener flags de costos");
-        const zeroArr: { codigo_producto: string }[] = await resZero.json();
-
-        const map: ZeroCostMap = {};
-        zeroArr.forEach((r) => {
-          map[r.codigo_producto] = true;
+        const zeroMap: ZeroCostMap = {};
+        const cdrMap: CdrCeroMap = {};
+        data.forEach((p: any) => {
+          zeroMap[p.codigo_producto] = p.tiene_costo_cero;
+          cdrMap[p.codigo_producto]  = p.tiene_cdr_cero;
         });
-        setZeroCostMap(map);
-
-        // 3) Verificar CDR cero para todos los productos
-        await verificarTodosLosCDR(prodData);
+        setZeroCostMap(zeroMap);
+        setCdrCeroMap(cdrMap);
 
       } catch (err) {
         toast({
           title: "Error",
-          description:
-            err instanceof Error ? err.message : "Fallo al cargar datos.",
+          description: err instanceof Error ? err.message : "Fallo al cargar datos.",
           variant: "destructive",
         });
       } finally {

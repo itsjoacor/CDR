@@ -110,7 +110,13 @@ export class RecetaNormalizadaController {
     };
   }
 
-  // receta-normalizada.controller.ts - Agregar este endpoint
+  @Get('batch/cdr-cero')
+  async batchTieneValorCdrCero(@Query('codigos') codigos: string) {
+    if (!codigos) return {};
+    const lista = codigos.split(',').map(c => c.trim()).filter(Boolean);
+    return this.service.batchTieneValorCdrCero(lista);
+  }
+
   @Get(':codigo_producto/tiene-cdr-cero')
   async tieneValorCdrCero(@Param('codigo_producto') codigo_producto: string) {
     const result = await this.service.tieneValorCdrCero(codigo_producto);

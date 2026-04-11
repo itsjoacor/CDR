@@ -60,7 +60,8 @@ export class RecetaNormalizadaRepository {
     const supabase = await this.getSupabase();
     let query = supabase
       .from('recetas_normalizada')
-      .select('codigo_producto,costo_total');
+      .select('codigo_producto')
+      .or('costo_total.eq.0,costo_total.is.null');
 
     if (codigo) {
       query = query.eq('codigo_producto', codigo);
@@ -74,14 +75,23 @@ export class RecetaNormalizadaRepository {
       );
     }
 
-    const set = new Set<string>();
-    (data || []).forEach((r: any) => {
-      if (r == null) return;
-      const zero = r.costo_total === 0 || r.costo_total === null;
-      if (zero) set.add(r.codigo_producto);
-    });
-
+    const set = new Set<string>((data || []).map((r: any) => r.codigo_producto));
     return Array.from(set).map((codigo_producto) => ({ codigo_producto }));
+  }
+
+  async batchTieneCdrCero(codigos: string[]): Promise<Record<string, boolean>> {
+    const supabase = await this.getSupabase();
+
+    const results = await Promise.all(
+      codigos.map(async (codigo) => {
+        const { data, error } = await supabase.rpc('tiene_valor_cdr_cero', {
+          p_codigo_producto: codigo,
+        });
+        return { codigo, value: error ? false : (data || false) };
+      })
+    );
+
+    return Object.fromEntries(results.map(r => [r.codigo, r.value]));
   }
 
   async eliminar(codigo_producto: string, codigo_ingrediente: string) {

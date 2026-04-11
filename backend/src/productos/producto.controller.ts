@@ -58,6 +58,16 @@ export class ProductoController {
     }
   }
 
+  @Get('con-estado')
+  async obtenerConEstado() {
+    try {
+      return await this.productoService.obtenerTodosConEstado();
+    } catch (error) {
+      this.logger.error('Error al obtener productos con estado', error.stack);
+      throw new HttpException('Error al obtener productos con estado', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get(':codigo')
   async obtenerPorCodigo(@Param('codigo') codigo: string): Promise<Producto | null> {
     try {

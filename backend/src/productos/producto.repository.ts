@@ -107,6 +107,40 @@ export class ProductoRepository {
     );
   }
 
+  async obtenerTodosConEstado(): Promise<any[]> {
+    const supabase = await this.getSupabase();
+
+    // Round 1 paralelo: productos + flags de costo cero
+    const [productosResult, zeroCostResult] = await Promise.all([
+      supabase.from('productos').select('*').order('codigo_producto', { ascending: true }),
+      supabase.from('recetas_normalizada').select('codigo_producto').or('costo_total.eq.0,costo_total.is.null'),
+    ]);
+
+    if (productosResult.error) throw new Error(productosResult.error.message);
+    if (zeroCostResult.error) throw new Error(zeroCostResult.error.message);
+
+    const productos = productosResult.data ?? [];
+    const zeroCostSet = new Set((zeroCostResult.data ?? []).map((r: any) => r.codigo_producto));
+
+    // Round 2 paralelo: CDR cero para todos los productos
+    const cdrResults = await Promise.all(
+      productos.map(async (p: any) => {
+        const { data, error } = await supabase.rpc('tiene_valor_cdr_cero', { p_codigo_producto: p.codigo_producto });
+        return { codigo: p.codigo_producto, value: error ? false : (data || false) };
+      })
+    );
+    const cdrMap = Object.fromEntries(cdrResults.map(r => [r.codigo, r.value]));
+
+    return productos.map((item: any) => ({
+      codigo_producto:      item.codigo_producto,
+      descripcion_producto: item.descripcion_producto,
+      sector_productivo:    item.sector_productivo,
+      updated_at:           item.updated_at ?? null,
+      tiene_costo_cero:     zeroCostSet.has(item.codigo_producto),
+      tiene_cdr_cero:       cdrMap[item.codigo_producto] ?? false,
+    }));
+  }
+
   async eliminar(codigo: string): Promise<void> {
     const supabase = await this.getSupabase();
     const { error } = await supabase

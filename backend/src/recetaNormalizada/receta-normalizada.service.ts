@@ -60,7 +60,10 @@ export class RecetaNormalizadaService {
     );
   }
 
-  // receta-normalizada.service.ts - Agregar este método
+  async batchTieneValorCdrCero(codigos: string[]) {
+    return this.repo.batchTieneCdrCero(codigos);
+  }
+
   async tieneValorCdrCero(codigo_producto: string) {
     try {
       const resultado = await this.repo.tieneValorCdrCero(codigo_producto);

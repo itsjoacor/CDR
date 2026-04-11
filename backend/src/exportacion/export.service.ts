@@ -53,14 +53,14 @@ export class ExportService {
     const supabase = await this.getSupabase();
     const workbook = XLSX.utils.book_new();
 
-    for (const table of tables) {
-      const { data } = await supabase
-        .from(table)
-        .select('*');
+    const results = await Promise.all(
+      tables.map(table => supabase.from(table).select('*'))
+    );
 
-      const worksheet = XLSX.utils.json_to_sheet(data ?? []);
+    tables.forEach((table, i) => {
+      const worksheet = XLSX.utils.json_to_sheet(results[i].data ?? []);
       XLSX.utils.book_append_sheet(workbook, worksheet, table);
-    }
+    });
 
     return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
   }

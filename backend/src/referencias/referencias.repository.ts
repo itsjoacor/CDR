@@ -24,51 +24,28 @@ export class ReferenciasRepository {
 
       const resultados: Record<string, string> = {};
 
-      // Productos
-      const { data: prodData, error: prodErr } = await supabase
-        .from('productos')
-        .select('codigo_producto, descripcion_producto')
-        .in('codigo_producto', uniqueCodes);
+      const [
+        { data: prodData,  error: prodErr  },
+        { data: insData,   error: insErr   },
+        { data: manoData,  error: manoErr  },
+        { data: eneData,   error: eneErr   },
+      ] = await Promise.all([
+        supabase.from('productos').select('codigo_producto, descripcion_producto').in('codigo_producto', uniqueCodes),
+        supabase.from('insumos').select('codigo, detalle').in('codigo', uniqueCodes),
+        supabase.from('matriz_mano').select('codigo_mano_obra, descripcion').in('codigo_mano_obra', uniqueCodes),
+        supabase.from('matriz_energia').select('codigo_energia, descripcion').in('codigo_energia', uniqueCodes),
+      ]);
+
       if (prodErr) throw prodErr;
-      prodData?.forEach((r: any) => {
-        resultados[r.codigo_producto] = r.descripcion_producto;
-      });
-
-      // Insumos
-      const { data: insData, error: insErr } = await supabase
-        .from('insumos')
-        .select('codigo, detalle')
-        .in('codigo', uniqueCodes);
-      if (insErr) throw insErr;
-      insData?.forEach((r: any) => {
-        if (!resultados[r.codigo]) {
-          resultados[r.codigo] = r.detalle;
-        }
-      });
-
-      // Matriz mano
-      const { data: manoData, error: manoErr } = await supabase
-        .from('matriz_mano')
-        .select('codigo_mano_obra, descripcion')
-        .in('codigo_mano_obra', uniqueCodes);
+      if (insErr)  throw insErr;
       if (manoErr) throw manoErr;
-      manoData?.forEach((r: any) => {
-        if (!resultados[r.codigo_mano_obra]) {
-          resultados[r.codigo_mano_obra] = r.descripcion;
-        }
-      });
+      if (eneErr)  throw eneErr;
 
-      // Matriz energía
-      const { data: eneData, error: eneErr } = await supabase
-        .from('matriz_energia')
-        .select('codigo_energia, descripcion')
-        .in('codigo_energia', uniqueCodes);
-      if (eneErr) throw eneErr;
-      eneData?.forEach((r: any) => {
-        if (!resultados[r.codigo_energia]) {
-          resultados[r.codigo_energia] = r.descripcion;
-        }
-      });
+      // Prioridad: productos > insumos > mano > energía
+      prodData?.forEach((r: any) => { resultados[r.codigo_producto]  = r.descripcion_producto; });
+      insData?.forEach((r: any)  => { if (!resultados[r.codigo])           resultados[r.codigo]           = r.detalle;      });
+      manoData?.forEach((r: any) => { if (!resultados[r.codigo_mano_obra]) resultados[r.codigo_mano_obra] = r.descripcion;  });
+      eneData?.forEach((r: any)  => { if (!resultados[r.codigo_energia])   resultados[r.codigo_energia]   = r.descripcion;  });
 
       return resultados;
     } catch (error) {

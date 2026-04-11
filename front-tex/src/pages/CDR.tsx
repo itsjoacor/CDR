@@ -61,39 +61,19 @@ const ResultadosCDR: React.FC = () => {
     }
   };
 
-  const verificarCdrCero = async (codigoProducto: string): Promise<boolean> => {
+  const verificarTodosLosCDR = async (productos: ResultadoCDR[]) => {
+    const codigos = productos.map(p => p.codigo_producto).join(',');
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/recetas-normalizada/${codigoProducto}/tiene-cdr-cero`,
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/recetas-normalizada/batch/cdr-cero?codigos=${encodeURIComponent(codigos)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (!response.ok) throw new Error('Error en la consulta');
-      const data = await response.json();
-      return !!data.tieneCdrCero;
-    } catch (error) {
-      console.error(`Error al verificar CDR cero para ${codigoProducto}:`, error);
-      return false;
+      if (!res.ok) throw new Error('Error en batch CDR');
+      const data: Record<string, boolean> = await res.json();
+      setCdrStatus(data);
+    } catch {
+      setCdrStatus({});
     }
-  };
-
-  const verificarTodosLosCDR = async (productos: ResultadoCDR[]) => {
-    const results: Record<string, boolean> = {};
-    const CHUNK_SIZE = 12; // tandas para no saturar
-
-    for (let i = 0; i < productos.length; i += CHUNK_SIZE) {
-      const slice = productos.slice(i, i + CHUNK_SIZE);
-      const batch = await Promise.all(
-        slice.map(async (p) => {
-          const tieneCdrCero = await verificarCdrCero(p.codigo_producto);
-          return [p.codigo_producto, tieneCdrCero] as const;
-        })
-      );
-      batch.forEach(([codigo, tieneCdrCero]) => {
-        results[codigo] = tieneCdrCero;
-      });
-    }
-
-    setCdrStatus(results);
   };
 
   const handleShow = (producto: ResultadoCDR) => {
