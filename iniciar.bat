@@ -12,6 +12,10 @@ echo    CDR - Sistema de Analisis
 echo  =========================================
 echo.
 
+:: ---- Agregar Node.js al PATH si no esta ----
+set "NODE_PATHS=C:\Program Files\nodejs;C:\Program Files (x86)\nodejs;%APPDATA%\npm"
+set "PATH=%PATH%;%NODE_PATHS%"
+
 :: ---- Verificar Node.js ----
 node --version >nul 2>&1
 if errorlevel 1 (
