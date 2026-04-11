@@ -1,8 +1,8 @@
-import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Inject, Scope, HttpException, HttpStatus } from '@nestjs/common';
 import { Request } from 'express';
 import { getSupabaseClient } from '../config/supabase.client';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ReferenciasRepository {
   constructor(@Inject('REQUEST') private readonly request: Request) {}
 

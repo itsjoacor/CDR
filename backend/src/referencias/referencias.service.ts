@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Scope } from '@nestjs/common';
 import { ReferenciasRepository } from './referencias.repository';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ReferenciasService {
   constructor(private readonly repo: ReferenciasRepository) {}
 
