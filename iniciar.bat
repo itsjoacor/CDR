@@ -1,81 +1,40 @@
 @echo off
-title CDR - Iniciando sistema...
+title CDR - Iniciando...
 color 0A
 
 set "ROOT=%~dp0"
 set "BACKEND=%ROOT%backend"
 set "FRONTEND=%ROOT%front-tex"
 
+set "NODE_PATHS=C:\Program Files\nodejs;C:\Program Files (x86)\nodejs;%APPDATA%\npm"
+set "PATH=%PATH%;%NODE_PATHS%"
+
 echo.
 echo  =========================================
 echo    CDR - Sistema de Analisis
 echo  =========================================
 echo.
-
-:: ---- Agregar Node.js al PATH si no esta ----
-set "NODE_PATHS=C:\Program Files\nodejs;C:\Program Files (x86)\nodejs;%APPDATA%\npm"
-set "PATH=%PATH%;%NODE_PATHS%"
-
-:: ---- Verificar Node.js ----
-node --version >nul 2>&1
-if errorlevel 1 (
-    echo  [ERROR] Node.js no esta instalado.
-    echo.
-    echo  Por favor instale Node.js desde:
-    echo  https://nodejs.org  (version LTS recomendada)
-    echo.
-    pause
-    exit /b 1
-)
-
-for /f "tokens=*" %%v in ('node --version') do set NODE_VER=%%v
-echo  [OK] Node.js %NODE_VER% detectado
+echo  Backend:  %BACKEND%
+echo  Frontend: %FRONTEND%
 echo.
 
-:: ---- Instalar dependencias si faltan ----
-if not exist "%BACKEND%\node_modules" (
-    echo  Instalando dependencias del backend, espere...
-    cd /d "%BACKEND%"
-    call npm install --silent
-    echo  [OK] Backend listo
-    echo.
-)
-
-if not exist "%FRONTEND%\node_modules" (
-    echo  Instalando dependencias del frontend, espere...
-    cd /d "%FRONTEND%"
-    call npm install --silent
-    echo  [OK] Frontend listo
-    echo.
-)
-
-:: ---- Iniciar backend ----
+:: ---- Backend ----
 echo  Iniciando backend...
-start "CDR - Backend" cmd /k "color 0B && echo CDR Backend corriendo en puerto 3001 && echo. && cd /d "%BACKEND%" && npm run start:dev"
+start "CDR - Backend" cmd /k "set PATH=%PATH% && cd /d "%BACKEND%" && npm run start:dev"
 
-:: Esperar que el backend levante
-echo  Esperando que el backend inicie...
+:: ---- Esperar ----
 timeout /t 12 /nobreak >nul
 
-:: ---- Iniciar frontend ----
+:: ---- Frontend ----
 echo  Iniciando frontend...
-start "CDR - Frontend" cmd /k "color 0D && echo CDR Frontend corriendo en puerto 5173 && echo. && cd /d "%FRONTEND%" && npm run dev"
+start "CDR - Frontend" cmd /k "set PATH=%PATH% && cd /d "%FRONTEND%" && npm run dev"
 
-:: Esperar que el frontend levante
+:: ---- Esperar y abrir browser ----
 timeout /t 6 /nobreak >nul
-
-:: ---- Abrir navegador ----
 echo  Abriendo navegador...
 start http://localhost:5173
 
 echo.
-echo  =========================================
-echo    Sistema iniciado correctamente
-echo    Accede en: http://localhost:5173
-echo  =========================================
-echo.
-echo  Para detener el sistema cerrá las ventanas:
-echo    - "CDR - Backend"
-echo    - "CDR - Frontend"
+echo  Sistema iniciado. Podes cerrar esta ventana.
 echo.
 pause
