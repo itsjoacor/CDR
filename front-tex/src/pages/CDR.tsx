@@ -47,8 +47,8 @@ const ResultadosCDR: React.FC = () => {
       const uniqueSectores = Array.from(new Set(data.map(d => d.sector_productivo).filter(Boolean))).sort();
       setSectores(uniqueSectores);
 
-      // Verificar CDR por cada producto (todas las filas)
-      await verificarTodosLosCDR(data);
+      // Verificar CDR en background — la tabla ya se muestra mientras tanto
+      verificarTodosLosCDR(data);
     } catch (err: any) {
       setError(err.message);
       toast({

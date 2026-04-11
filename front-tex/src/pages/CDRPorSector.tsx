@@ -32,20 +32,18 @@ const CDRPorSector: React.FC = () => {
     try {
       setIsLoading(true);
 
-      // Traer resultados CDR
-      const resCDR = await fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!resCDR.ok) throw new Error(`Error resultados: ${resCDR.status}`);
-      const dataCDR: ResultadoCDR[] = await resCDR.json();
+      const [resCDR, resSectores] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos/mantencion`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
 
-      // Traer porcentajes de mantención
-      const resSectores = await fetch(
-        `${import.meta.env.VITE_API_URL}/sectores-productivos/mantencion`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (!resCDR.ok) throw new Error(`Error resultados: ${resCDR.status}`);
       if (!resSectores.ok) throw new Error(`Error sectores: ${resSectores.status}`);
-      const dataSectores: SectorMantencion[] = await resSectores.json();
+
+      const [dataCDR, dataSectores]: [ResultadoCDR[], SectorMantencion[]] = await Promise.all([
+        resCDR.json(),
+        resSectores.json(),
+      ]);
 
       // Agrupar por sector y sumar base_cdr
       const mapa = new Map<string, number>();

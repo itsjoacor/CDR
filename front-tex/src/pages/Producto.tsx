@@ -75,20 +75,19 @@ const Producto: React.FC = () => {
   const canEdit = user?.role === "admin";
 
   useEffect(() => {
-    const fetchProductos = async () => {
+    const fetchAll = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/productos`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        if (!response.ok) throw new Error("Error al cargar productos");
-        const data = await response.json();
+        const [resProd, resSectores] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/productos`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
 
-        const productosData = data.map((item: any) => ({
+        if (!resProd.ok) throw new Error("Error al cargar productos");
+        if (!resSectores.ok) throw new Error("Error al cargar sectores");
+
+        const [dataProd, dataSectores] = await Promise.all([resProd.json(), resSectores.json()]);
+
+        const productosData = dataProd.map((item: any) => ({
           codigo_producto: item.codigo_producto,
           descripcion_producto: item.descripcion_producto,
           sector_productivo: item.sector_productivo,
@@ -97,18 +96,17 @@ const Producto: React.FC = () => {
         }));
 
         setStats({
-          total: data.length,
-          activos: data.length,
-          sectores: new Set(data.map((p: any) => p.sector_productivo)),
+          total: dataProd.length,
+          activos: dataProd.length,
+          sectores: new Set(dataProd.map((p: any) => p.sector_productivo)),
         });
-
         setProductos(productosData);
         setProductosLista(productosData);
+        setSectores(dataSectores.map((s: any) => s.nombre));
       } catch (error) {
-        console.error("Error fetching productos:", error);
         toast({
           title: "Error",
-          description: "No se pudieron cargar los productos",
+          description: "No se pudieron cargar los datos",
           variant: "destructive",
         });
       } finally {
@@ -116,34 +114,7 @@ const Producto: React.FC = () => {
       }
     };
 
-    fetchProductos();
-  }, []);
-
-  useEffect(() => {
-    const fetchSectores = async () => {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/sectores-productivos`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        if (!response.ok) throw new Error("Error al cargar sectores");
-        const data = await response.json();
-        setSectores(data.map((s: any) => s.nombre));
-      } catch (error) {
-        console.error("Error fetching sectores:", error);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los sectores productivos",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchSectores();
+    fetchAll();
   }, []);
 
   const filteredProductos = productos.filter((producto) => {

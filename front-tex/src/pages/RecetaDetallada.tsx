@@ -68,73 +68,25 @@ const RecetaDetallada: React.FC = () => {
   const keyFor = (r: Receta) =>
     `${r.codigo_producto}__${r.codigo_ingrediente}`;
 
-  /** ===== Helpers nombres (Autocomplete) ===== */
-  // Extrae un nombre válido desde la respuesta del autocomplete
-  const pickNombre = (raw: any): string | null => {
-    if (!raw) return null;
-    if (typeof raw === "string") {
-      const s = raw.trim();
-      return s.length ? s : null;
-    }
-    if (typeof raw === "object") {
-      const candidates = [
-        raw.nombre,
-        raw.descripcion_producto,
-        raw.detalle,
-        raw.descripcion,
-        raw.label,
-        raw.text,
-        raw.texto,
-        raw.descripcionProducto,
-        raw.titulo,
-      ].filter(Boolean);
-      if (candidates.length) {
-        const first = String(candidates[0]).trim();
-        return first.length ? first : null;
-      }
-    }
-    return null;
-  };
-
-  // Usa TU endpoint existente: GET /api/autocomplete/ingrediente/:codigo
-  const fetchNombrePorCodigo = async (codigo: string): Promise<string | null> => {
-    if (!codigo) return null;
-
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${encodeURIComponent(codigo)}`,
-        { headers: { Authorization: `Bearer ${token || ""}` } }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        return pickNombre(data);
-      }
-    } catch {
-      // noop
-    }
-    return null;
-  };
-
-  // Resuelve muchos códigos con pequeñas tandas para no saturar
+  /** ===== Helpers nombres (batch) ===== */
   const resolverNombres = async (codigos: string[]): Promise<Record<string, string>> => {
     const unique = Array.from(new Set(codigos.filter(Boolean)));
-    const result: Record<string, string> = {};
-    if (unique.length === 0) return result;
+    if (unique.length === 0) return {};
 
-    const CHUNK = 20;
-    for (let i = 0; i < unique.length; i += CHUNK) {
-      const slice = unique.slice(i, i + CHUNK);
-      const batch = await Promise.all(
-        slice.map(async (c) => {
-          const nombre = await fetchNombrePorCodigo(c);
-          return [c, nombre] as const;
-        })
-      );
-      batch.forEach(([c, nombre]) => {
-        if (nombre) result[c] = nombre;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/referencias/nombres`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token || ""}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ codigos: unique }),
       });
+      if (!res.ok) return {};
+      return await res.json();
+    } catch {
+      return {};
     }
-    return result;
   };
 
   /** ===== Data load ===== */
