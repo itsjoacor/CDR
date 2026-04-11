@@ -40,10 +40,10 @@ interface Insumo {
   codigo: string;
   detalle: string;
   costo: number;
+  updated_at?: string | null;
   estado?: "disponible" | "agotado" | "descontinuado";
   stock?: number;
   stockMinimo?: number;
-  fechaActualizacion?: string;
 }
 import Cookies from "js-cookie";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -247,6 +247,7 @@ const Insumos: React.FC = () => {
                     <TableHead>Código/Nombre</TableHead>
                     <TableHead>Grupo</TableHead>
                     <TableHead>Costo</TableHead>
+                    <TableHead>Actualización</TableHead>
                     {canEdit && <TableHead>Acciones</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -265,6 +266,11 @@ const Insumos: React.FC = () => {
                           <div className="font-mono font-semibold text-green-600">
                             ${insumo.costo.toLocaleString("es-CO")}
                           </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {insumo.updated_at
+                            ? new Date(insumo.updated_at).toLocaleDateString("es-CL")
+                            : "-"}
                         </TableCell>
                         {canEdit && (
                           <TableCell>
@@ -300,7 +306,7 @@ const Insumos: React.FC = () => {
 
                       {editingId === insumo.codigo && (
                         <TableRow className="bg-muted/30">
-                          <TableCell colSpan={canEdit ? 4 : 3}>
+                          <TableCell colSpan={canEdit ? 5 : 4}>
                             <Card className="w-full">
                               <CardHeader>
                                 <CardTitle className="text-lg">Editando: {insumo.detalle}</CardTitle>

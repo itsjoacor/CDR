@@ -68,7 +68,7 @@ export class InsumoService {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('insumos')
-      .update(insumo)
+      .update({ ...insumo, updated_at: new Date().toISOString() })
       .eq('codigo', codigo)
       .select()
       .single();

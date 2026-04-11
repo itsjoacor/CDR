@@ -43,7 +43,8 @@ export class InsumoRepository {
           grupo: insumo.grupo,
           codigo: insumo.codigo,
           detalle: insumo.detalle,
-          costo: insumo.costo
+          costo: insumo.costo,
+          updated_at: new Date().toISOString(),
         }
       ])
       .select()
