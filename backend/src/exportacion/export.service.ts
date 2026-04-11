@@ -14,9 +14,17 @@ export class ExportService {
 
   async exportTable(tableName: string, format: 'csv' | 'xlsx') {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase
-      .from(tableName)
-      .select('*');
+
+    let query = supabase.from(tableName).select('*');
+
+    if (tableName === 'recetas_normalizada') {
+      query = supabase
+        .from(tableName)
+        .select('codigo_producto, codigo_ingrediente')
+        .order('codigo_producto', { ascending: true });
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw new Error(`Supabase error: ${error.message}`);
@@ -54,7 +62,15 @@ export class ExportService {
     const workbook = XLSX.utils.book_new();
 
     const results = await Promise.all(
-      tables.map(table => supabase.from(table).select('*'))
+      tables.map(table => {
+        if (table === 'recetas_normalizada') {
+          return supabase
+            .from(table)
+            .select('codigo_producto, codigo_ingrediente')
+            .order('codigo_producto', { ascending: true });
+        }
+        return supabase.from(table).select('*');
+      })
     );
 
     tables.forEach((table, i) => {

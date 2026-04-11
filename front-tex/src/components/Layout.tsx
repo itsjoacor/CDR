@@ -74,7 +74,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                     <span className="sr-only">Abrir menú</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[320px] sm:w-[380px] p-0">
+                <SheetContent side="left" className="w-[320px] sm:w-[380px] p-0 flex flex-col overflow-hidden">
                   <div className="border-b px-4 py-3">
                     <SheetHeader>
                       <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                   </div>
 
                   {/* Menú de navegación */}
-                  <nav className="p-2">
+                  <nav className="p-2 overflow-y-auto flex-1">
                     {navigationItems.map((item) => {
                       const Active = location.pathname === item.path;
                       const Icon = item.icon;
