@@ -28,14 +28,34 @@ export class ExportService {
     return this.generateCSV(data);
   }
 
-  private async buildRecetasExport(supabase: any): Promise<any[]> {
-    // 1. Traer recetas con todos los campos necesarios
-    const { data: recetas, error } = await supabase
-      .from('recetas_normalizada')
-      .select('codigo_producto, codigo_ingrediente, cantidad_ingrediente, costo_ingrediente, costo_total, valor_cdr, ultima_actualizacion')
-      .order('codigo_producto', { ascending: true });
+  private async fetchAllRows(supabase: any, table: string, select: string, orderBy?: string): Promise<any[]> {
+    const PAGE = 1000;
+    let all: any[] = [];
+    let from = 0;
 
-    if (error) throw new Error(`Error recetas: ${error.message}`);
+    while (true) {
+      let query = supabase.from(table).select(select).range(from, from + PAGE - 1);
+      if (orderBy) query = query.order(orderBy, { ascending: true });
+      const { data, error } = await query;
+      if (error) throw new Error(`Error paginando ${table}: ${error.message}`);
+      if (!data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+
+    return all;
+  }
+
+  private async buildRecetasExport(supabase: any): Promise<any[]> {
+    // 1. Traer TODAS las recetas paginando de a 1000
+    const recetas = await this.fetchAllRows(
+      supabase,
+      'recetas_normalizada',
+      'codigo_producto, codigo_ingrediente, cantidad_ingrediente, costo_ingrediente, costo_total, valor_cdr, ultima_actualizacion',
+      'codigo_producto'
+    );
+
     if (!recetas || recetas.length === 0) return [];
 
     // 2. Obtener códigos únicos
