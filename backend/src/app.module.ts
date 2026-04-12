@@ -12,6 +12,7 @@ import { ExportModule } from './exportacion/export.module';
 import { TablaConfigModule } from './tablaConfig/tabla-config.module';
 import { ImportacionModule } from './importacion/importacion.module';
 import { ReferenciasModule } from './referencias/referencias.module';
+import { ImplosionModule } from './implosion/implosion.module';
 
 @Module({
   imports: [
@@ -27,9 +28,8 @@ import { ReferenciasModule } from './referencias/referencias.module';
     TablaConfigModule,
     ExportModule,
     ImportacionModule,
-      ReferenciasModule,
-
-
+    ReferenciasModule,
+    ImplosionModule,
   ],
 })
 export class AppModule { }

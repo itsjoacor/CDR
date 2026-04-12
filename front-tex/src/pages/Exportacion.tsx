@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
@@ -6,17 +6,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     Download, FileSpreadsheet, ClipboardList,
     HardHat,
     Zap,
     Package,
     ShoppingCart,
-    DollarSign
+    DollarSign,
+    BarChart2,
+    Loader2,
 } from 'lucide-react';
 
 const Exportacion: React.FC = () => {
     const { user } = useAuth();
     const { toast } = useToast();
+
+    // Implosion periods state
+    const [periodos, setPeriodos] = useState<{ periodo: string }[]>([]);
+    const [selectedPeriodo, setSelectedPeriodo] = useState('');
+    const [loadingPeriodos, setLoadingPeriodos] = useState(true);
+    const [exportingImplosion, setExportingImplosion] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            setLoadingPeriodos(true);
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/implosion/periodos`, {
+                    headers: { Authorization: `Bearer ${user?.token}` },
+                });
+                const data = await res.json();
+                setPeriodos(data);
+                if (data.length > 0) setSelectedPeriodo(data[0].periodo);
+            } catch {
+                // silencioso — puede que no haya periodos aún
+            } finally {
+                setLoadingPeriodos(false);
+            }
+        })();
+    }, []);
 
     const exportTables = [
         {
@@ -135,6 +168,35 @@ const Exportacion: React.FC = () => {
         }
     };
 
+    // Export implosion for a specific period
+    const exportImplosion = async () => {
+        if (!selectedPeriodo) {
+            toast({ title: 'Error', description: 'Seleccioná un periodo', variant: 'destructive' });
+            return;
+        }
+        setExportingImplosion(true);
+        try {
+            toast({ title: 'Exportando implosión', description: `Preparando datos de ${selectedPeriodo}...` });
+            const res = await fetch(
+                `${import.meta.env.VITE_API_URL}/implosion/export/${selectedPeriodo}`,
+                { headers: { Authorization: `Bearer ${user?.token}` } },
+            );
+            if (!res.ok) throw new Error(await res.text());
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `implosion_${selectedPeriodo}.xlsx`;
+            link.click();
+            window.URL.revokeObjectURL(url);
+            toast({ title: 'Exportación completada', description: `implosion_${selectedPeriodo}.xlsx descargado.` });
+        } catch (err: any) {
+            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        } finally {
+            setExportingImplosion(false);
+        }
+    };
+
     // Export all tables in a single Excel file
     const exportAllTables = async () => {
         try {
@@ -201,6 +263,60 @@ const Exportacion: React.FC = () => {
                         <span>Exportar Todo</span>
                     </Button>
                 </div>
+
+                {/* ── Implosión por mes ──────────────────────────────────── */}
+                <Card className="border-l-4 border-l-teal-500 bg-teal-50 border-teal-200">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-teal-800">
+                            <BarChart2 className="h-5 w-5" />
+                            Implosión Volumen — por mes
+                        </CardTitle>
+                        <CardDescription>
+                            Exporta el detalle completo de implosión para el mes seleccionado:
+                            código producto, nombre, sector, código ingrediente, nombre ingrediente,
+                            volumen, cantidad producida, costo, CDR volumen.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {loadingPeriodos ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Cargando periodos...
+                            </div>
+                        ) : periodos.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                No hay periodos de implosión importados todavía.
+                            </p>
+                        ) : (
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
+                                    <SelectTrigger className="w-40 bg-white">
+                                        <SelectValue placeholder="Seleccionar mes" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {periodos.map((p) => (
+                                            <SelectItem key={p.periodo} value={p.periodo}>
+                                                {p.periodo}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button
+                                    onClick={exportImplosion}
+                                    disabled={exportingImplosion || !selectedPeriodo}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-2"
+                                >
+                                    {exportingImplosion ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Download className="h-4 w-4" />
+                                    )}
+                                    Exportar Implosión
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Export Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

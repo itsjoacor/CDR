@@ -23,6 +23,7 @@ import {
   UploadCloud,
   Menu,
   ChevronRight,
+  BarChart2,
 } from 'lucide-react';
 
 import Whool from '../TexCDR.png';
@@ -55,6 +56,8 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     { path: '/actualizarMantencion', label: 'Actualizar Mantención', icon: RefreshCcw },
     { path: '/resultados-cdr', label: 'CDR', icon: DollarSign, color: 'text-green-400' },
     { path: '/resultados-cdr-mantencion', label: 'CDR Sectorizado', icon: DollarSign },
+    { path: '/implosion-volumen', label: 'Implosión Volumen', icon: UploadCloud, color: 'text-teal-400' },
+    { path: '/resultados-volumen', label: 'Resultados Volumen', icon: BarChart2, color: 'text-teal-400' },
     { path: '/importacion', label: 'Importación', icon: UploadCloud },
     { path: '/exportacion', label: 'Exportación', icon: UploadCloud },
   ];

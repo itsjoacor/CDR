@@ -29,6 +29,8 @@ import ActualizacionMO from "./pages/ActualizacionMO";
 import ActualizarMantencion from "./pages/ActualizarMantencion";
 import CDRPorSector from "./pages/CDRPorSector";
 import Importacion from "./pages/Importacion";
+import ImplosionVolumen from "./pages/ImplosionVolumen";
+import ResultadosVolumen from "./pages/ResultadosVolumen";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +64,7 @@ const App = () => (
               <Route path="/resultados-cdr" element={<CDR />} />
               <Route path="/insumos" element={<Insumos />} />
               <Route path="/resultados-cdr-mantencion" element={<CDRPorSector />} />
+              <Route path="/resultados-volumen" element={<ResultadosVolumen />} />
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
                 <Route path="/cargarReceta" element={<CargarReceta />} />
@@ -75,6 +78,7 @@ const App = () => (
                 <Route path="/actualizarMO" element={<ActualizacionMO />} />
                 <Route path="/actualizarMantencion" element={<ActualizarMantencion />} />
                 <Route path="/importacion" element={<Importacion />} />
+                <Route path="/implosion-volumen" element={<ImplosionVolumen />} />
 
 
 
