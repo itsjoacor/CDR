@@ -54,6 +54,7 @@ const Insumos: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -220,12 +221,31 @@ const Insumos: React.FC = () => {
 
         <Card>
           <CardContent className="p-4">
-            <Input
-              placeholder="Buscar por código, detalle o grupo..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-md"
-            />
+            <div className="relative">
+              <Input
+                placeholder="Buscar por código, detalle o grupo..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => searchTerm && setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                className="w-full"
+              />
+              {showSuggestions && searchTerm.length > 0 && filteredInsumos.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                  {filteredInsumos.slice(0, 8).map((ins) => (
+                    <div
+                      key={ins.codigo}
+                      className="px-3 py-2 hover:bg-muted cursor-pointer text-sm border-b last:border-b-0"
+                      onMouseDown={() => { setSearchTerm(ins.codigo); setShowSuggestions(false); }}
+                    >
+                      <span className="font-mono text-xs text-muted-foreground">{ins.codigo}</span>
+                      <span className="ml-2">{ins.detalle}</span>
+                      <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">{ins.grupo}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 

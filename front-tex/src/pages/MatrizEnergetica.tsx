@@ -57,8 +57,20 @@ const MatrizEnergia: React.FC = () => {
 
   const [data, setData] = useState<MatrizEnergia[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const filteredData = data.filter((me) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      me.codigo_energia.toLowerCase().includes(term) ||
+      me.descripcion.toLowerCase().includes(term) ||
+      me.sector_productivo.toLowerCase().includes(term) ||
+      me.codigo_mano_obra.toLowerCase().includes(term)
+    );
+  });
   const [editForm, setEditForm] = useState<Partial<MatrizEnergia>>({});
   const [sectores, setSectores] = useState<{ nombre: string }[]>([]);
   const [manoObras, setManoObras] = useState<string[]>([]);
@@ -290,6 +302,37 @@ const MatrizEnergia: React.FC = () => {
           </Card>
         </div>
 
+        {/* Buscador con sugerencias */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="relative">
+              <Input
+                placeholder="Buscar por código, descripción, sector o mano de obra..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => searchTerm && setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                className="w-full"
+              />
+              {showSuggestions && searchTerm.length > 0 && filteredData.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                  {filteredData.slice(0, 8).map((me) => (
+                    <div
+                      key={me.codigo_energia}
+                      className="px-3 py-2 hover:bg-muted cursor-pointer text-sm border-b last:border-b-0"
+                      onMouseDown={() => { setSearchTerm(me.codigo_energia); setShowSuggestions(false); }}
+                    >
+                      <span className="font-mono text-xs text-muted-foreground">{me.codigo_energia}</span>
+                      <span className="ml-2">{me.descripcion}</span>
+                      <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">{me.sector_productivo}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="relative">
           <CardHeader>
             <CardTitle>Catálogo de Equipos y Energía</CardTitle>
@@ -324,7 +367,7 @@ const MatrizEnergia: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.map(me => {
+                  {filteredData.map(me => {
                     const totalStd =
                       typeof me.total_pesos_std === 'number'
                         ? me.total_pesos_std

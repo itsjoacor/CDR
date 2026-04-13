@@ -73,10 +73,21 @@ const ManoObra: React.FC = () => {
 
   const [manoObra, setManoObra] = useState<ManoObraAPI[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ManoObraAPI>>({});
   const canEdit = user?.role === "admin";
   const [sectores, setSectores] = useState<string[]>([]);
+
+  const filteredManoObra = manoObra.filter((mo) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      mo.codigo_mano_obra.toLowerCase().includes(term) ||
+      mo.descripcion.toLowerCase().includes(term) ||
+      mo.sector_productivo.toLowerCase().includes(term)
+    );
+  });
 
   // Fallbacks coherentes con el schema SQL
   const fallbackCostoMano = (m: Pick<ManoObraAPI, "horas_hombre_std" | "valor_hora_hombre" | "std_produccion">) => {
@@ -371,6 +382,37 @@ const ManoObra: React.FC = () => {
           </Card>
         </div>
 
+        {/* Buscador con sugerencias */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="relative">
+              <Input
+                placeholder="Buscar por código, descripción o sector..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => searchTerm && setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                className="w-full"
+              />
+              {showSuggestions && searchTerm.length > 0 && filteredManoObra.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                  {filteredManoObra.slice(0, 8).map((mo) => (
+                    <div
+                      key={mo.codigo_mano_obra}
+                      className="px-3 py-2 hover:bg-muted cursor-pointer text-sm border-b last:border-b-0"
+                      onMouseDown={() => { setSearchTerm(mo.codigo_mano_obra); setShowSuggestions(false); }}
+                    >
+                      <span className="font-mono text-xs text-muted-foreground">{mo.codigo_mano_obra}</span>
+                      <span className="ml-2">{mo.descripcion}</span>
+                      <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">{mo.sector_productivo}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Main Table con TODAS las columnas del esquema */}
         <Card>
           <CardHeader>
@@ -404,7 +446,7 @@ const ManoObra: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {manoObra.map((mo) => {
+                  {filteredManoObra.map((mo) => {
                     const costo =
                       typeof mo.costo_mano_obra === "number"
                         ? mo.costo_mano_obra

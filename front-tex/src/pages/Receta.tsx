@@ -57,6 +57,7 @@ const Receta: React.FC = () => {
   const [cdrCeroMap, setCdrCeroMap] = useState<CdrCeroMap>({});
   const [sectores, setSectores] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -250,7 +251,7 @@ const Receta: React.FC = () => {
           <CardContent className="flex flex-wrap gap-2">
             <div className="flex-1 min-w-[220px]">
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground z-10" />
                 <Input
                   placeholder="Buscar por código o descripción..."
                   className="pl-8"
@@ -258,8 +259,25 @@ const Receta: React.FC = () => {
                   onChange={(e) => {
                     setCurrentPage(1);
                     setSearchTerm(e.target.value);
+                    setShowSuggestions(true);
                   }}
+                  onFocus={() => searchTerm && setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 />
+                {showSuggestions && searchTerm.length > 0 && filtered.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                    {filtered.slice(0, 8).map((p) => (
+                      <div
+                        key={p.codigo_producto}
+                        className="px-3 py-2 hover:bg-muted cursor-pointer text-sm border-b last:border-b-0"
+                        onMouseDown={() => { setSearchTerm(p.codigo_producto); setCurrentPage(1); setShowSuggestions(false); }}
+                      >
+                        <span className="font-mono text-xs text-muted-foreground">{p.codigo_producto}</span>
+                        <span className="ml-2">{p.descripcion_producto}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">

@@ -58,6 +58,7 @@ const Producto: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [productos, setProductos] = useState<ProductoItem[]>([]);
   const [sectores, setSectores] = useState<string[]>([]);
   const [productosLista, setProductosLista] = useState<ProductoItem[]>([]);
@@ -270,9 +271,35 @@ const Producto: React.FC = () => {
           </div>
         </div>
 
-        {/* Filtros */}
+        {/* Buscador + Filtros */}
         <Card>
-          <CardContent className="p-4 flex flex-col md:flex-row gap-4">
+          <CardContent className="p-4 space-y-3">
+            <div className="relative">
+              <Input
+                placeholder="Buscar por código, descripción o sector..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => searchTerm && setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                className="w-full"
+              />
+              {showSuggestions && searchTerm.length > 0 && filteredProductos.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                  {filteredProductos.slice(0, 8).map((p) => (
+                    <div
+                      key={p.codigo_producto}
+                      className="px-3 py-2 hover:bg-muted cursor-pointer text-sm border-b last:border-b-0"
+                      onMouseDown={() => { setSearchTerm(p.codigo_producto); setShowSuggestions(false); }}
+                    >
+                      <span className="font-mono text-xs text-muted-foreground">{p.codigo_producto}</span>
+                      <span className="ml-2">{p.descripcion_producto}</span>
+                      <Badge className="ml-2 text-[10px] px-1.5 py-0" variant="outline">{p.sector_productivo}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col md:flex-row gap-4">
             {/* Filtro por Producto */}
             <div className="flex-1">
               <Listbox
@@ -369,6 +396,7 @@ const Producto: React.FC = () => {
                   </ListboxOptions>
                 </div>
               </Listbox>
+            </div>
             </div>
           </CardContent>
         </Card>

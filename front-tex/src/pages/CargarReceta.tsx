@@ -17,6 +17,19 @@ interface Ingredient {
   cantidad_ingrediente: number;
 }
 
+interface SearchOption {
+  codigo: string;
+  descripcion: string;
+  tipo: 'Insumo' | 'Producto' | 'Mano Obra' | 'Energía';
+}
+
+const TIPO_COLORS: Record<string, string> = {
+  'Insumo': 'bg-purple-100 text-purple-700',
+  'Producto': 'bg-blue-100 text-blue-700',
+  'Mano Obra': 'bg-orange-100 text-orange-700',
+  'Energía': 'bg-yellow-100 text-yellow-700',
+};
+
 const CargarReceta: React.FC = () => {
 
   const navigate = useNavigate();
@@ -27,6 +40,12 @@ const CargarReceta: React.FC = () => {
   const [sectorProductivo, setSectorProductivo] = useState('');
   const [descripcionIngrediente, setDescripcionIngrediente] = useState('');
 
+  // Catálogos cargados una sola vez para predicción local (0 requests al escribir)
+  const [allProductos, setAllProductos] = useState<SearchOption[]>([]);
+  const [allIngredientes, setAllIngredientes] = useState<SearchOption[]>([]);
+  const [showProdSugg, setShowProdSugg] = useState(false);
+  const [showIngSugg, setShowIngSugg] = useState(false);
+
   const [ingredientes, setIngredientes] = useState<Ingredient[]>([]);
   const [newIngredient, setNewIngredient] = useState<Ingredient>({
     codigo_ingrediente: '',
@@ -36,8 +55,72 @@ const CargarReceta: React.FC = () => {
   const [ingredienteValido, setIngredienteValido] = useState(false);
 
 
-  // Define token (replace this with your actual token retrieval logic)
   const token = Cookies.get('token') || '';
+
+  // Carga independiente de cada tabla para predicción local
+  useEffect(() => {
+    if (!token) return;
+    const h = { headers: { Authorization: `Bearer ${token}` } };
+    const base = import.meta.env.VITE_API_URL;
+
+    const safeFetch = async (url: string): Promise<any[]> => {
+      try {
+        const res = await fetch(url, h);
+        if (!res.ok) return [];
+        return await res.json();
+      } catch {
+        return [];
+      }
+    };
+
+    const load = async () => {
+      const [prods, insumos, manos, energias] = await Promise.all([
+        safeFetch(`${base}/productos`),
+        safeFetch(`${base}/insumos`),
+        safeFetch(`${base}/matriz-mano`),
+        safeFetch(`${base}/matriz-energia`),
+      ]);
+
+      setAllProductos(
+        prods.map((p: any) => ({
+          codigo: p.codigo_producto,
+          descripcion: p.descripcion_producto ?? '',
+          tipo: 'Producto' as const,
+        }))
+      );
+
+      const ing: SearchOption[] = [];
+      for (const r of insumos)  ing.push({ codigo: r.codigo, descripcion: r.detalle ?? '', tipo: 'Insumo' });
+      for (const r of prods)    ing.push({ codigo: r.codigo_producto, descripcion: r.descripcion_producto ?? '', tipo: 'Producto' });
+      for (const r of manos)    ing.push({ codigo: r.codigo_mano_obra, descripcion: r.descripcion ?? '', tipo: 'Mano Obra' });
+      for (const r of energias) ing.push({ codigo: r.codigo_energia, descripcion: r.descripcion ?? '', tipo: 'Energía' });
+
+      console.log('[CargarReceta] Catálogos cargados:', {
+        productos: prods.length,
+        insumos: insumos.length,
+        mano_obra: manos.length,
+        energia: energias.length,
+        total: ing.length,
+      });
+      setAllIngredientes(ing);
+    };
+    load();
+  }, [token]);
+
+  // Filtro local de sugerencias
+  const prodSuggestions = codigoProducto.length > 0
+    ? allProductos.filter(p =>
+        p.codigo.toLowerCase().includes(codigoProducto.toLowerCase()) ||
+        p.descripcion.toLowerCase().includes(codigoProducto.toLowerCase())
+      ).slice(0, 8)
+    : [];
+
+  const ingSuggestions = newIngredient.codigo_ingrediente.length > 0
+    ? allIngredientes.filter(i =>
+        i.codigo.toLowerCase().includes(newIngredient.codigo_ingrediente.toLowerCase()) ||
+        i.descripcion.toLowerCase().includes(newIngredient.codigo_ingrediente.toLowerCase())
+      ).slice(0, 8)
+    : [];
 
   // FETCH INFO PRODUCTO
   useEffect(() => {
@@ -324,14 +407,32 @@ const CargarReceta: React.FC = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="codigo-producto">Código Producto</Label>
-                <Input
-                  id="codigo-producto"
-                  value={codigoProducto}
-                  onChange={(e) => setCodigoProducto(e.target.value.toUpperCase())}
-                  placeholder="Ej: PRD001"
-                  className="uppercase text-lg font-semibold"
-                  maxLength={15}
-                />
+                <div className="relative">
+                  <Input
+                    id="codigo-producto"
+                    value={codigoProducto}
+                    onChange={(e) => { setCodigoProducto(e.target.value.toUpperCase()); setShowProdSugg(true); }}
+                    onFocus={() => codigoProducto && setShowProdSugg(true)}
+                    onBlur={() => setTimeout(() => setShowProdSugg(false), 150)}
+                    placeholder="Ej: PRD001"
+                    className="uppercase text-lg font-semibold"
+                    maxLength={15}
+                  />
+                  {showProdSugg && prodSuggestions.length > 0 && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-auto">
+                      {prodSuggestions.map((p) => (
+                        <div
+                          key={p.codigo}
+                          className="px-3 py-2 hover:bg-muted cursor-pointer text-sm border-b last:border-b-0"
+                          onMouseDown={() => { setCodigoProducto(p.codigo); setShowProdSugg(false); }}
+                        >
+                          <span className="font-mono text-xs text-muted-foreground">{p.codigo}</span>
+                          <span className="ml-2">{p.descripcion}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {!productoValido && codigoProducto && (
                   <p className="text-xs text-red-500">Producto no encontrado</p>
                 )}
@@ -367,21 +468,43 @@ const CargarReceta: React.FC = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="codigo-ingrediente">Código Ingrediente</Label>
-                <Input
-                  id="codigo-ingrediente"
-                  value={newIngredient.codigo_ingrediente}
-                  onChange={(e) => setNewIngredient(prev => ({
-                    ...prev,
-                    codigo_ingrediente: e.target.value.toUpperCase()
-                  }))}
-                  placeholder="Ej: INS001, MO001, ME001"
-                  className="uppercase border-blue-300"
-                  maxLength={15}
-                />
-                <p className="text-xs text-blue-600">Puede ser insumo, mano obra o matriz energética</p>
+                <div className="relative">
+                  <Input
+                    id="codigo-ingrediente"
+                    value={newIngredient.codigo_ingrediente}
+                    onChange={(e) => {
+                      setNewIngredient(prev => ({ ...prev, codigo_ingrediente: e.target.value.toUpperCase() }));
+                      setShowIngSugg(true);
+                    }}
+                    onFocus={() => newIngredient.codigo_ingrediente && setShowIngSugg(true)}
+                    onBlur={() => setTimeout(() => setShowIngSugg(false), 150)}
+                    placeholder="Buscar insumo, producto, mano obra o energía..."
+                    className="uppercase border-blue-300"
+                  />
+                  {showIngSugg && ingSuggestions.length > 0 && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                      {ingSuggestions.map((i) => (
+                        <div
+                          key={`${i.tipo}-${i.codigo}`}
+                          className="px-3 py-2 hover:bg-muted cursor-pointer text-sm border-b last:border-b-0 flex items-center"
+                          onMouseDown={() => {
+                            setNewIngredient(prev => ({ ...prev, codigo_ingrediente: i.codigo }));
+                            setShowIngSugg(false);
+                          }}
+                        >
+                          <span className="font-mono text-xs text-muted-foreground min-w-[100px]">{i.codigo}</span>
+                          <span className="ml-2 flex-1 truncate">{i.descripcion}</span>
+                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${TIPO_COLORS[i.tipo]}`}>
+                            {i.tipo}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-blue-600">Puede ser insumo, producto, mano obra o matriz energética</p>
 
-                {/* Mensaje de error IDÉNTICO al del producto */}
-                {!ingredienteValido && newIngredient.codigo_ingrediente && (
+                {!ingredienteValido && newIngredient.codigo_ingrediente && descripcionIngrediente !== 'Buscando...' && (
                   <p className="text-xs text-red-500">Ingrediente no encontrado</p>
                 )}
               </div>
