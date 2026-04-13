@@ -114,7 +114,10 @@ const Insumos: React.FC = () => {
         `${import.meta.env.VITE_API_URL}/insumos/${editingId}`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({
             detalle: editForm.detalle,
             grupo: editForm.grupo,
