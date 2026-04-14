@@ -8,10 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X, Trash2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X, Trash2, Lock, ShieldAlert, Download } from 'lucide-react';
 
 import { createClient } from '@supabase/supabase-js';
 import Papa from 'papaparse';
+import Cookies from 'js-cookie';
 
 type ImportSummary = {
   mode: 'upsert' | 'replace';
@@ -41,6 +42,7 @@ const Importacion: React.FC = () => {
   const [uploadProgressProd, setUploadProgressProd] = useState(0);
   const [resultProd, setResultProd] = useState<ImportSummary | null>(null);
   const [errorMsgProd, setErrorMsgProd] = useState<string | null>(null);
+
 
   // --- helpers ---
   const parseCsv = async (file: File) =>
@@ -148,6 +150,9 @@ const Importacion: React.FC = () => {
       setUploadingProd(false);
     }
   };
+
+  // Hook compartido para el card de recetas y su sección expandida
+  const recetasState = useRecetasMasivas();
 
   // --- UI handlers ---
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,205 +262,118 @@ const Importacion: React.FC = () => {
           </div>
         </div>
 
-        {/* Upload Card */}
-        <Card className="bg-green-50 border-green-200">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-3">
-              <span className="text-2xl">📦</span>
-              <div className="text-lg font-semibold">Importar Insumos</div>
-            </CardTitle>
-            <CardDescription className="text-sm">
-              Subí un CSV con <code>grupo,codigo,detalle,costo</code>. El modo <strong>Seguro (UPSERT)</strong> no borra nada.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* File Input */}
-              <div className="space-y-2">
-                <label htmlFor="csv-upload" className="block text-sm font-medium">
-                  Seleccionar archivo CSV
-                </label>
-                <div className="flex items-center gap-3">
-                  <Input
-                    id="csv-upload"
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileChange}
-                    disabled={uploading}
-                    className="flex-1"
-                  />
-                  {selectedFile && !uploading && (
-                    <Button variant="outline" size="icon" onClick={handleClearFile}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
+        {/* Grid de tarjetas de importación */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-              {/* File Info */}
-              {selectedFile && (
-                <div className="p-3 bg-white rounded-md border border-green-200">
-                  <div className="flex items-start space-x-3">
-                    <FileSpreadsheet className="h-5 w-5 text-green-600 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{selectedFile.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(selectedFile.size / 1024).toFixed(2)} KB
-                      </p>
-                    </div>
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  </div>
-                </div>
-              )}
-
-              {/* Progress Bar */}
-              {uploading && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{result?.mode === 'replace' ? 'Reemplazando…' : 'Importando…'}</span>
-                    <span>{uploadProgress}%</span>
-                  </div>
-                  <Progress value={uploadProgress} />
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Button
-                  onClick={handleUploadUpsert}
-                  disabled={!selectedFile || uploading}
-                  className="w-full text-white bg-green-600 hover:bg-green-700 flex items-center space-x-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span>Importar (Seguro - UPSERT)</span>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Result / Error */}
-        {(result || errorMsg) && (
-          <Card className="border">
+          {/* === IMPORTAR INSUMOS === */}
+          <Card className="bg-green-50 border-green-200 hover:shadow-md transition-shadow flex flex-col">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                {errorMsg ? (
-                  <>
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                    <span>Resultado de la Importación</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    <span>Resultado de la Importación</span>
-                  </>
-                )}
+              <CardTitle className="flex items-center space-x-3">
+                <span className="text-2xl">📦</span>
+                <div className="text-lg font-semibold">Importar Insumos</div>
               </CardTitle>
+              <CardDescription className="text-xs">
+                CSV con <code>grupo,codigo,detalle,costo</code>. UPSERT (no borra).
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              {errorMsg ? (
-                <p className="text-sm text-red-700">{errorMsg}</p>
-              ) : result ? (
-                <div className="text-sm grid grid-cols-2 gap-2">
-                  <div><strong>Modo:</strong> {result.mode}</div>
-                  <div><strong>Filas válidas:</strong> {result.total_rows}</div>
-                  <div className="col-span-2"><strong>Mensaje:</strong> {result.message}</div>
+            <CardContent className="flex flex-col flex-1 space-y-3">
+              <Input
+                id="csv-upload"
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                disabled={uploading}
+              />
+              {selectedFile && (
+                <div className="text-xs text-green-700 flex items-center gap-1 truncate">
+                  <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{selectedFile.name}</span>
+                  <span className="text-muted-foreground shrink-0">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
                 </div>
-              ) : null}
+              )}
+              {uploading && <Progress value={uploadProgress} />}
+              <div className="flex-1" />
+              <Button
+                onClick={handleUploadUpsert}
+                disabled={!selectedFile || uploading}
+                className="w-full text-white bg-green-600 hover:bg-green-700"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Insumos
+              </Button>
+              {result && !errorMsg && (
+                <p className="text-xs text-green-700 bg-white rounded p-2 border border-green-200">
+                  ✅ {result.message}
+                </p>
+              )}
+              {errorMsg && (
+                <p className="text-xs text-red-700 bg-white rounded p-2 border border-red-200">
+                  ❌ {errorMsg}
+                </p>
+              )}
             </CardContent>
           </Card>
-        )}
 
-        {/* ===== IMPORTAR PRODUCTOS ===== */}
-        <Card className="bg-orange-50 border-orange-200">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-3">
-              <span className="text-2xl">🏭</span>
-              <div className="text-lg font-semibold">Importar Productos</div>
-            </CardTitle>
-            <CardDescription className="text-sm">
-              Subí un CSV con <code>codigo_producto,descripcion_producto,sector_productivo</code>. El modo <strong>Seguro (UPSERT)</strong> no borra nada.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="csv-upload-prod" className="block text-sm font-medium">
-                  Seleccionar archivo CSV
-                </label>
-                <div className="flex items-center gap-3">
-                  <Input
-                    id="csv-upload-prod"
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileChangeProd}
-                    disabled={uploadingProd}
-                    className="flex-1"
-                  />
-                  {selectedFileProd && !uploadingProd && (
-                    <Button variant="outline" size="icon" onClick={handleClearFileProd}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
+          {/* === IMPORTAR PRODUCTOS === */}
+          <Card className="bg-orange-50 border-orange-200 hover:shadow-md transition-shadow flex flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <span className="text-2xl">🏭</span>
+                <div className="text-lg font-semibold">Importar Productos</div>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                CSV con <code>codigo_producto,descripcion_producto,sector_productivo</code>. UPSERT.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col flex-1 space-y-3">
+              <Input
+                id="csv-upload-prod"
+                type="file"
+                accept=".csv"
+                onChange={handleFileChangeProd}
+                disabled={uploadingProd}
+              />
               {selectedFileProd && (
-                <div className="p-3 bg-white rounded-md border border-orange-200">
-                  <div className="flex items-start space-x-3">
-                    <FileSpreadsheet className="h-5 w-5 text-orange-600 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{selectedFileProd.name}</p>
-                      <p className="text-xs text-muted-foreground">{(selectedFileProd.size / 1024).toFixed(2)} KB</p>
-                    </div>
-                    <CheckCircle2 className="h-5 w-5 text-orange-600" />
-                  </div>
+                <div className="text-xs text-orange-700 flex items-center gap-1 truncate">
+                  <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{selectedFileProd.name}</span>
+                  <span className="text-muted-foreground shrink-0">({(selectedFileProd.size / 1024).toFixed(1)} KB)</span>
                 </div>
               )}
-
-              {uploadingProd && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Importando…</span>
-                    <span>{uploadProgressProd}%</span>
-                  </div>
-                  <Progress value={uploadProgressProd} />
-                </div>
-              )}
-
+              {uploadingProd && <Progress value={uploadProgressProd} />}
+              <div className="flex-1" />
               <Button
                 onClick={handleUploadProductos}
                 disabled={!selectedFileProd || uploadingProd}
-                className="w-full text-white bg-orange-600 hover:bg-orange-700 flex items-center space-x-2"
+                className="w-full text-white bg-orange-600 hover:bg-orange-700"
               >
-                <Upload className="h-4 w-4" />
-                <span>Importar Productos (Seguro - UPSERT)</span>
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Productos
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {(resultProd || errorMsgProd) && (
-          <Card className="border">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                {errorMsgProd
-                  ? <><AlertCircle className="h-5 w-5 text-red-600" /><span>Error en importación de Productos</span></>
-                  : <><CheckCircle2 className="h-5 w-5 text-green-600" /><span>Resultado importación de Productos</span></>
-                }
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {errorMsgProd ? (
-                <p className="text-sm text-red-700">{errorMsgProd}</p>
-              ) : resultProd ? (
-                <div className="text-sm grid grid-cols-2 gap-2">
-                  <div><strong>Filas válidas:</strong> {resultProd.total_rows}</div>
-                  <div className="col-span-2"><strong>Mensaje:</strong> {resultProd.message}</div>
-                </div>
-              ) : null}
+              {resultProd && !errorMsgProd && (
+                <p className="text-xs text-orange-700 bg-white rounded p-2 border border-orange-200">
+                  ✅ {resultProd.message}
+                </p>
+              )}
+              {errorMsgProd && (
+                <p className="text-xs text-red-700 bg-white rounded p-2 border border-red-200">
+                  ❌ {errorMsgProd}
+                </p>
+              )}
             </CardContent>
           </Card>
+
+          {/* === ACTUALIZACIÓN MASIVA DE RECETAS (card en grid) === */}
+          <RecetasMasivasCard
+            onUnlock={recetasState.handleUnlock}
+            active={recetasState.step !== 'locked'}
+          />
+
+        </div>
+
+        {/* === Sección expandida (full-width) cuando se desbloquea === */}
+        {recetasState.step !== 'locked' && (
+          <RecetasMasivasFullSection state={recetasState} />
         )}
 
         {/* Nota de seguridad */}
@@ -465,13 +383,393 @@ const Importacion: React.FC = () => {
           </CardHeader>
           <CardContent className="text-sm text-yellow-800">
             <p>
-              
               <strong>Recorda no modificar ni el orden ni los titulos de las columas, el reemplazo podria ser caotico.</strong>
             </p>
           </CardContent>
         </Card>
       </div>
     </Layout>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+//   ACTUALIZACIÓN MASIVA DE RECETAS — Zona Peligrosa
+// ════════════════════════════════════════════════════════════════════════════
+
+const PASSWORD_RECETAS = 'lorenzo';
+
+type RecetasStep = 'locked' | 'password' | 'backup' | 'ready' | 'processing' | 'done';
+
+// Hook compartido para que el card compacto y la sección expandida
+// usen el mismo estado
+const useRecetasMasivas = () => {
+  const { toast } = useToast();
+  const token = Cookies.get('token') || '';
+
+  const [step, setStep] = useState<RecetasStep>('locked');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
+  const [mode, setMode] = useState<'new' | 'update'>('new');
+  const [file, setFile] = useState<File | null>(null);
+  const [result, setResult] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [productosConflicto, setProductosConflicto] = useState<string[]>([]);
+
+  const handleUnlock = () => setStep('password');
+
+  const handleCheckPassword = () => {
+    if (passwordInput.trim().toLowerCase() === PASSWORD_RECETAS) {
+      setStep('backup');
+      setPasswordInput('');
+      toast({ title: 'Acceso concedido', description: 'Procedé con precaución.' });
+    } else {
+      toast({ title: 'Contraseña incorrecta', variant: 'destructive' });
+      setPasswordInput('');
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    setDownloadingBackup(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/export?table=recetas_normalizada&format=xlsx`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Error descargando backup');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      link.download = `backup_recetas_${ts}.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      setStep('ready');
+      toast({ title: 'Backup descargado', description: 'Ahora podés proceder con la actualización.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setDownloadingBackup(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    setResult(null);
+    setErrorMsg(null);
+    setProductosConflicto([]);
+    if (!f) return;
+    const ext = f.name.toLowerCase().split('.').pop();
+    if (!['csv', 'xlsx', 'xls'].includes(ext || '')) {
+      toast({ title: 'Formato inválido', description: 'Usá .csv, .xlsx o .xls', variant: 'destructive' });
+      return;
+    }
+    setFile(f);
+  };
+
+  const handleImport = async () => {
+    if (!file) return;
+    setStep('processing');
+    setResult(null);
+    setErrorMsg(null);
+    setProductosConflicto([]);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/import/recetas?mode=${mode}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data?.productos_existentes) {
+          setProductosConflicto(data.productos_existentes);
+        }
+        throw new Error(data?.message || 'Error en la importación');
+      }
+      setResult(data);
+      setStep('done');
+      toast({ title: 'Importación completada', description: data.message });
+      setFile(null);
+    } catch (err: any) {
+      setErrorMsg(err.message);
+      setStep('ready');
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleReset = () => {
+    setStep('locked');
+    setPasswordInput('');
+    setMode('new');
+    setFile(null);
+    setResult(null);
+    setErrorMsg(null);
+    setProductosConflicto([]);
+  };
+
+  return {
+    step, passwordInput, setPasswordInput, downloadingBackup, mode, setMode,
+    file, setFile, result, errorMsg, productosConflicto,
+    handleUnlock, handleCheckPassword, handleDownloadBackup,
+    handleFileChange, handleImport, handleReset,
+  };
+};
+
+// Card compacto para la grilla (estado bloqueado)
+const RecetasMasivasCard: React.FC<{ onUnlock: () => void; active: boolean }> = ({ onUnlock, active }) => (
+  <Card className={`flex flex-col ${active ? 'bg-red-50 border-red-300' : 'bg-slate-50 border-slate-200'} hover:shadow-md transition-shadow`}>
+    <CardHeader>
+      <CardTitle className="flex items-center space-x-3">
+        <span className="text-2xl">{active ? '⚠️' : '🔒'}</span>
+        <div className="text-lg font-semibold">Actualización Recetas</div>
+      </CardTitle>
+      <CardDescription className="text-xs">
+        {active
+          ? 'Sección desbloqueada — ver panel abajo'
+          : 'Carga/reemplazo masivo. Zona peligrosa.'}
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="flex flex-col flex-1 justify-end">
+      <Button
+        onClick={onUnlock}
+        disabled={active}
+        variant="outline"
+        className={active ? 'border-red-400 text-red-700' : 'border-slate-400'}
+      >
+        <Lock className="h-4 w-4 mr-2" />
+        {active ? 'Sección activa ↓' : 'Desbloquear sección'}
+      </Button>
+    </CardContent>
+  </Card>
+);
+
+// Sección full-width que aparece debajo cuando se desbloquea
+const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasMasivas> }> = ({ state }) => {
+  const {
+    step, passwordInput, setPasswordInput, downloadingBackup, mode, setMode,
+    file, setFile, result, errorMsg, productosConflicto,
+    handleCheckPassword, handleDownloadBackup, handleFileChange, handleImport, handleReset,
+  } = state;
+
+  return (
+    <Card className="bg-red-50 border-red-400 border-2">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-red-800 text-xl">
+          <ShieldAlert className="h-6 w-6 animate-pulse" />
+          ⚠️ ZONA PELIGROSA — PROCEDA CON PRECAUCIÓN
+        </CardTitle>
+        <CardDescription className="text-red-700">
+          Esta sección modifica masivamente la tabla <code>recetas_normalizada</code>.
+          Las acciones son <strong>irreversibles</strong>.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+
+        {/* PASO 1: contraseña */}
+        {step === 'password' && (
+          <div className="space-y-3 p-4 bg-white border border-red-300 rounded-md">
+            <div className="flex items-center gap-2 text-red-700 font-semibold">
+              <Lock className="h-4 w-4" />
+              Ingresá la contraseña de seguridad
+            </div>
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCheckPassword()}
+                placeholder="Contraseña..."
+                className="max-w-xs"
+                autoFocus
+              />
+              <Button onClick={handleCheckPassword} className="bg-red-600 hover:bg-red-700 text-white">
+                Verificar
+              </Button>
+              <Button variant="outline" onClick={handleReset}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+
+        {/* PASO 2: backup obligatorio */}
+        {step === 'backup' && (
+          <div className="space-y-3 p-4 bg-white border-2 border-red-400 rounded-md">
+            <div className="flex items-center gap-2 text-red-800 font-bold">
+              <AlertCircle className="h-5 w-5" />
+              Para continuar es OBLIGATORIO descargar un backup local de las recetas
+            </div>
+            <p className="text-sm text-red-700">
+              Si algo sale mal con la importación, este archivo te permitirá restaurar el estado actual de la base.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleDownloadBackup}
+                disabled={downloadingBackup}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {downloadingBackup ? 'Descargando...' : 'Exportar Recetas (Backup local)'}
+              </Button>
+              <Button variant="outline" onClick={handleReset}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+
+        {/* PASO 3: elegir modo + subir archivo */}
+        {(step === 'ready' || step === 'processing' || step === 'done') && (
+          <div className="space-y-4 p-4 bg-white border border-red-300 rounded-md">
+            <div className="flex items-center gap-2 text-green-700 text-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              Backup descargado correctamente
+            </div>
+
+            {/* Formato requerido del archivo (compartido para ambos modos) */}
+            <div className="p-3 bg-slate-50 border border-slate-300 rounded-md">
+              <div className="flex items-center gap-2 mb-2">
+                <FileSpreadsheet className="h-4 w-4 text-slate-700" />
+                <span className="text-sm font-semibold text-slate-800">Formato requerido del archivo (.csv, .xlsx)</span>
+              </div>
+              <p className="text-xs text-slate-600 mb-2">
+                El archivo debe contener <strong>únicamente</strong> estas 3 columnas (en cualquier orden):
+              </p>
+              <table className="text-xs border border-slate-300 rounded w-auto bg-white">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_producto</th>
+                    <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_ingrediente</th>
+                    <th className="px-3 py-1.5 font-semibold text-slate-700">cantidad_ingrediente</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t">
+                    <td className="px-3 py-1 border-r font-mono">400022002118</td>
+                    <td className="px-3 py-1 border-r font-mono">005781800900</td>
+                    <td className="px-3 py-1 font-mono">0.92</td>
+                  </tr>
+                  <tr className="border-t bg-slate-50">
+                    <td className="px-3 py-1 border-r font-mono">400022002118</td>
+                    <td className="px-3 py-1 border-r font-mono">4012</td>
+                    <td className="px-3 py-1 font-mono">0.9</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="text-[11px] text-slate-500 mt-2">
+                Cualquier otra columna se ignora. Los nombres deben coincidir exactamente.
+              </p>
+            </div>
+
+            {/* Selector de modo */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-red-800">Modo de importación</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button
+                  onClick={() => setMode('new')}
+                  disabled={step === 'processing'}
+                  className={`text-left p-3 rounded-md border-2 transition ${
+                    mode === 'new' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="font-semibold text-blue-900">📥 Insertar recetas nuevas</div>
+                  <div className="text-xs text-slate-600 mt-1">
+                    Solo recetas 100% nuevas. Si algún producto ya tiene receta → frena el proceso.
+                  </div>
+                </button>
+                <button
+                  onClick={() => setMode('update')}
+                  disabled={step === 'processing'}
+                  className={`text-left p-3 rounded-md border-2 transition ${
+                    mode === 'update' ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="font-semibold text-orange-900">🔄 Actualizar recetas</div>
+                  <div className="text-xs text-slate-600 mt-1">
+                    Permite mezclar nuevas + reemplazar existentes. Para los productos que ya existen, <strong>borra la receta vieja completa</strong> antes de insertar la nueva.
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Selector de archivo */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Subir archivo</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileChange}
+                  disabled={step === 'processing'}
+                  className="flex-1"
+                />
+                {file && step !== 'processing' && (
+                  <Button variant="outline" size="icon" onClick={() => setFile(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              {file && (
+                <p className="text-xs text-slate-600">
+                  📄 {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
+            </div>
+
+            {/* Botón de acción */}
+            <div className="flex gap-2 pt-2 border-t border-red-200">
+              <Button
+                onClick={handleImport}
+                disabled={!file || step === 'processing'}
+                className={mode === 'new' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-orange-600 hover:bg-orange-700 text-white'}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {step === 'processing' ? 'Procesando...' :
+                 mode === 'new' ? 'Importar como nuevas' : 'Actualizar recetas'}
+              </Button>
+              <Button variant="outline" onClick={handleReset} disabled={step === 'processing'}>
+                Cerrar
+              </Button>
+            </div>
+
+            {/* Conflictos en modo "new" */}
+            {productosConflicto.length > 0 && (
+              <div className="p-3 bg-red-100 border border-red-400 rounded-md">
+                <p className="font-semibold text-red-800 mb-2">
+                  ❌ {productosConflicto.length} producto(s) ya tienen receta. Cambiá a modo "Actualizar" o quitalos del archivo:
+                </p>
+                <div className="max-h-40 overflow-y-auto text-xs font-mono text-red-700 space-y-0.5">
+                  {productosConflicto.map((p) => <div key={p}>• {p}</div>)}
+                </div>
+              </div>
+            )}
+
+            {/* Resultado */}
+            {result && (
+              <div className="p-3 bg-green-50 border border-green-300 rounded-md">
+                <p className="font-semibold text-green-800 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Importación exitosa
+                </p>
+                <ul className="text-sm text-green-700 mt-1 space-y-0.5">
+                  <li>Filas insertadas: <strong>{result.total_filas_insertadas}</strong></li>
+                  <li>Productos únicos: <strong>{result.productos_unicos}</strong></li>
+                  <li>Productos nuevos: <strong>{result.productos_nuevos}</strong></li>
+                  {result.recetas_reemplazadas > 0 && (
+                    <li>Recetas reemplazadas: <strong>{result.recetas_reemplazadas}</strong></li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Error */}
+            {errorMsg && !productosConflicto.length && (
+              <div className="p-3 bg-red-100 border border-red-400 rounded-md text-sm text-red-800">
+                <strong>Error:</strong> {errorMsg}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

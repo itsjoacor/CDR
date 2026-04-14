@@ -5,6 +5,8 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImportacionService } from './importacion.service';
@@ -22,7 +24,21 @@ export class ImportacionController {
   ) {
     if (!file) throw new BadRequestException('Debe adjuntar un archivo CSV');
     return this.importacionService.importCsv(file, table, mode);
-    // Nota: si querés cerrar estrictamente a insumos:
-    // if (table !== 'insumos') throw new BadRequestException('Solo insumos');
+  }
+
+  /** POST /import/recetas?mode=new|update — bulk import recetas_normalizada */
+  @Post('recetas')
+  @UseInterceptors(FileInterceptor('file'))
+  async importRecetas(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('mode') mode: 'new' | 'update' = 'new',
+  ) {
+    if (!file) throw new BadRequestException('Debe adjuntar un archivo CSV o Excel');
+    try {
+      return await this.importacionService.importRecetas(file, mode);
+    } catch (err: any) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(err?.message || 'Error procesando recetas', HttpStatus.BAD_REQUEST);
+    }
   }
 }
