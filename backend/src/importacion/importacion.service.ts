@@ -102,10 +102,10 @@ export class ImportacionService {
 
   // ─── RECETAS NORMALIZADAS (carga masiva) ──────────────────────────────────
 
-  async importRecetas(file: Express.Multer.File, mode: 'new' | 'update') {
+  async importRecetas(file: Express.Multer.File, mode: 'new' | 'update' | 'patch') {
     if (!file) throw new BadRequestException('Debe adjuntar un archivo');
-    if (!['new', 'update'].includes(mode)) {
-      throw new BadRequestException('mode debe ser "new" o "update"');
+    if (!['new', 'update', 'patch'].includes(mode)) {
+      throw new BadRequestException('mode debe ser "new", "update" o "patch"');
     }
 
     // 1. Parsear archivo
@@ -149,7 +149,40 @@ export class ImportacionService {
         });
       }
 
-      // 4. Modo update: borrar recetas viejas
+      // Modo "patch" (actualizar ingrediente): solo permite UPDATE de pares existentes.
+      // Si algún (producto, ingrediente) del archivo NO existe en la receta → frena todo.
+      if (mode === 'patch') {
+        // Verificar que cada par (producto, ingrediente) ya exista
+        const paresFaltantes: string[] = [];
+        const PAIR_CHUNK = 200;
+        for (let i = 0; i < rows.length; i += PAIR_CHUNK) {
+          const slice = rows.slice(i, i + PAIR_CHUNK);
+          const codsProd = [...new Set(slice.map(r => r.codigo_producto))];
+          const codsIng = [...new Set(slice.map(r => r.codigo_ingrediente))];
+          const { data, error } = await supabase
+            .from('recetas_normalizada')
+            .select('codigo_producto, codigo_ingrediente')
+            .in('codigo_producto', codsProd)
+            .in('codigo_ingrediente', codsIng);
+          if (error) throw new Error(`Error verificando ingredientes existentes: ${error.message}`);
+
+          const setExistentes = new Set((data ?? []).map((r: any) => `${r.codigo_producto}__${r.codigo_ingrediente}`));
+          for (const r of slice) {
+            const key = `${r.codigo_producto}__${r.codigo_ingrediente}`;
+            if (!setExistentes.has(key)) paresFaltantes.push(`${r.codigo_producto} → ${r.codigo_ingrediente}`);
+          }
+        }
+
+        if (paresFaltantes.length > 0) {
+          throw new ConflictException({
+            message: `${paresFaltantes.length} ingrediente(s) NO existen en la receta. El modo "Actualizar ingrediente" solo permite modificar ingredientes ya cargados.`,
+            ingredientes_faltantes: paresFaltantes.slice(0, 50), // hasta 50 para no saturar
+            total_faltantes: paresFaltantes.length,
+          });
+        }
+      }
+
+      // 4. Modo update: borrar recetas viejas COMPLETAS de los productos del archivo
       let recetasReemplazadas = 0;
       let filasBorradas = 0;
       if (mode === 'update' && productosExistentes.size > 0) {
@@ -215,18 +248,25 @@ export class ImportacionService {
         );
       }
 
+      const productosNuevos = productosUnicos.length - productosExistentes.size;
+      let baseMsg = '';
+      if (mode === 'new') {
+        baseMsg = `${productosUnicos.length} recetas nuevas insertadas (${insertadas} filas)`;
+      } else if (mode === 'update') {
+        baseMsg = `${productosNuevos} recetas nuevas + ${recetasReemplazadas} recetas reemplazadas (${insertadas} filas)`;
+      } else {
+        // patch
+        baseMsg = `${insertadas} cantidad(es) de ingrediente actualizada(s) en ${productosUnicos.length} receta(s) (sin tocar el resto)`;
+      }
+
       return {
         mode,
         total_filas_insertadas: insertadas,
         productos_unicos: productosUnicos.length,
-        productos_nuevos: productosUnicos.length - productosExistentes.size,
+        productos_nuevos: productosNuevos,
         recetas_reemplazadas: recetasReemplazadas,
         filas_duplicadas_descartadas: filasDuplicadas,
-        message:
-          (mode === 'new'
-            ? `${productosUnicos.length} recetas nuevas insertadas (${insertadas} filas)`
-            : `${productosUnicos.length - productosExistentes.size} recetas nuevas + ${recetasReemplazadas} recetas reemplazadas (${insertadas} filas)`)
-          + (filasDuplicadas > 0 ? ` | ${filasDuplicadas} filas duplicadas descartadas del archivo` : ''),
+        message: baseMsg + (filasDuplicadas > 0 ? ` | ${filasDuplicadas} filas duplicadas descartadas del archivo` : ''),
       };
     } catch (err: any) {
       if (err instanceof ConflictException || err instanceof BadRequestException) throw err;

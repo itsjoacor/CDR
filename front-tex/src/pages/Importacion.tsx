@@ -409,11 +409,13 @@ const useRecetasMasivas = () => {
   const [step, setStep] = useState<RecetasStep>('locked');
   const [passwordInput, setPasswordInput] = useState('');
   const [downloadingBackup, setDownloadingBackup] = useState(false);
-  const [mode, setMode] = useState<'new' | 'update'>('new');
+  const [mode, setMode] = useState<'new' | 'update' | 'patch'>('new');
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [productosConflicto, setProductosConflicto] = useState<string[]>([]);
+  const [ingredientesFaltantes, setIngredientesFaltantes] = useState<string[]>([]);
+  const [totalFaltantes, setTotalFaltantes] = useState(0);
 
   const handleUnlock = () => setStep('password');
 
@@ -457,6 +459,8 @@ const useRecetasMasivas = () => {
     setResult(null);
     setErrorMsg(null);
     setProductosConflicto([]);
+    setIngredientesFaltantes([]);
+    setTotalFaltantes(0);
     if (!f) return;
     const ext = f.name.toLowerCase().split('.').pop();
     if (!['csv', 'xlsx', 'xls'].includes(ext || '')) {
@@ -472,6 +476,8 @@ const useRecetasMasivas = () => {
     setResult(null);
     setErrorMsg(null);
     setProductosConflicto([]);
+    setIngredientesFaltantes([]);
+    setTotalFaltantes(0);
 
     try {
       const formData = new FormData();
@@ -485,6 +491,10 @@ const useRecetasMasivas = () => {
       if (!res.ok) {
         if (data?.productos_existentes) {
           setProductosConflicto(data.productos_existentes);
+        }
+        if (data?.ingredientes_faltantes) {
+          setIngredientesFaltantes(data.ingredientes_faltantes);
+          setTotalFaltantes(data.total_faltantes ?? data.ingredientes_faltantes.length);
         }
         throw new Error(data?.message || 'Error en la importación');
       }
@@ -507,11 +517,14 @@ const useRecetasMasivas = () => {
     setResult(null);
     setErrorMsg(null);
     setProductosConflicto([]);
+    setIngredientesFaltantes([]);
+    setTotalFaltantes(0);
   };
 
   return {
     step, passwordInput, setPasswordInput, downloadingBackup, mode, setMode,
     file, setFile, result, errorMsg, productosConflicto,
+    ingredientesFaltantes, totalFaltantes,
     handleUnlock, handleCheckPassword, handleDownloadBackup,
     handleFileChange, handleImport, handleReset,
   };
@@ -550,6 +563,7 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
   const {
     step, passwordInput, setPasswordInput, downloadingBackup, mode, setMode,
     file, setFile, result, errorMsg, productosConflicto,
+    ingredientesFaltantes, totalFaltantes,
     handleCheckPassword, handleDownloadBackup, handleFileChange, handleImport, handleReset,
   } = state;
 
@@ -662,7 +676,7 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
             {/* Selector de modo */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-red-800">Modo de importación</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <button
                   onClick={() => setMode('new')}
                   disabled={step === 'processing'}
@@ -670,7 +684,7 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
                     mode === 'new' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="font-semibold text-blue-900">📥 Insertar recetas nuevas</div>
+                  <div className="font-semibold text-blue-900">📥 Insertar nuevas</div>
                   <div className="text-xs text-slate-600 mt-1">
                     Solo recetas 100% nuevas. Si algún producto ya tiene receta → frena el proceso.
                   </div>
@@ -682,9 +696,21 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
                     mode === 'update' ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="font-semibold text-orange-900">🔄 Actualizar recetas</div>
+                  <div className="font-semibold text-orange-900">🔄 Reemplazar receta</div>
                   <div className="text-xs text-slate-600 mt-1">
-                    Permite mezclar nuevas + reemplazar existentes. Para los productos que ya existen, <strong>borra la receta vieja completa</strong> antes de insertar la nueva.
+                    Mezcla nuevas + reemplaza existentes. Para los productos que ya existen, <strong>borra la receta vieja completa</strong> antes de insertar la nueva.
+                  </div>
+                </button>
+                <button
+                  onClick={() => setMode('patch')}
+                  disabled={step === 'processing'}
+                  className={`text-left p-3 rounded-md border-2 transition ${
+                    mode === 'patch' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="font-semibold text-emerald-900">✏️ Actualizar ingrediente</div>
+                  <div className="text-xs text-slate-600 mt-1">
+                    Modifica la <strong>cantidad</strong> de ingredientes ya cargados en una receta. Si un ingrediente del archivo no existe en la receta → frena el proceso.
                   </div>
                 </button>
               </div>
@@ -719,11 +745,17 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
               <Button
                 onClick={handleImport}
                 disabled={!file || step === 'processing'}
-                className={mode === 'new' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-orange-600 hover:bg-orange-700 text-white'}
+                className={
+                  mode === 'new'    ? 'bg-blue-600 hover:bg-blue-700 text-white' :
+                  mode === 'update' ? 'bg-orange-600 hover:bg-orange-700 text-white' :
+                                      'bg-emerald-600 hover:bg-emerald-700 text-white'
+                }
               >
                 <Upload className="h-4 w-4 mr-2" />
-                {step === 'processing' ? 'Procesando...' :
-                 mode === 'new' ? 'Importar como nuevas' : 'Actualizar recetas'}
+                {step === 'processing'  ? 'Procesando...' :
+                 mode === 'new'         ? 'Importar como nuevas' :
+                 mode === 'update'      ? 'Reemplazar receta' :
+                                          'Actualizar ingrediente'}
               </Button>
               <Button variant="outline" onClick={handleReset} disabled={step === 'processing'}>
                 Cerrar
@@ -734,11 +766,29 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
             {productosConflicto.length > 0 && (
               <div className="p-3 bg-red-100 border border-red-400 rounded-md">
                 <p className="font-semibold text-red-800 mb-2">
-                  ❌ {productosConflicto.length} producto(s) ya tienen receta. Cambiá a modo "Actualizar" o quitalos del archivo:
+                  ❌ {productosConflicto.length} producto(s) ya tienen receta. Cambiá a modo "Reemplazar receta" o quitalos del archivo:
                 </p>
                 <div className="max-h-40 overflow-y-auto text-xs font-mono text-red-700 space-y-0.5">
                   {productosConflicto.map((p) => <div key={p}>• {p}</div>)}
                 </div>
+              </div>
+            )}
+
+            {/* Ingredientes faltantes en modo "patch" */}
+            {ingredientesFaltantes.length > 0 && (
+              <div className="p-3 bg-red-100 border border-red-400 rounded-md">
+                <p className="font-semibold text-red-800 mb-2">
+                  ❌ {totalFaltantes} ingrediente(s) NO existen en la receta. El modo "Actualizar ingrediente" requiere que ya estén cargados:
+                </p>
+                <div className="max-h-40 overflow-y-auto text-xs font-mono text-red-700 space-y-0.5">
+                  {ingredientesFaltantes.map((p) => <div key={p}>• {p}</div>)}
+                  {totalFaltantes > ingredientesFaltantes.length && (
+                    <div className="italic">... y {totalFaltantes - ingredientesFaltantes.length} más</div>
+                  )}
+                </div>
+                <p className="text-xs text-red-700 mt-2">
+                  💡 Si querés agregar ingredientes nuevos a una receta existente, usá <strong>"Reemplazar receta"</strong> con todos los ingredientes (nuevos + viejos).
+                </p>
               </div>
             )}
 

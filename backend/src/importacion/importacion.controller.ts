@@ -31,7 +31,7 @@ export class ImportacionController {
   @UseInterceptors(FileInterceptor('file'))
   async importRecetas(
     @UploadedFile() file: Express.Multer.File,
-    @Query('mode') mode: 'new' | 'update' = 'new',
+    @Query('mode') mode: 'new' | 'update' | 'patch' = 'new',
   ) {
     if (!file) throw new BadRequestException('Debe adjuntar un archivo CSV o Excel');
     try {
