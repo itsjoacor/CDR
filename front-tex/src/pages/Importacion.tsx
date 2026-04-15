@@ -413,8 +413,13 @@ const useRecetasMasivas = () => {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [productosConflicto, setProductosConflicto] = useState<string[]>([]);
-  const [ingredientesFaltantes, setIngredientesFaltantes] = useState<string[]>([]);
+  const [productosConflicto, setProductosConflicto] = useState<Array<{ codigo: string; descripcion: string }>>([]);
+  const [ingredientesFaltantes, setIngredientesFaltantes] = useState<Array<{
+    codigo_producto: string;
+    descripcion_producto: string;
+    codigo_ingrediente: string;
+    descripcion_ingrediente: string;
+  }>>([]);
   const [totalFaltantes, setTotalFaltantes] = useState(0);
 
   const handleUnlock = () => setStep('password');
@@ -639,37 +644,65 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
             </div>
 
             {/* Formato requerido del archivo (compartido para ambos modos) */}
-            <div className="p-3 bg-slate-50 border border-slate-300 rounded-md">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="p-3 bg-slate-50 border border-slate-300 rounded-md space-y-3">
+              <div className="flex items-center gap-2">
                 <FileSpreadsheet className="h-4 w-4 text-slate-700" />
-                <span className="text-sm font-semibold text-slate-800">Formato requerido del archivo (.csv, .xlsx)</span>
+                <span className="text-sm font-semibold text-slate-800">Formato requerido (.csv, .xlsx)</span>
               </div>
-              <p className="text-xs text-slate-600 mb-2">
-                El archivo debe contener <strong>únicamente</strong> estas 3 columnas (en cualquier orden):
+              <p className="text-xs text-slate-600">
+                El sistema acepta <strong>cualquiera de estas dos variantes</strong>. Las descripciones del archivo se <strong>ignoran</strong> — siempre se buscan en la base de datos.
               </p>
-              <table className="text-xs border border-slate-300 rounded w-auto bg-white">
-                <thead className="bg-slate-100">
-                  <tr>
-                    <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_producto</th>
-                    <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_ingrediente</th>
-                    <th className="px-3 py-1.5 font-semibold text-slate-700">cantidad_ingrediente</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-t">
-                    <td className="px-3 py-1 border-r font-mono">400022002118</td>
-                    <td className="px-3 py-1 border-r font-mono">005781800900</td>
-                    <td className="px-3 py-1 font-mono">0.92</td>
-                  </tr>
-                  <tr className="border-t bg-slate-50">
-                    <td className="px-3 py-1 border-r font-mono">400022002118</td>
-                    <td className="px-3 py-1 border-r font-mono">4012</td>
-                    <td className="px-3 py-1 font-mono">0.9</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p className="text-[11px] text-slate-500 mt-2">
-                Cualquier otra columna se ignora. Los nombres deben coincidir exactamente.
+
+              {/* Variante 1: solo códigos */}
+              <div>
+                <p className="text-[11px] font-semibold text-slate-700 mb-1">Variante 1 — solo códigos (mínimo requerido):</p>
+                <table className="text-xs border border-slate-300 rounded w-auto bg-white">
+                  <thead className="bg-slate-100">
+                    <tr>
+                      <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_producto</th>
+                      <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_ingrediente</th>
+                      <th className="px-3 py-1.5 font-semibold text-slate-700">cantidad_ingrediente</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t">
+                      <td className="px-3 py-1 border-r font-mono">400022002118</td>
+                      <td className="px-3 py-1 border-r font-mono">4012</td>
+                      <td className="px-3 py-1 font-mono">0.9</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Variante 2: con descripciones */}
+              <div>
+                <p className="text-[11px] font-semibold text-slate-700 mb-1">Variante 2 — con descripciones (opcional, se ignoran):</p>
+                <div className="overflow-x-auto">
+                  <table className="text-xs border border-slate-300 rounded w-auto bg-white">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_producto</th>
+                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700">descripcion</th>
+                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_ingrediente</th>
+                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700">descripcion_ingrediente</th>
+                        <th className="px-3 py-1.5 font-semibold text-slate-700">cantidad</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t">
+                        <td className="px-3 py-1 border-r font-mono">400022002118</td>
+                        <td className="px-3 py-1 border-r text-slate-400 italic">HILADO 10/1…</td>
+                        <td className="px-3 py-1 border-r font-mono">4012</td>
+                        <td className="px-3 py-1 border-r text-slate-400 italic">MANO OBRA HILADO</td>
+                        <td className="px-3 py-1 font-mono">0.9</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500">
+                💡 Las descripciones (producto e ingrediente) siempre se obtienen de las tablas <code>productos</code>, <code>insumos</code>, <code>matriz_mano</code> y <code>matriz_energia</code> — no del archivo.
               </p>
             </div>
 
@@ -768,8 +801,13 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
                 <p className="font-semibold text-red-800 mb-2">
                   ❌ {productosConflicto.length} producto(s) ya tienen receta. Cambiá a modo "Reemplazar receta" o quitalos del archivo:
                 </p>
-                <div className="max-h-40 overflow-y-auto text-xs font-mono text-red-700 space-y-0.5">
-                  {productosConflicto.map((p) => <div key={p}>• {p}</div>)}
+                <div className="max-h-40 overflow-y-auto text-xs text-red-700 space-y-0.5">
+                  {productosConflicto.map((p) => (
+                    <div key={p.codigo}>
+                      • <span className="font-mono">{p.codigo}</span>
+                      {p.descripcion && <span className="text-red-600"> — {p.descripcion}</span>}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -780,8 +818,19 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
                 <p className="font-semibold text-red-800 mb-2">
                   ❌ {totalFaltantes} ingrediente(s) NO existen en la receta. El modo "Actualizar ingrediente" requiere que ya estén cargados:
                 </p>
-                <div className="max-h-40 overflow-y-auto text-xs font-mono text-red-700 space-y-0.5">
-                  {ingredientesFaltantes.map((p) => <div key={p}>• {p}</div>)}
+                <div className="max-h-48 overflow-y-auto text-xs text-red-700 space-y-1">
+                  {ingredientesFaltantes.map((p, idx) => (
+                    <div key={`${p.codigo_producto}-${p.codigo_ingrediente}-${idx}`} className="flex flex-col">
+                      <div>
+                        <span className="font-mono font-semibold">{p.codigo_producto}</span>
+                        {p.descripcion_producto && <span className="text-red-600"> — {p.descripcion_producto}</span>}
+                      </div>
+                      <div className="ml-3 text-red-600">
+                        ↳ <span className="font-mono">{p.codigo_ingrediente}</span>
+                        {p.descripcion_ingrediente && <span> — {p.descripcion_ingrediente}</span>}
+                      </div>
+                    </div>
+                  ))}
                   {totalFaltantes > ingredientesFaltantes.length && (
                     <div className="italic">... y {totalFaltantes - ingredientesFaltantes.length} más</div>
                   )}

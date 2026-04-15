@@ -143,9 +143,22 @@ export class ImportacionService {
 
       // 3. Lógica según modo
       if (mode === 'new' && productosExistentes.size > 0) {
+        // Enriquecer con descripciones desde la tabla productos
+        const codsExistentes = [...productosExistentes];
+        const { data: descProds } = await supabase
+          .from('productos')
+          .select('codigo_producto, descripcion_producto')
+          .in('codigo_producto', codsExistentes);
+        const descMap: Record<string, string> = {};
+        (descProds ?? []).forEach((p: any) => {
+          descMap[p.codigo_producto] = p.descripcion_producto ?? '';
+        });
         throw new ConflictException({
           message: `${productosExistentes.size} producto(s) ya tienen receta. Modo "Insertar nuevas" requiere que todos sean nuevos.`,
-          productos_existentes: [...productosExistentes],
+          productos_existentes: codsExistentes.map((c) => ({
+            codigo: c,
+            descripcion: descMap[c] ?? '',
+          })),
         });
       }
 
@@ -153,7 +166,7 @@ export class ImportacionService {
       // Si algún (producto, ingrediente) del archivo NO existe en la receta → frena todo.
       if (mode === 'patch') {
         // Verificar que cada par (producto, ingrediente) ya exista
-        const paresFaltantes: string[] = [];
+        const paresFaltantes: Array<{ codigo_producto: string; codigo_ingrediente: string }> = [];
         const PAIR_CHUNK = 200;
         for (let i = 0; i < rows.length; i += PAIR_CHUNK) {
           const slice = rows.slice(i, i + PAIR_CHUNK);
@@ -169,14 +182,47 @@ export class ImportacionService {
           const setExistentes = new Set((data ?? []).map((r: any) => `${r.codigo_producto}__${r.codigo_ingrediente}`));
           for (const r of slice) {
             const key = `${r.codigo_producto}__${r.codigo_ingrediente}`;
-            if (!setExistentes.has(key)) paresFaltantes.push(`${r.codigo_producto} → ${r.codigo_ingrediente}`);
+            if (!setExistentes.has(key)) {
+              paresFaltantes.push({
+                codigo_producto: r.codigo_producto,
+                codigo_ingrediente: r.codigo_ingrediente,
+              });
+            }
           }
         }
 
         if (paresFaltantes.length > 0) {
+          // Enriquecer con descripciones desde la DB
+          const codsProd = [...new Set(paresFaltantes.map(p => p.codigo_producto))];
+          const codsIng = [...new Set(paresFaltantes.map(p => p.codigo_ingrediente))];
+
+          const [prodData, insData, manoData, eneData, subProdData] = await Promise.all([
+            supabase.from('productos').select('codigo_producto, descripcion_producto').in('codigo_producto', codsProd),
+            supabase.from('insumos').select('codigo, detalle').in('codigo', codsIng),
+            supabase.from('matriz_mano').select('codigo_mano_obra, descripcion').in('codigo_mano_obra', codsIng),
+            supabase.from('matriz_energia').select('codigo_energia, descripcion').in('codigo_energia', codsIng),
+            supabase.from('productos').select('codigo_producto, descripcion_producto').in('codigo_producto', codsIng),
+          ]);
+
+          const descProd: Record<string, string> = {};
+          (prodData.data ?? []).forEach((p: any) => { descProd[p.codigo_producto] = p.descripcion_producto ?? ''; });
+
+          const descIng: Record<string, string> = {};
+          (insData.data ?? []).forEach((r: any) => { descIng[r.codigo] = r.detalle ?? ''; });
+          (subProdData.data ?? []).forEach((r: any) => { descIng[r.codigo_producto] = r.descripcion_producto ?? ''; });
+          (manoData.data ?? []).forEach((r: any) => { descIng[r.codigo_mano_obra] = r.descripcion ?? ''; });
+          (eneData.data ?? []).forEach((r: any) => { descIng[r.codigo_energia] = r.descripcion ?? ''; });
+
+          const enriched = paresFaltantes.slice(0, 50).map((p) => ({
+            codigo_producto: p.codigo_producto,
+            descripcion_producto: descProd[p.codigo_producto] ?? '',
+            codigo_ingrediente: p.codigo_ingrediente,
+            descripcion_ingrediente: descIng[p.codigo_ingrediente] ?? '',
+          }));
+
           throw new ConflictException({
             message: `${paresFaltantes.length} ingrediente(s) NO existen en la receta. El modo "Actualizar ingrediente" solo permite modificar ingredientes ya cargados.`,
-            ingredientes_faltantes: paresFaltantes.slice(0, 50), // hasta 50 para no saturar
+            ingredientes_faltantes: enriched,
             total_faltantes: paresFaltantes.length,
           });
         }

@@ -24,7 +24,18 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-import { ArrowLeft, Upload, Loader2, BarChart2 } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, BarChart2, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import Cookies from 'js-cookie';
 
@@ -278,6 +289,47 @@ const ResultadosVolumen: React.FC = () => {
     }
   };
 
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeletePeriodo = async () => {
+    if (!selectedPeriodo) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API}/implosion/periodos/${selectedPeriodo}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? 'Error borrando periodo');
+      }
+
+      toast({
+        title: 'Periodo eliminado',
+        description: `Se borró la implosión de ${selectedPeriodo} (tabla de periodos y detalle).`,
+      });
+
+      // Actualizar estado local
+      const nuevosPeriodos = periodos.filter((p) => p.periodo !== selectedPeriodo);
+      setPeriodos(nuevosPeriodos);
+      setDetalle([]);
+      setPorSector([]);
+      setSelectedPeriodo(nuevosPeriodos[0]?.periodo ?? '');
+
+      // Refrescar corrido
+      try {
+        const corrRes = await fetch(`${API}/implosion/corrido`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCorrido(await corrRes.json());
+      } catch { /* silencioso */ }
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // ── Derived data for charts ─────────────────────────────────────────────
 
   // Unique sectors from corrido
@@ -356,14 +408,55 @@ const ResultadosVolumen: React.FC = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => navigate('/implosion-volumen')}
-            className="text-teal-700 border-teal-300"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Cargar Implosión
-          </Button>
+          <div className="flex gap-2">
+            {selectedPeriodo && periodos.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="text-red-700 border-red-300 hover:bg-red-50"
+                    disabled={deleting}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleting ? 'Borrando...' : `Borrar ${selectedPeriodo}`}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+                      <Trash2 className="h-5 w-5" />
+                      Borrar implosión de {selectedPeriodo}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Se va a eliminar <strong>toda</strong> la data del periodo <code>{selectedPeriodo}</code>:
+                      <ul className="list-disc ml-5 mt-2 space-y-0.5 text-sm">
+                        <li>Registro del periodo en <code>implosion_periodos</code></li>
+                        <li>Todas las filas de detalle en <code>implosion_detalle</code></li>
+                      </ul>
+                      <p className="mt-3 text-red-600 font-semibold">Esta acción no se puede deshacer.</p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeletePeriodo}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      Sí, borrar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => navigate('/implosion-volumen')}
+              className="text-teal-700 border-teal-300"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Cargar Implosión
+            </Button>
+          </div>
         </div>
 
         <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
