@@ -517,6 +517,7 @@ const ResultadosVolumen: React.FC = () => {
                             <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Cód. Producto</th>
                             <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Nombre Producto</th>
                             <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Sector</th>
+                            <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Tipo</th>
                             <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Cód. Ingrediente</th>
                             <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Nombre Ingrediente</th>
                             <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Volumen</th>
@@ -529,13 +530,13 @@ const ResultadosVolumen: React.FC = () => {
                         <tbody>
                           {loadingDetalle ? (
                             <tr>
-                              <td colSpan={10} className="py-10 text-center">
+                              <td colSpan={11} className="py-10 text-center">
                                 <Loader2 className="h-5 w-5 animate-spin mx-auto text-teal-600" />
                               </td>
                             </tr>
                           ) : detalle.length === 0 ? (
                             <tr>
-                              <td colSpan={10} className="py-10 text-center text-muted-foreground">
+                              <td colSpan={11} className="py-10 text-center text-muted-foreground">
                                 Sin datos para este periodo
                               </td>
                             </tr>
@@ -545,6 +546,18 @@ const ResultadosVolumen: React.FC = () => {
                                 <td className="px-3 py-1.5 font-mono text-xs">{r.codigo_producto}</td>
                                 <td className="px-3 py-1.5 max-w-[180px] truncate" title={r.nombre_producto}>{r.nombre_producto}</td>
                                 <td className="px-3 py-1.5 text-xs">{r.sector_productivo}</td>
+                                <td className="px-3 py-1.5">
+                                  <span className={`text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap ${
+                                    r.tipo_ingrediente === 'mano_obra'  ? 'bg-orange-100 text-orange-700' :
+                                    r.tipo_ingrediente === 'energia'    ? 'bg-yellow-100 text-yellow-700' :
+                                    r.tipo_ingrediente === 'producto'   ? 'bg-blue-100 text-blue-700'    :
+                                                                          'bg-purple-100 text-purple-700'
+                                  }`}>
+                                    {r.tipo_ingrediente === 'mano_obra' ? 'Mano Obra' :
+                                     r.tipo_ingrediente === 'energia'   ? 'Energía'   :
+                                     r.tipo_ingrediente === 'producto'  ? 'Producto'  : 'Insumo'}
+                                  </span>
+                                </td>
                                 <td className="px-3 py-1.5 font-mono text-xs">{r.codigo_ingrediente}</td>
                                 <td className="px-3 py-1.5 max-w-[160px] truncate" title={r.nombre_ingrediente}>{r.nombre_ingrediente}</td>
                                 <td className="px-3 py-1.5 text-right">{fmt(r.volumen)}</td>
