@@ -345,7 +345,7 @@ const ImplosionVolumen: React.FC = () => {
                 <div className="flex items-center gap-2 mt-2 px-3 py-2 rounded-md bg-red-50 border border-red-300">
                   <Lock className="h-4 w-4 text-red-600 shrink-0" />
                   <p className="text-sm text-red-700 font-medium">
-                    El periodo <strong>{periodo}</strong> ya fue importado. Para modificarlo hablar con el desarrollador.
+                    El periodo <strong>{periodo}</strong> ya fue importado. Para reemplazarlo debés eliminarlo desde <strong>Resultados Volumen</strong>.
                   </p>
                 </div>
               )}
