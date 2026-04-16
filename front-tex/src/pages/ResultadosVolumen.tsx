@@ -24,7 +24,8 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-import { ArrowLeft, Upload, Loader2, BarChart2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, BarChart2, Trash2, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -330,6 +331,73 @@ const ResultadosVolumen: React.FC = () => {
     }
   };
 
+  // ── Export resumen por sector ───────────────────────────────────────────
+  // Genera un XLSX con una hoja por sector productivo. Cada hoja muestra solo
+  // los totales agregados por tipo_ingrediente (sin desglose de filas).
+  const handleExportResumen = async () => {
+    if (!selectedPeriodo) return;
+
+    let rows = detalle;
+    if (!rows.length) {
+      try {
+        const res = await fetch(`${API}/implosion/detalle/${selectedPeriodo}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        rows = await res.json();
+      } catch {
+        toast({ title: 'Error', description: 'No se pudo cargar el detalle', variant: 'destructive' });
+        return;
+      }
+    }
+    if (!rows.length) {
+      toast({ title: 'Sin datos', description: 'Este periodo no tiene datos.', variant: 'destructive' });
+      return;
+    }
+
+    const porSector: Record<string, { mano_obra: number; energia: number; insumo: number; producto: number }> = {};
+    for (const r of rows) {
+      const sector = r.sector_productivo || 'Sin sector';
+      if (!porSector[sector]) {
+        porSector[sector] = { mano_obra: 0, energia: 0, insumo: 0, producto: 0 };
+      }
+      const tipo = r.tipo_ingrediente as 'mano_obra' | 'energia' | 'insumo' | 'producto';
+      porSector[sector][tipo] = (porSector[sector][tipo] ?? 0) + Number(r.cdr_volumen || 0);
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    // Hoja 1 — resumen global (todos los sectores juntos)
+    const globalRows = Object.entries(porSector).flatMap(([sector, tot]) => [
+      { sector, categoria: 'Mano de Obra',   total_cdr: tot.mano_obra },
+      { sector, categoria: 'Matriz Energía', total_cdr: tot.energia },
+      { sector, categoria: 'Insumos',        total_cdr: tot.insumo },
+      { sector, categoria: 'Productos',      total_cdr: tot.producto },
+      { sector, categoria: 'TOTAL',          total_cdr: tot.mano_obra + tot.energia + tot.insumo + tot.producto },
+    ]);
+    const wsGlobal = XLSX.utils.json_to_sheet(globalRows);
+    wsGlobal['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, wsGlobal, 'Resumen global');
+
+    // Una hoja por sector
+    const sanitizarNombre = (s: string) => s.replace(/[\\/?*[\]:]/g, '').slice(0, 31);
+    for (const [sector, tot] of Object.entries(porSector)) {
+      const total = tot.mano_obra + tot.energia + tot.insumo + tot.producto;
+      const data = [
+        { categoria: 'Mano de Obra',   total_cdr: tot.mano_obra, porcentaje: total ? +(tot.mano_obra / total * 100).toFixed(2) : 0 },
+        { categoria: 'Matriz Energía', total_cdr: tot.energia,   porcentaje: total ? +(tot.energia   / total * 100).toFixed(2) : 0 },
+        { categoria: 'Insumos',        total_cdr: tot.insumo,    porcentaje: total ? +(tot.insumo    / total * 100).toFixed(2) : 0 },
+        { categoria: 'Productos',      total_cdr: tot.producto,  porcentaje: total ? +(tot.producto  / total * 100).toFixed(2) : 0 },
+        { categoria: 'TOTAL',          total_cdr: total,         porcentaje: 100 },
+      ];
+      const ws = XLSX.utils.json_to_sheet(data);
+      ws['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, ws, sanitizarNombre(sector) || 'Sin sector');
+    }
+
+    XLSX.writeFile(wb, `resumen_implosion_${selectedPeriodo}.xlsx`);
+    toast({ title: 'Exportado', description: `resumen_implosion_${selectedPeriodo}.xlsx descargado.` });
+  };
+
   // ── Derived data for charts ─────────────────────────────────────────────
 
   // Unique sectors from corrido
@@ -447,6 +515,16 @@ const ResultadosVolumen: React.FC = () => {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            )}
+            {selectedPeriodo && periodos.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={handleExportResumen}
+                className="text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar resumen
+              </Button>
             )}
             <Button
               variant="outline"
