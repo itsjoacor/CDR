@@ -340,8 +340,10 @@ const ImplosionVolumen: React.FC = () => {
                 <span className="text-sm font-mono text-muted-foreground">{periodo}</span>
               </div>
 
-              {/* Bloqueo si ya existe */}
-              {periodoYaExiste && (
+              {/* Bloqueo si ya existe (solo si NO es el resultado de la carga recién hecha).
+                  Si el periodo seleccionado coincide con result.periodo, la persona ya ve el card
+                  verde de éxito — no tiene sentido alarmarla con un cartel rojo encima. */}
+              {periodoYaExiste && result?.periodo !== periodo && (
                 <div className="flex items-center gap-2 mt-2 px-3 py-2 rounded-md bg-red-50 border border-red-300">
                   <Lock className="h-4 w-4 text-red-600 shrink-0" />
                   <p className="text-sm text-red-700 font-medium">
