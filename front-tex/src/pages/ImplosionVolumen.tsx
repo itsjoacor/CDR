@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,7 @@ const AÑOS = Array.from({ length: 5 }, (_, i) => String(now.getFullYear() - 2 +
 const ImplosionVolumen: React.FC = () => {
   const token = Cookies.get('token') || '';
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,23 +80,29 @@ const ImplosionVolumen: React.FC = () => {
   const periodo = `${anio}-${mes}`;
   const periodoYaExiste = periodosExistentes.includes(periodo);
 
-  // Cargar periodos ya importados desde la DB (fuente de verdad)
+  // Cargar periodos ya importados desde la DB (fuente de verdad).
+  // cache: 'no-store' evita que el browser sirva un resultado cacheado
+  // después de un DELETE hecho desde otra vista.
   const fetchPeriodosExistentes = React.useCallback(async () => {
     try {
-      const r = await fetch(`${import.meta.env.VITE_API_URL}/implosion/periodos`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const r = await fetch(
+        `${import.meta.env.VITE_API_URL}/implosion/periodos?ts=${Date.now()}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        },
+      );
       const data = await r.json();
       setPeriodosExistentes((data ?? []).map((p: any) => p.periodo));
     } catch { /* silencioso */ }
   }, [token]);
 
-  // Al montar + cada vez que cambian año o mes (evita estado viejo)
+  // Al montar + cada vez que cambian año, mes, o la ruta cambia a esta página
   useEffect(() => {
     fetchPeriodosExistentes();
-  }, [fetchPeriodosExistentes, anio, mes]);
+  }, [fetchPeriodosExistentes, anio, mes, location.pathname, location.key]);
 
-  // Refrescar al volver a la ventana (p.ej. si borrás el periodo desde Resultados)
+  // Refrescar al volver a la ventana (p.ej. si borrás el periodo desde otra tab)
   useEffect(() => {
     const onFocus = () => fetchPeriodosExistentes();
     window.addEventListener('focus', onFocus);
