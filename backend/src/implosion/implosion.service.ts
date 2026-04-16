@@ -272,13 +272,17 @@ export class ImplosionService {
     };
 
     // 7. Build detail rows — volumen viene del Excel, mapeado via dbToExcel
+    // CDR volumen usa valor_cdr (CDR unitario del ingrediente, resuelto recursivamente
+    // para sub-productos por el trigger de la DB) × volumen.
+    // Fórmula: cdr_volumen = valor_cdr × volumen
     const detalles = recetasFiltradas.map((r: any) => {
       const excelCod = dbToExcel[r.codigo_producto];
       const volumen = safeNum(volumenMap[excelCod]);
       const cantIng = safeNum(r.cantidad_ingrediente);
       const costoIng = safeNum(r.costo_ingrediente);
-      const cantidad_producida = cantIng * volumen;
-      const cdr_volumen = costoIng * cantidad_producida;
+      const valorCdr = safeNum(r.valor_cdr);
+      const cantidad_producida = cantIng * volumen; // cantidad consumida del ingrediente
+      const cdr_volumen = valorCdr * volumen;       // usa valor_cdr (CDR unitario) × volumen
       const prod = prodMap[r.codigo_producto] ?? { nombre: '', sector: '' };
       const tipo_ingrediente = eneCodigosTmp.has(r.codigo_ingrediente)
         ? 'energia'
@@ -351,7 +355,7 @@ export class ImplosionService {
       while (true) {
         const { data, error } = await supabase
           .from('recetas_normalizada')
-          .select('codigo_producto, codigo_ingrediente, cantidad_ingrediente, costo_ingrediente')
+          .select('codigo_producto, codigo_ingrediente, cantidad_ingrediente, costo_ingrediente, valor_cdr')
           .in('codigo_producto', codSlice)
           .range(from, from + PAGE - 1);
 

@@ -600,7 +600,7 @@ const ResultadosVolumen: React.FC = () => {
                             <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Nombre Ingrediente</th>
                             <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Volumen</th>
                             <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Cant. Ing.</th>
-                            <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Cant. Producida</th>
+                            <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Cant. Consumida</th>
                             <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Costo Ing.</th>
                             <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">CDR Volumen</th>
                           </tr>
@@ -897,7 +897,7 @@ const ResultadosVolumen: React.FC = () => {
                               <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Cód. Ingrediente</th>
                               <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Nombre Ingrediente</th>
                               <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Volumen</th>
-                              <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Cant. Producida</th>
+                              <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Cant. Consumida</th>
                               <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Costo Ing.</th>
                               <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">CDR Volumen</th>
                             </tr>
