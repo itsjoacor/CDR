@@ -15,6 +15,7 @@ interface ResultadoCDR {
   sector_productivo: string;
   descripcion_producto: string;
   base_cdr: number;
+  base_cdr_final: number | null;
 }
 
 const ResultadosCDR: React.FC = () => {
@@ -165,7 +166,7 @@ const ResultadosCDR: React.FC = () => {
                   <TableHead>Código Producto</TableHead>
                   <TableHead>Sector Productivo</TableHead>
                   <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right">Base CDR</TableHead>
+                  <TableHead className="text-right">CDR</TableHead>
                   <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -181,7 +182,7 @@ const ResultadosCDR: React.FC = () => {
                       <TableCell>{item.sector_productivo}</TableCell>
                       <TableCell>{item.descripcion_producto}</TableCell>
                       <TableCell className="text-right">
-                        {Number(item.base_cdr).toLocaleString('es-AR', {
+                        {Number(item.base_cdr_final ?? item.base_cdr).toLocaleString('es-AR', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}

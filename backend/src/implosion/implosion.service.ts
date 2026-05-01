@@ -235,6 +235,19 @@ export class ImplosionService {
       });
     }
 
+    // 5b. Fetch porcentaje_mantencion por sector — para aplicar mantención al cdr_volumen
+    // del producto producido (NO del ingrediente). Sin sector mapeado o pct null → 0%.
+    const sectorPctMap: Record<string, number> = {};
+    {
+      const { data: sectoresData } = await supabase
+        .from('sectores_productivos')
+        .select('nombre, porcentaje_mantencion');
+      (sectoresData ?? []).forEach((s: any) => {
+        const pct = Number(s.porcentaje_mantencion);
+        sectorPctMap[s.nombre] = Number.isFinite(pct) ? pct : 0;
+      });
+    }
+
     // 6. Fetch ingredient names from the 4 possible source tables (chunked + parallel)
     const codIngredientes = [...new Set(recetasFiltradas.map((r: any) => r.codigo_ingrediente))];
     const nombreIngMapTmp: Record<string, string> = {};
@@ -273,8 +286,9 @@ export class ImplosionService {
 
     // 7. Build detail rows — volumen viene del Excel, mapeado via dbToExcel
     // CDR volumen usa valor_cdr (CDR unitario del ingrediente, resuelto recursivamente
-    // para sub-productos por el trigger de la DB) × volumen.
-    // Fórmula: cdr_volumen = valor_cdr × volumen
+    // para sub-productos por el trigger de la DB) × volumen, MULTIPLICADO por
+    // (1 + % mantención / 100) del sector del producto producido. Así queda alineado
+    // con base_cdr_final del producto. valor_cdr del ingrediente queda intacto.
     const detalles = recetasFiltradas.map((r: any) => {
       const excelCod = dbToExcel[r.codigo_producto];
       const volumen = safeNum(volumenMap[excelCod]);
@@ -282,8 +296,9 @@ export class ImplosionService {
       const costoIng = safeNum(r.costo_ingrediente);
       const valorCdr = safeNum(r.valor_cdr);
       const cantidad_producida = cantIng * volumen; // cantidad consumida del ingrediente
-      const cdr_volumen = valorCdr * volumen;       // usa valor_cdr (CDR unitario) × volumen
       const prod = prodMap[r.codigo_producto] ?? { nombre: '', sector: '' };
+      const pct = sectorPctMap[prod.sector] ?? 0;
+      const cdr_volumen = valorCdr * volumen * (1 + pct / 100);
       const tipo_ingrediente = eneCodigosTmp.has(r.codigo_ingrediente)
         ? 'energia'
         : manoCodigosTmp.has(r.codigo_ingrediente)

@@ -3,4 +3,5 @@ export interface ResultadosCdr {
   sector_productivo: string;
   descripcion_producto: string;
   base_cdr: number;
+  base_cdr_final?: number | null;
 }

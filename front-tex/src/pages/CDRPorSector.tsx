@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface ResultadoCDR {
   sector_productivo: string;
   base_cdr: number;
+  base_cdr_final: number | null;
 }
 
 interface SectorMantencion {
@@ -25,7 +26,7 @@ const CDRPorSector: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [agrupados, setAgrupados] = useState<
-    { sector: string; totalCDR: number; porcentajeMantencion: number }[]
+    { sector: string; totalCDR: number; porcentajeMantencion: number; totalCDRFinal: number }[]
   >([]);
 
   const fetchData = async () => {
@@ -45,19 +46,24 @@ const CDRPorSector: React.FC = () => {
         resSectores.json(),
       ]);
 
-      // Agrupar por sector y sumar base_cdr
-      const mapa = new Map<string, number>();
+      // Agrupar por sector y sumar base_cdr (crudo) y base_cdr_final (con mantención)
+      const mapa = new Map<string, { total: number; totalFinal: number }>();
       dataCDR.forEach((item) => {
-        const actual = mapa.get(item.sector_productivo) || 0;
-        mapa.set(item.sector_productivo, actual + item.base_cdr);
+        const actual = mapa.get(item.sector_productivo) ?? { total: 0, totalFinal: 0 };
+        const finalVal = item.base_cdr_final ?? item.base_cdr;
+        mapa.set(item.sector_productivo, {
+          total: actual.total + Number(item.base_cdr),
+          totalFinal: actual.totalFinal + Number(finalVal),
+        });
       });
 
       // Construir array con porcentajes
-      const resultado = Array.from(mapa.entries()).map(([sector, total]) => {
+      const resultado = Array.from(mapa.entries()).map(([sector, sums]) => {
         const sectorInfo = dataSectores.find((s) => s.nombre === sector);
         return {
           sector,
-          totalCDR: total,
+          totalCDR: sums.total,
+          totalCDRFinal: sums.totalFinal,
           porcentajeMantencion: sectorInfo?.porcentaje_mantencion ?? 0,
         };
       });
@@ -94,8 +100,6 @@ const CDRPorSector: React.FC = () => {
       currency: 'CLP',
     }).format(value);
 
-  const calcularTotalConMantencion = (totalCDR: number, porcentaje: number) =>
-    totalCDR * (1 + porcentaje / 100);
 
   return (
     <Layout title="Resumen CDR por Sector">
@@ -136,9 +140,7 @@ const CDRPorSector: React.FC = () => {
                       {s.porcentajeMantencion}%
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {formatCurrency(
-                        calcularTotalConMantencion(s.totalCDR, s.porcentajeMantencion)
-                      )}
+                      {formatCurrency(s.totalCDRFinal)}
                     </TableCell>
                   </TableRow>
                 ))}
