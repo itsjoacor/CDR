@@ -32,7 +32,7 @@ const Login: React.FC = () => {
           title: 'Inicio de sesión exitoso',
           description: 'Bienvenido al sistema TexCDR',
         });
-        const returnTo = (location.state as any)?.from?.pathname || '/';
+        const returnTo = (location.state as any)?.from?.pathname || '/seleccion-planta';
         navigate(returnTo, { replace: true });
       }
     } catch (err) {

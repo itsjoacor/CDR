@@ -8,6 +8,9 @@ export class ResultadosCdrModel {
       descripcion_producto: data.descripcion_producto,
       base_cdr: data.base_cdr,
       base_cdr_final: data.base_cdr_final ?? null,
+      planta: data.planta ?? 'catamarca',
+      monto_flete: data.monto_flete ?? 0,
+      valor_cdr_final: data.valor_cdr_final ?? data.base_cdr_final ?? data.base_cdr ?? null,
     };
   }
 

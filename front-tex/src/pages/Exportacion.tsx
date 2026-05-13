@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlanta } from '../contexts/PlantaContext';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,7 @@ import {
 const Exportacion: React.FC = () => {
     const { user } = useAuth();
     const { toast } = useToast();
+    const { plantaParam, plantaParaEscritura } = usePlanta();
 
     // Implosion periods state
     const [periodos, setPeriodos] = useState<{ periodo: string }[]>([]);
@@ -37,19 +39,20 @@ const Exportacion: React.FC = () => {
         (async () => {
             setLoadingPeriodos(true);
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/implosion/periodos`, {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/implosion/periodos?planta=${plantaParam}`, {
                     headers: { Authorization: `Bearer ${user?.token}` },
                 });
                 const data = await res.json();
                 setPeriodos(data);
                 if (data.length > 0) setSelectedPeriodo(data[0].periodo);
+                else setSelectedPeriodo('');
             } catch {
-                // silencioso — puede que no haya periodos aún
+                // silencioso
             } finally {
                 setLoadingPeriodos(false);
             }
         })();
-    }, []);
+    }, [plantaParam]);
 
     const exportTables = [
         {
@@ -134,7 +137,7 @@ const Exportacion: React.FC = () => {
 
             const normalizedTableName = normalizarNombreTabla(tableName);
             const response = await fetch(
-                `${import.meta.env.VITE_API_URL}/export?table=${normalizedTableName}&format=${format}`,
+                `${import.meta.env.VITE_API_URL}/export?table=${normalizedTableName}&format=${format}&planta=${plantaParam}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${user?.token}`,
@@ -178,7 +181,7 @@ const Exportacion: React.FC = () => {
         try {
             toast({ title: 'Exportando implosión', description: `Preparando datos de ${selectedPeriodo}...` });
             const res = await fetch(
-                `${import.meta.env.VITE_API_URL}/implosion/export/${selectedPeriodo}`,
+                `${import.meta.env.VITE_API_URL}/implosion/export/${selectedPeriodo}?planta=${plantaParaEscritura ?? 'catamarca'}`,
                 { headers: { Authorization: `Bearer ${user?.token}` } },
             );
             if (!res.ok) throw new Error(await res.text());
@@ -206,7 +209,7 @@ const Exportacion: React.FC = () => {
             });
 
             const response = await fetch(
-                `${import.meta.env.VITE_API_URL}/export/all`,
+                `${import.meta.env.VITE_API_URL}/export/all?planta=${plantaParam}`,
                 {
                     method: 'POST',
                     headers: {

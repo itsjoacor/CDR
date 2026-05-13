@@ -67,6 +67,20 @@ lerna-debug.log*
 .env
 **/.env*
 
+# Backups (contienen hashes, tokens y datos sensibles del schema auth)
+/backup/
+*.sql
+*.sql.gz
+*.dump
+*.tar.gz
+
+# Migrations locales (no se sincronizan al repo)
+/migrations/
+
+# Archivos de prueba / testing local
+backend/test_*.js
+*.xlsx
+
 
 # temp directory
 .temp

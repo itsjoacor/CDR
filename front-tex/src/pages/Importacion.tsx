@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlanta } from '../contexts/PlantaContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const Importacion: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { plantaParaEscritura } = usePlanta();
 
   // Insumos
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -119,9 +121,14 @@ const Importacion: React.FC = () => {
       if (!rawRows.length) throw new Error('El CSV está vacío.');
       setUploadProgressProd(40);
 
+      if (!plantaParaEscritura) {
+        throw new Error('En vista "Ambas Plantas" no se puede importar. Elegí Catamarca o Varela arriba.');
+      }
+
       const rows = rawRows
         .map(normalizeProductoRow)
-        .filter((r) => r.codigo_producto && r.descripcion_producto && r.sector_productivo);
+        .filter((r) => r.codigo_producto && r.descripcion_producto && r.sector_productivo)
+        .map((r) => ({ ...r, planta: plantaParaEscritura }));
 
       if (!rows.length) throw new Error('No se encontraron filas válidas con columnas: codigo_producto, descripcion_producto, sector_productivo.');
       setUploadProgressProd(70);
@@ -207,17 +214,21 @@ const Importacion: React.FC = () => {
       if (!rawRows.length) throw new Error('El CSV está vacío.');
       setUploadProgress(40);
 
+      if (!plantaParaEscritura) {
+        throw new Error('En vista "Ambas Plantas" no se puede importar. Elegí Catamarca o Varela arriba.');
+      }
+
       // 2) Validar y normalizar a esquema de tabla insumos
       const rows = rawRows
         .map(normalizeRow)
-        .filter((r) => r.codigo && r.costo !== null) as Array<{ grupo: string; codigo: string; detalle: string; costo: number }>;
+        .filter((r) => r.codigo && r.costo !== null)
+        .map((r) => ({ ...r, planta: plantaParaEscritura })) as Array<{ grupo: string; codigo: string; detalle: string; costo: number; planta: string }>;
 
       if (!rows.length) throw new Error('No se encontraron filas válidas con columnas: codigo, costo.');
 
       setUploadProgress(70);
 
       // 3) UPSERT por PK (codigo)
-      //    Requiere RLS que permita insert/update para el rol actual.
       const { error: upsertError, count } = await supabase
         .from('insumos')
         .upsert(rows, { onConflict: 'codigo', ignoreDuplicates: false, count: 'exact' });
@@ -404,6 +415,7 @@ type RecetasStep = 'locked' | 'password' | 'backup' | 'ready' | 'processing' | '
 // usen el mismo estado
 const useRecetasMasivas = () => {
   const { toast } = useToast();
+  const { plantaParaEscritura, plantaParam } = usePlanta();
   const token = Cookies.get('token') || '';
 
   const [step, setStep] = useState<RecetasStep>('locked');
@@ -438,7 +450,7 @@ const useRecetasMasivas = () => {
   const handleDownloadBackup = async () => {
     setDownloadingBackup(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/export?table=recetas_normalizada&format=xlsx`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/export?table=recetas_normalizada&format=xlsx&planta=${plantaParam}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Error descargando backup');
@@ -487,7 +499,10 @@ const useRecetasMasivas = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/import/recetas?mode=${mode}`, {
+      if (!plantaParaEscritura) {
+        throw new Error('En vista "Ambas Plantas" no se puede importar. Cambiá a Catamarca o Varela.');
+      }
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/import/recetas?mode=${mode}&planta=${plantaParaEscritura}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

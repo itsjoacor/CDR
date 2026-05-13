@@ -1,6 +1,7 @@
 import { Injectable, Inject, Scope } from '@nestjs/common';
 import { Request } from 'express';
 import { getSupabaseClient } from '../config/supabase.client';
+import { aplicarFiltroPlanta } from '../config/planta.helper';
 import { SectorProductivo } from '../sectorProductivo/sectores-productivos.model';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -12,11 +13,11 @@ export class SectorProductivoRepository {
     return getSupabaseClient(token);
   }
 
-  async crear(sector: SectorProductivo): Promise<SectorProductivo> {
+  async crear(sector: SectorProductivo & { planta?: string }): Promise<SectorProductivo> {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('sectores_productivos')
-      .insert([{ nombre: sector.nombre }])
+      .insert([{ nombre: sector.nombre, planta: sector.planta ?? 'catamarca' }])
       .select()
       .single();
 
@@ -31,12 +32,14 @@ export class SectorProductivoRepository {
     );
   }
 
-  async obtenerTodos(): Promise<SectorProductivo[]> {
+  async obtenerTodos(planta?: 'catamarca' | 'varela' | null): Promise<SectorProductivo[]> {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase
+    let query = supabase
       .from('sectores_productivos')
       .select('*')
       .order('nombre', { ascending: true });
+    query = aplicarFiltroPlanta(query, planta ?? null);
+    const { data, error } = await query;
 
     if (error) {
       throw new Error(`Error al obtener sectores productivos: ${error.message}`);
@@ -72,12 +75,14 @@ export class SectorProductivoRepository {
   }
 
   // === V2: listar todos los sectores con su porcentaje de mantención ===
-  async listarSectoresMantencionV2(): Promise<Array<{ nombre: string; porcentaje_mantencion: number | null }>> {
+  async listarSectoresMantencionV2(planta?: 'catamarca' | 'varela' | null): Promise<Array<{ nombre: string; porcentaje_mantencion: number | null; planta?: string }>> {
     const supabase = await (this as any).getSupabase();
-    const { data, error } = await supabase
+    let query = supabase
       .from('sectores_productivos')
-      .select('nombre, porcentaje_mantencion')
+      .select('nombre, porcentaje_mantencion, planta')
       .order('nombre', { ascending: true });
+    query = aplicarFiltroPlanta(query, planta ?? null);
+    const { data, error } = await query;
 
     if (error) {
       throw new (await import('@nestjs/common')).HttpException(

@@ -10,8 +10,8 @@ export class ResultadosCdrService {
     @Inject('REQUEST') private readonly request: Request
   ) { }
 
-  async findAll(): Promise<ResultadosCdr[]> {
-    return this.repository.findAll();
+  async findAll(planta?: 'catamarca' | 'varela' | null): Promise<ResultadosCdr[]> {
+    return this.repository.findAll(planta);
   }
 
   async findOne(codigo_producto: string): Promise<ResultadosCdr | null> {

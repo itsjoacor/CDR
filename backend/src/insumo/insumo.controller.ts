@@ -15,6 +15,7 @@ import { InsumoService } from './insumo.service';
 import { plainToInstance } from 'class-transformer';
 import { InsumoBody } from './insumo-body.dto';
 import { Insumo } from './insumo.model';
+import { normalizarPlanta } from '../config/planta.helper';
 
 @Controller('insumos')
 export class InsumoController {
@@ -22,9 +23,10 @@ export class InsumoController {
 
   constructor(private readonly insumoService: InsumoService) { }
 
+  /** GET /insumos?planta=catamarca|varela|all */
   @Get()
-  async listarInsumos(): Promise<Insumo[]> {
-    return this.insumoService.obtenerTodos();
+  async listarInsumos(@Query('planta') planta?: string): Promise<Insumo[]> {
+    return this.insumoService.obtenerTodos(normalizarPlanta(planta));
   }
 
   @Post('registrar')
@@ -43,16 +45,19 @@ export class InsumoController {
     }
   }
 
+  /** GET /insumos/buscar?codigo=&grupo=&detalle=&planta= */
   @Get('buscar')
   async buscarInsumos(
     @Query('codigo') codigo?: string,
     @Query('grupo') grupo?: string,
     @Query('detalle') detalle?: string,
+    @Query('planta') planta?: string,
   ): Promise<Insumo[]> {
     return this.insumoService.buscarPorFiltros({
       codigo,
       grupo,
-      detalle
+      detalle,
+      planta: normalizarPlanta(planta),
     });
   }
 
@@ -60,8 +65,6 @@ export class InsumoController {
   async obtenerInsumo(@Param('codigo') codigo: string) {
     return this.insumoService.obtenerInsumoPorCodigo(codigo);
   }
-
-
 
   @Put(':codigo')
   async actualizarInsumo(

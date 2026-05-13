@@ -27,8 +27,8 @@ export class RecetaNormalizadaService {
     }
   }
 
-  async obtenerTodas() {
-    return this.repo.obtenerTodas();
+  async obtenerTodas(planta?: 'catamarca' | 'varela' | null) {
+    return this.repo.obtenerTodas(planta);
   }
 
   async obtenerPorProducto(codigo_producto: string) {

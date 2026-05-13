@@ -7,18 +7,21 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { ResultadosCdrService } from '../resultadosCDR/resultado-cdr.service';
 import { ResultadosCdrBodyDto } from '../resultadosCDR/resultado-cdr-body.dto';
 import { ResultadosCdr } from '../resultadosCDR/resultado-cdr.interface';
+import { normalizarPlanta } from '../config/planta.helper';
 
 @Controller('resultados-cdr')
 export class ResultadosCdrController {
   constructor(private readonly service: ResultadosCdrService) {}
 
+  /** GET /resultados-cdr?planta=catamarca|varela|all */
   @Get()
-  findAll(): Promise<ResultadosCdr[]> {
-    return this.service.findAll();
+  findAll(@Query('planta') planta?: string): Promise<ResultadosCdr[]> {
+    return this.service.findAll(normalizarPlanta(planta));
   }
 
   @Get(':codigo_producto')

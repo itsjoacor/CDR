@@ -1,6 +1,7 @@
 import { Injectable, Inject, Scope } from '@nestjs/common';
 import { Request } from 'express';
 import { getSupabaseClient } from '../config/supabase.client';
+import { aplicarFiltroPlanta } from '../config/planta.helper';
 import * as XLSX from 'xlsx';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -12,32 +13,38 @@ export class ExportService {
     return getSupabaseClient(token);
   }
 
-  async exportTable(tableName: string, format: 'csv' | 'xlsx') {
+  async exportTable(tableName: string, format: 'csv' | 'xlsx', planta?: 'catamarca' | 'varela' | null) {
     const supabase = await this.getSupabase();
 
     if (tableName === 'recetas_normalizada') {
-      const data = await this.buildRecetasExport(supabase);
+      const data = await this.buildRecetasExport(supabase, planta);
       if (format === 'xlsx') return this.generateExcel(data, 'recetas_normalizada');
       return this.generateCSV(data);
     }
 
-    const { data, error } = await supabase.from(tableName).select('*');
+    let query = supabase.from(tableName).select('*');
+    query = aplicarFiltroPlanta(query, planta ?? null);
+    const { data, error } = await query;
     if (error) throw new Error(`Supabase error: ${error.message}`);
 
     if (format === 'xlsx') return this.generateExcel(data, tableName);
     return this.generateCSV(data);
   }
 
-  private async fetchAllRows(supabase: any, table: string, select: string, orderBy?: string): Promise<any[]> {
+  private async fetchAllRowsRecetas(supabase: any, planta?: 'catamarca' | 'varela' | null): Promise<any[]> {
     const PAGE = 1000;
     let all: any[] = [];
     let from = 0;
 
     while (true) {
-      let query = supabase.from(table).select(select).range(from, from + PAGE - 1);
-      if (orderBy) query = query.order(orderBy, { ascending: true });
+      let query = supabase
+        .from('recetas_normalizada')
+        .select('codigo_producto, codigo_ingrediente, cantidad_ingrediente, costo_ingrediente, costo_total, valor_cdr, planta, ultima_actualizacion')
+        .order('codigo_producto', { ascending: true })
+        .range(from, from + PAGE - 1);
+      query = aplicarFiltroPlanta(query, planta ?? null);
       const { data, error } = await query;
-      if (error) throw new Error(`Error paginando ${table}: ${error.message}`);
+      if (error) throw new Error(`Error paginando recetas_normalizada: ${error.message}`);
       if (!data || data.length === 0) break;
       all = all.concat(data);
       if (data.length < PAGE) break;
@@ -47,23 +54,15 @@ export class ExportService {
     return all;
   }
 
-  private async buildRecetasExport(supabase: any): Promise<any[]> {
-    // 1. Traer TODAS las recetas paginando de a 1000
-    const recetas = await this.fetchAllRows(
-      supabase,
-      'recetas_normalizada',
-      'codigo_producto, codigo_ingrediente, cantidad_ingrediente, costo_ingrediente, costo_total, valor_cdr, ultima_actualizacion',
-      'codigo_producto'
-    );
-
+  private async buildRecetasExport(supabase: any, planta?: 'catamarca' | 'varela' | null): Promise<any[]> {
+    const recetas = await this.fetchAllRowsRecetas(supabase, planta);
     if (!recetas || recetas.length === 0) return [];
 
-    // 2. Obtener códigos únicos
-    const codigosProducto  = [...new Set(recetas.map((r: any) => r.codigo_producto))];
+    const codigosProducto    = [...new Set(recetas.map((r: any) => r.codigo_producto))];
     const codigosIngrediente = [...new Set(recetas.map((r: any) => r.codigo_ingrediente))];
-    const todosCodigos = [...new Set([...codigosProducto, ...codigosIngrediente])];
+    const todosCodigos       = [...new Set([...codigosProducto, ...codigosIngrediente])];
 
-    // 3. Buscar nombres en las 4 tablas en paralelo
+    // Lookups paralelos para nombres
     const [prodData, insData, manoData, eneData] = await Promise.all([
       supabase.from('productos').select('codigo_producto, descripcion_producto').in('codigo_producto', todosCodigos),
       supabase.from('insumos').select('codigo, detalle').in('codigo', todosCodigos),
@@ -71,23 +70,22 @@ export class ExportService {
       supabase.from('matriz_energia').select('codigo_energia, descripcion').in('codigo_energia', todosCodigos),
     ]);
 
-    // 4. Construir mapa codigo -> nombre (prioridad: productos > insumos > mano > energía)
     const nombres: Record<string, string> = {};
     eneData.data?.forEach((r: any)  => { nombres[r.codigo_energia]   = r.descripcion; });
     manoData.data?.forEach((r: any) => { nombres[r.codigo_mano_obra] = r.descripcion; });
     insData.data?.forEach((r: any)  => { nombres[r.codigo]           = r.detalle; });
     prodData.data?.forEach((r: any) => { nombres[r.codigo_producto]  = r.descripcion_producto; });
 
-    // 5. Armar filas con columnas ordenadas
     return recetas.map((r: any) => ({
-      codigo_producto:     r.codigo_producto,
-      nombre_producto:     nombres[r.codigo_producto]    ?? '',
-      codigo_ingrediente:  r.codigo_ingrediente,
-      nombre_ingrediente:  nombres[r.codigo_ingrediente] ?? '',
+      planta:               r.planta ?? 'catamarca',
+      codigo_producto:      r.codigo_producto,
+      nombre_producto:      nombres[r.codigo_producto]    ?? '',
+      codigo_ingrediente:   r.codigo_ingrediente,
+      nombre_ingrediente:   nombres[r.codigo_ingrediente] ?? '',
       cantidad_ingrediente: r.cantidad_ingrediente,
-      costo_ingrediente:   r.costo_ingrediente,
-      costo_total:         r.costo_total,
-      valor_cdr:           r.valor_cdr,
+      costo_ingrediente:    r.costo_ingrediente,
+      costo_total:          r.costo_total,
+      valor_cdr:            r.valor_cdr,
       ultima_actualizacion: r.ultima_actualizacion,
     }));
   }
@@ -112,14 +110,17 @@ export class ExportService {
     return headers + rows;
   }
 
-  async exportMultipleTables(tables: string[]) {
+  async exportMultipleTables(tables: string[], planta?: 'catamarca' | 'varela' | null) {
     const supabase = await this.getSupabase();
     const workbook = XLSX.utils.book_new();
 
     const results = await Promise.all(
-      tables.map(table => {
-        if (table === 'recetas_normalizada') return this.buildRecetasExport(supabase);
-        return supabase.from(table).select('*').then((r: any) => r.data ?? []);
+      tables.map(async (table) => {
+        if (table === 'recetas_normalizada') return this.buildRecetasExport(supabase, planta);
+        let query = supabase.from(table).select('*');
+        query = aplicarFiltroPlanta(query, planta ?? null);
+        const r = await query;
+        return r.data ?? [];
       })
     );
 

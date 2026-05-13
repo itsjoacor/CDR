@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlanta, PlantaView } from '../contexts/PlantaContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -10,6 +11,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import {
   Home,
@@ -24,6 +32,8 @@ import {
   Menu,
   ChevronRight,
   BarChart2,
+  Truck,
+  Building2,
 } from 'lucide-react';
 
 import Whool from '../TexCDR.png';
@@ -35,6 +45,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
+  const { planta, setPlanta, plantaLabel, plantaColor } = usePlanta();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -54,6 +65,9 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     { path: '/matriz-energetica', label: 'Matriz Energética', icon: Zap, color: 'text-yellow-300' },
     { path: '/actualizar', label: 'Actualizar costos', icon: RefreshCcw },
     { path: '/actualizarMantencion', label: 'Actualizar Mantención', icon: RefreshCcw },
+    // Submenu de fletes
+    { path: '/actualizarFleteCatamarca', label: 'Flete Catamarca', icon: Truck, color: 'text-amber-400', section: 'fletes' },
+    { path: '/actualizarFleteVarela', label: 'Flete Varela', icon: Truck, color: 'text-sky-400', section: 'fletes' },
     { path: '/resultados-cdr', label: 'CDR', icon: DollarSign, color: 'text-green-400' },
     { path: '/resultados-cdr-mantencion', label: 'CDR Sectorizado', icon: DollarSign },
     { path: '/implosion-volumen', label: 'Implosión Volumen', icon: UploadCloud, color: 'text-teal-400' },
@@ -90,37 +104,48 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
                   {/* Menú de navegación */}
                   <nav className="p-2 overflow-y-auto flex-1">
-                    {navigationItems.map((item) => {
+                    {navigationItems.map((item, idx) => {
                       const Active = location.pathname === item.path;
                       const Icon = item.icon;
+                      // Encabezado de sección "Actualizar Fletes" antes del primer item de fletes
+                      const isFirstFlete = (item as any).section === 'fletes' &&
+                        (navigationItems[idx - 1] as any)?.section !== 'fletes';
                       return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          onClick={() => setOpen(false)}
-                          className={[
-                            'group flex items-center justify-between rounded-md px-3 py-2 transition-colors',
-                            Active
-                              ? 'bg-primary text-primary-foreground'
-                              : 'hover:bg-muted text-foreground',
-                          ].join(' ')}
-                        >
-                          <span className="flex items-center gap-3">
-                            <Icon
-                              size={20}
-                              className={`${item.color ?? 'text-muted-foreground'} ${
-                                Active ? 'text-primary-foreground' : ''
+                        <React.Fragment key={item.path}>
+                          {isFirstFlete && (
+                            <div className="mt-2 mb-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                              <Truck className="h-3 w-3" />
+                              Actualizar Fletes
+                            </div>
+                          )}
+                          <Link
+                            to={item.path}
+                            onClick={() => setOpen(false)}
+                            className={[
+                              'group flex items-center justify-between rounded-md px-3 py-2 transition-colors',
+                              Active
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted text-foreground',
+                              (item as any).section === 'fletes' ? 'ml-3' : '',
+                            ].join(' ')}
+                          >
+                            <span className="flex items-center gap-3">
+                              <Icon
+                                size={20}
+                                className={`${item.color ?? 'text-muted-foreground'} ${
+                                  Active ? 'text-primary-foreground' : ''
+                                }`}
+                              />
+                              <span className="font-medium">{item.label}</span>
+                            </span>
+                            <ChevronRight
+                              size={18}
+                              className={`opacity-0 group-hover:opacity-100 transition-opacity ${
+                                Active ? 'opacity-100' : ''
                               }`}
                             />
-                            <span className="font-medium">{item.label}</span>
-                          </span>
-                          <ChevronRight
-                            size={18}
-                            className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-                              Active ? 'opacity-100' : ''
-                            }`}
-                          />
-                        </Link>
+                          </Link>
+                        </React.Fragment>
                       );
                     })}
                   </nav>
@@ -137,8 +162,23 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
               </Badge>
             </div>
 
-            {/* Derecha: usuario + logout */}
+            {/* Derecha: planta selector + usuario + logout */}
             <div className="flex items-center gap-3">
+              {/* Selector global de planta */}
+              <Select value={planta} onValueChange={(v) => setPlanta(v as PlantaView)}>
+                <SelectTrigger className={`w-44 ${plantaColor} border-2 font-semibold`}>
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4" />
+                    <SelectValue placeholder="Planta" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="catamarca">🏭 Catamarca</SelectItem>
+                  <SelectItem value="varela">🏭 Varela</SelectItem>
+                  <SelectItem value="all">🏢 Ambas Plantas</SelectItem>
+                </SelectContent>
+              </Select>
+
               <div className="hidden sm:block text-sm text-muted-foreground">
                 <span className="font-medium">{user?.name}</span>
                 <Badge

@@ -4,6 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { PlantaProvider } from "./contexts/PlantaContext";
+import SeleccionPlanta from "./pages/SeleccionPlanta";
+import ActualizarFleteCatamarca from "./pages/ActualizarFleteCatamarca";
+import ActualizarFleteVarela from "./pages/ActualizarFleteVarela";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -41,6 +45,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <PlantaProvider>
           <Routes>
             <Route
               path="/login"
@@ -53,6 +58,7 @@ const App = () => (
 
             <Route element={<ProtectedRoute />}>
 
+              <Route path="/seleccion-planta" element={<SeleccionPlanta />} />
               <Route path="/" element={<Dashboard />} />
               <Route path="/receta" element={<Receta />} />
               <Route path="/producto" element={<Producto />} />
@@ -77,17 +83,16 @@ const App = () => (
                 <Route path="/actualizarME" element={<ActualizacionME />} />
                 <Route path="/actualizarMO" element={<ActualizacionMO />} />
                 <Route path="/actualizarMantencion" element={<ActualizarMantencion />} />
+                <Route path="/actualizarFleteCatamarca" element={<ActualizarFleteCatamarca />} />
+                <Route path="/actualizarFleteVarela" element={<ActualizarFleteVarela />} />
                 <Route path="/importacion" element={<Importacion />} />
                 <Route path="/implosion-volumen" element={<ImplosionVolumen />} />
-
-
-
-
               </Route>
             </Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </PlantaProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

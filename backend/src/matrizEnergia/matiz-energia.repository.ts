@@ -1,6 +1,7 @@
 import { Injectable, Inject, Scope } from '@nestjs/common';
 import { Request } from 'express';
 import { getSupabaseClient } from '../config/supabase.client';
+import { aplicarFiltroPlanta } from '../config/planta.helper';
 import { MatrizEnergia } from './matriz-energia.model';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -12,9 +13,11 @@ export class MatrizEnergiaRepository {
     return getSupabaseClient(token);
   }
 
-  async obtenerTodos(): Promise<MatrizEnergia[]> {
+  async obtenerTodos(planta?: 'catamarca' | 'varela' | null): Promise<MatrizEnergia[]> {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase.from('matriz_energia').select('*');
+    let query = supabase.from('matriz_energia').select('*');
+    query = aplicarFiltroPlanta(query, planta ?? null);
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return data as MatrizEnergia[];
   }

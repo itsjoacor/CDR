@@ -1,15 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
 import { MatrizEnergiaService } from './matriz-energia.service';
 import { MatrizEnergiaBodyDto } from './matriz-energia-body.dto';
 import { MatrizEnergia } from './matriz-energia.model';
+import { normalizarPlanta } from '../config/planta.helper';
 
 @Controller('matriz-energia')
 export class MatrizEnergiaController {
     constructor(private readonly service: MatrizEnergiaService) { }
 
+    /** GET /matriz-energia?planta=catamarca|varela|all */
     @Get()
-    obtenerTodos(): Promise<MatrizEnergia[]> {
-        return this.service.obtenerTodos();
+    obtenerTodos(@Query('planta') planta?: string): Promise<MatrizEnergia[]> {
+        return this.service.obtenerTodos(normalizarPlanta(planta));
     }
 
     @Get(':codigo')

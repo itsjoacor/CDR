@@ -26,7 +26,7 @@ export class ImportacionService {
   }
   // ─── INSUMOS (existente, no se toca) ──────────────────────────────────────
 
-  async importCsv(file: Express.Multer.File, table: string, mode: string) {
+  async importCsv(file: Express.Multer.File, table: string, mode: string, planta: 'catamarca' | 'varela' = 'catamarca') {
     if (!file) throw new BadRequestException('Debe adjuntar un archivo CSV');
 
     if (table !== 'insumos') {
@@ -72,12 +72,16 @@ export class ImportacionService {
           [codigos, costos]
         );
 
-        const updateResult = await client.query(`
+        // Solo actualiza insumos de la planta indicada (no toca insumos de otras plantas)
+        const updateResult = await client.query(
+          `
           UPDATE insumos i
           SET costo = t.costo
           FROM temp_insumos_import t
-          WHERE i.codigo = t.codigo;
-        `);
+          WHERE i.codigo = t.codigo AND i.planta = $1;
+        `,
+          [planta],
+        );
 
         await client.query('COMMIT');
 
@@ -102,7 +106,7 @@ export class ImportacionService {
 
   // ─── RECETAS NORMALIZADAS (carga masiva) ──────────────────────────────────
 
-  async importRecetas(file: Express.Multer.File, mode: 'new' | 'update' | 'patch') {
+  async importRecetas(file: Express.Multer.File, mode: 'new' | 'update' | 'patch', planta: 'catamarca' | 'varela' = 'catamarca') {
     if (!file) throw new BadRequestException('Debe adjuntar un archivo');
     if (!['new', 'update', 'patch'].includes(mode)) {
       throw new BadRequestException('mode debe ser "new", "update" o "patch"');
@@ -128,7 +132,7 @@ export class ImportacionService {
     const supabase = await this.getSupabase();
 
     try {
-      // 2. Verificar productos existentes (paginado por si son muchos)
+      // 2. Verificar productos existentes en esta planta (paginado por si son muchos)
       const productosExistentes = new Set<string>();
       const CHUNK = 200;
       for (let i = 0; i < productosUnicos.length; i += CHUNK) {
@@ -136,6 +140,7 @@ export class ImportacionService {
         const { data, error } = await supabase
           .from('recetas_normalizada')
           .select('codigo_producto')
+          .eq('planta', planta)
           .in('codigo_producto', slice);
         if (error) throw new Error(`Error consultando recetas existentes: ${error.message}`);
         (data ?? []).forEach((r: any) => productosExistentes.add(r.codigo_producto));
@@ -165,7 +170,6 @@ export class ImportacionService {
       // Modo "patch" (actualizar ingrediente): solo permite UPDATE de pares existentes.
       // Si algún (producto, ingrediente) del archivo NO existe en la receta → frena todo.
       if (mode === 'patch') {
-        // Verificar que cada par (producto, ingrediente) ya exista
         const paresFaltantes: Array<{ codigo_producto: string; codigo_ingrediente: string }> = [];
         const PAIR_CHUNK = 200;
         for (let i = 0; i < rows.length; i += PAIR_CHUNK) {
@@ -175,6 +179,7 @@ export class ImportacionService {
           const { data, error } = await supabase
             .from('recetas_normalizada')
             .select('codigo_producto, codigo_ingrediente')
+            .eq('planta', planta)
             .in('codigo_producto', codsProd)
             .in('codigo_ingrediente', codsIng);
           if (error) throw new Error(`Error verificando ingredientes existentes: ${error.message}`);
@@ -228,7 +233,7 @@ export class ImportacionService {
         }
       }
 
-      // 4. Modo update: borrar recetas viejas COMPLETAS de los productos del archivo
+      // 4. Modo update: borrar recetas viejas COMPLETAS de los productos del archivo (en su planta)
       let recetasReemplazadas = 0;
       let filasBorradas = 0;
       if (mode === 'update' && productosExistentes.size > 0) {
@@ -238,6 +243,7 @@ export class ImportacionService {
           const { error, data: deletedRows } = await supabase
             .from('recetas_normalizada')
             .delete()
+            .eq('planta', planta)
             .in('codigo_producto', slice)
             .select('codigo_producto, codigo_ingrediente');
           if (error) throw new Error(`Error eliminando recetas existentes: ${error.message}`);
@@ -253,10 +259,11 @@ export class ImportacionService {
           );
         }
 
-        // Verificación adicional: que ya no existan filas para esos productos
+        // Verificación adicional: que ya no existan filas para esos productos en esta planta
         const { data: stillThere } = await supabase
           .from('recetas_normalizada')
           .select('codigo_producto')
+          .eq('planta', planta)
           .in('codigo_producto', codsExistentes)
           .limit(1);
         if (stillThere && stillThere.length > 0) {
@@ -267,12 +274,13 @@ export class ImportacionService {
         }
       }
 
-      // 5. UPSERT en lotes (UPSERT en vez de INSERT para tolerar duplicados/colisiones residuales)
+      // 5. UPSERT en lotes con planta incluida
       const BATCH = 500;
       let insertadas = 0;
       const erroresInsert: string[] = [];
-      for (let i = 0; i < rows.length; i += BATCH) {
-        const slice = rows.slice(i, i + BATCH);
+      const rowsConPlanta = rows.map(r => ({ ...r, planta }));
+      for (let i = 0; i < rowsConPlanta.length; i += BATCH) {
+        const slice = rowsConPlanta.slice(i, i + BATCH);
         const { error, count } = await supabase
           .from('recetas_normalizada')
           .upsert(slice, {

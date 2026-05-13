@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Get,
+  Query,
   HttpException,
   HttpStatus,
   Logger,
@@ -16,6 +17,7 @@ import { UpdatePorcentajeMantencionV2Dto } from './sectores-productivos-body.dto
 import { SectorProductivo } from '../sectorProductivo/sectores-productivos.model';
 import { SectorProductivoBody } from './sectores-productivos-body.dto';
 import { SectorProductivoService } from './sectores-productivos.service';
+import { normalizarPlanta } from '../config/planta.helper';
 
 @Controller('sectores-productivos')
 export class SectorProductivoController {
@@ -37,10 +39,11 @@ export class SectorProductivoController {
     }
   }
 
+  /** GET /sectores-productivos?planta=catamarca|varela|all */
   @Get()
-  async obtenerTodos(): Promise<SectorProductivo[]> {
+  async obtenerTodos(@Query('planta') planta?: string): Promise<SectorProductivo[]> {
     try {
-      return await this.sectorProductivoService.obtenerTodos();
+      return await this.sectorProductivoService.obtenerTodos(normalizarPlanta(planta));
     } catch (error) {
       this.logger.error('Error al obtener sectores productivos', error.stack);
       throw new HttpException(
@@ -51,12 +54,10 @@ export class SectorProductivoController {
   }
 
 
-  // === V2: LISTADO de sectores con porcentaje (endpoint nuevo) ===
-  // GET /sectores-productivos/mantencion
+  /** GET /sectores-productivos/mantencion?planta=catamarca|varela|all */
   @Get('mantencion')
-  async listarMantencionV2() {
-    // devuelve: [{ nombre, porcentaje_mantencion }, ...]
-    return this.sectorProductivoService.listarSectoresMantencionV2();
+  async listarMantencionV2(@Query('planta') planta?: string) {
+    return this.sectorProductivoService.listarSectoresMantencionV2(normalizarPlanta(planta));
   }
 
   // === V2: GET un sector (endpoint nuevo) ===

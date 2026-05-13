@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import Cookies from 'js-cookie';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 
 interface ResultadoCDR {
@@ -15,7 +16,9 @@ interface ResultadoCDR {
   sector_productivo: string;
   descripcion_producto: string;
   base_cdr: number;
-  base_cdr_final: number | null;
+  base_cdr_final?: number | null;
+  monto_flete?: number | null;
+  valor_cdr_final?: number | null;
 }
 
 const ResultadosCDR: React.FC = () => {
@@ -30,6 +33,12 @@ const ResultadosCDR: React.FC = () => {
 
   const [sectores, setSectores] = useState<string[]>([]);
   const [sectorSeleccionado, setSectorSeleccionado] = useState<string>(''); // '' = Todos
+
+  // Buscador con autocomplete
+  const [busqueda, setBusqueda] = useState<string>('');
+  const [mostrarSugerencias, setMostrarSugerencias] = useState<boolean>(false);
+  const buscadorRef = useRef<HTMLDivElement | null>(null);
+
   const navigate = useNavigate();
 
   /** ===== Carga de datos base + verificación CDR ===== */
@@ -85,11 +94,47 @@ const ResultadosCDR: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** ===== Derivados: filtro por sector y conteos ===== */
+  /** ===== Derivados: filtro por sector + búsqueda y conteos ===== */
+  const busquedaNorm = busqueda.trim().toLowerCase();
+
   const filtrados = useMemo(() => {
-    if (!sectorSeleccionado) return resultadosCDR;
-    return resultadosCDR.filter(r => r.sector_productivo === sectorSeleccionado);
-  }, [resultadosCDR, sectorSeleccionado]);
+    let arr = resultadosCDR;
+    if (sectorSeleccionado) {
+      arr = arr.filter(r => r.sector_productivo === sectorSeleccionado);
+    }
+    if (busquedaNorm) {
+      arr = arr.filter(r =>
+        (r.codigo_producto ?? '').toLowerCase().includes(busquedaNorm) ||
+        (r.descripcion_producto ?? '').toLowerCase().includes(busquedaNorm)
+      );
+    }
+    return arr;
+  }, [resultadosCDR, sectorSeleccionado, busquedaNorm]);
+
+  // Sugerencias para autocomplete (limitadas a 8)
+  const sugerencias = useMemo(() => {
+    if (!busquedaNorm) return [];
+    const base = sectorSeleccionado
+      ? resultadosCDR.filter(r => r.sector_productivo === sectorSeleccionado)
+      : resultadosCDR;
+    return base
+      .filter(r =>
+        (r.codigo_producto ?? '').toLowerCase().includes(busquedaNorm) ||
+        (r.descripcion_producto ?? '').toLowerCase().includes(busquedaNorm)
+      )
+      .slice(0, 8);
+  }, [resultadosCDR, sectorSeleccionado, busquedaNorm]);
+
+  // Cerrar sugerencias al hacer click fuera
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (buscadorRef.current && !buscadorRef.current.contains(e.target as Node)) {
+        setMostrarSugerencias(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const total = resultadosCDR.length;
   const visibles = filtrados.length;
@@ -126,6 +171,66 @@ const ResultadosCDR: React.FC = () => {
           <CardTitle>Resultados CDR</CardTitle>
 
           <div className="flex flex-col md:flex-row md:items-center gap-2 w-full md:w-auto">
+            {/* Buscador con autocomplete */}
+            <div ref={buscadorRef} className="relative w-full md:w-72">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Buscar por código o descripción..."
+                  value={busqueda}
+                  onChange={(e) => {
+                    setBusqueda(e.target.value);
+                    setMostrarSugerencias(true);
+                  }}
+                  onFocus={() => setMostrarSugerencias(true)}
+                  className="pl-8 pr-8 h-9"
+                />
+                {busqueda && (
+                  <button
+                    type="button"
+                    onClick={() => { setBusqueda(''); setMostrarSugerencias(false); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Dropdown de sugerencias */}
+              {mostrarSugerencias && busquedaNorm && sugerencias.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-72 overflow-y-auto">
+                  {sugerencias.map((s) => (
+                    <button
+                      key={s.codigo_producto}
+                      type="button"
+                      onClick={() => {
+                        setBusqueda(s.codigo_producto);
+                        setMostrarSugerencias(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-muted border-b last:border-b-0 text-sm"
+                    >
+                      <div className="font-mono font-semibold text-foreground">
+                        {s.codigo_producto}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {s.descripcion_producto}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground/70">
+                        {s.sector_productivo}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {mostrarSugerencias && busquedaNorm && sugerencias.length === 0 && (
+                <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg px-3 py-2 text-sm text-muted-foreground">
+                  Sin resultados
+                </div>
+              )}
+            </div>
+
             {/* Filtro de sector */}
             <div className="flex items-center gap-2">
               <label className="text-sm text-muted-foreground">Sector:</label>
@@ -166,7 +271,7 @@ const ResultadosCDR: React.FC = () => {
                   <TableHead>Código Producto</TableHead>
                   <TableHead>Sector Productivo</TableHead>
                   <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right">CDR</TableHead>
+                  <TableHead className="text-right" title="CDR + mantención + flete (si aplica)">CDR Total</TableHead>
                   <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -176,16 +281,29 @@ const ResultadosCDR: React.FC = () => {
                   const rowColor = esCdrCero
                     ? 'bg-red-100 hover:bg-red-200'
                     : 'bg-green-100 hover:bg-green-200';
+                  const total = Number(
+                    item.valor_cdr_final ?? item.base_cdr_final ?? item.base_cdr ?? 0
+                  );
+                  const tieneFlete = Number(item.monto_flete ?? 0) > 0;
                   return (
                     <TableRow key={item.codigo_producto} className={rowColor}>
                       <TableCell>{item.codigo_producto}</TableCell>
                       <TableCell>{item.sector_productivo}</TableCell>
                       <TableCell>{item.descripcion_producto}</TableCell>
-                      <TableCell className="text-right">
-                        {Number(item.base_cdr_final ?? item.base_cdr).toLocaleString('es-AR', {
+                      <TableCell
+                        className="text-right font-semibold"
+                        title={
+                          `CDR puro: ${Number(item.base_cdr ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+                          `+ Mantención: ${Number(item.base_cdr_final ?? item.base_cdr ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+                          `+ Flete: ${Number(item.monto_flete ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+                          `= Total: ${total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        }
+                      >
+                        {total.toLocaleString('es-AR', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
+                        {tieneFlete && <span className="ml-1 text-xs text-amber-700" title="Incluye flete">🚚</span>}
                       </TableCell>
                       <TableCell className="text-center">
                         <Button

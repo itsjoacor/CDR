@@ -27,6 +27,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import Cookies from 'js-cookie';
 import * as XLSX from 'xlsx';
+import { usePlanta } from '../contexts/PlantaContext';
 
 interface ProductoNoCargado {
   codigo: string;
@@ -67,7 +68,11 @@ const ImplosionVolumen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { plantaParaEscritura, plantaLabel } = usePlanta();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // La implosión requiere una planta puntual (no 'all')
+  const plantaActiva = plantaParaEscritura;
 
   const [anio, setAnio] = useState(String(now.getFullYear()));
   const [mes, setMes] = useState(String(now.getMonth() + 1).padStart(2, '0'));
@@ -84,9 +89,10 @@ const ImplosionVolumen: React.FC = () => {
   // cache: 'no-store' evita que el browser sirva un resultado cacheado
   // después de un DELETE hecho desde otra vista.
   const fetchPeriodosExistentes = React.useCallback(async () => {
+    if (!plantaActiva) return; // sin planta puntual, no hay lista filtrada
     try {
       const r = await fetch(
-        `${import.meta.env.VITE_API_URL}/implosion/periodos?ts=${Date.now()}`,
+        `${import.meta.env.VITE_API_URL}/implosion/periodos?planta=${plantaActiva}&ts=${Date.now()}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
@@ -100,7 +106,7 @@ const ImplosionVolumen: React.FC = () => {
   // Al montar + cada vez que cambian año, mes, o la ruta cambia a esta página
   useEffect(() => {
     fetchPeriodosExistentes();
-  }, [fetchPeriodosExistentes, anio, mes, location.pathname, location.key]);
+  }, [fetchPeriodosExistentes, anio, mes, plantaActiva, location.pathname, location.key]);
 
   // Refrescar al volver a la ventana (p.ej. si borrás el periodo desde otra tab)
   useEffect(() => {
@@ -124,6 +130,14 @@ const ImplosionVolumen: React.FC = () => {
       toast({ title: 'Error', description: 'Seleccioná un archivo Excel', variant: 'destructive' });
       return;
     }
+    if (!plantaActiva) {
+      toast({
+        title: 'Elegí una planta',
+        description: 'En modo "Ambas plantas" no se puede importar. Cambiá el selector del header a Catamarca o Varela.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsLoading(true);
     setResult(null);
@@ -133,7 +147,7 @@ const ImplosionVolumen: React.FC = () => {
       formData.append('file', file);
 
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/implosion/import?periodo=${encodeURIComponent(periodo)}`,
+        `${import.meta.env.VITE_API_URL}/implosion/import?periodo=${encodeURIComponent(periodo)}&planta=${plantaActiva}`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
@@ -146,10 +160,9 @@ const ImplosionVolumen: React.FC = () => {
 
       setResult(data);
 
-      // Re-sincronizar con la DB: la fuente de verdad es siempre la DB,
-      // no el estado optimista del frontend
+      // Re-sincronizar con la DB: la fuente de verdad es siempre la DB
       try {
-        const r = await fetch(`${import.meta.env.VITE_API_URL}/implosion/periodos`, {
+        const r = await fetch(`${import.meta.env.VITE_API_URL}/implosion/periodos?planta=${plantaActiva}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const periodos = await r.json();

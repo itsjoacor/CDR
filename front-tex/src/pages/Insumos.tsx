@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { usePlanta } from "../contexts/PlantaContext";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const Insumos: React.FC = () => {
   const token = Cookies.get('token') || '';
   const { user } = useAuth();
+  const { plantaParam } = usePlanta();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,8 +65,9 @@ const Insumos: React.FC = () => {
 
   useEffect(() => {
     const fetchInsumos = async () => {
+      setLoading(true);
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/insumos`,
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/insumos?planta=${plantaParam}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -85,7 +88,7 @@ const Insumos: React.FC = () => {
       }
     };
     fetchInsumos();
-  }, []);
+  }, [plantaParam]);
 
   const filteredInsumos = insumos.filter(
     (insumo) =>

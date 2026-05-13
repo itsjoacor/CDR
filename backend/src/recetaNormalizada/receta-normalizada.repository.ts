@@ -1,6 +1,7 @@
 import { Injectable, Inject, Scope, HttpException, HttpStatus } from '@nestjs/common';
 import { Request } from 'express';
 import { getSupabaseClient } from '../config/supabase.client';
+import { aplicarFiltroPlanta } from '../config/planta.helper';
 import { RecetaNormalizada } from './receta-normalizada.model';
 import { CreateRecetaNormalizadaDto } from './receta-nomralizada.dto';
 
@@ -31,9 +32,11 @@ export class RecetaNormalizadaRepository {
     return map[tabla] || 'codigo';
   }
 
-  async obtenerTodas(): Promise<RecetaNormalizada[]> {
+  async obtenerTodas(planta?: 'catamarca' | 'varela' | null): Promise<RecetaNormalizada[]> {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase.from('recetas_normalizada').select('*');
+    let query = supabase.from('recetas_normalizada').select('*');
+    query = aplicarFiltroPlanta(query, planta ?? null);
+    const { data, error } = await query;
     if (error) {
       throw new HttpException('Error al obtener recetas: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -152,11 +155,20 @@ export class RecetaNormalizadaRepository {
         );
       }
 
+      // Inferir planta del producto (la receta hereda la planta del producto padre)
+      const { data: prodPlanta } = await supabase
+        .from('productos')
+        .select('planta')
+        .eq('codigo_producto', codigo_producto)
+        .maybeSingle();
+      const planta = (prodPlanta as any)?.planta ?? 'catamarca';
+
       const { data, error } = await supabase.from('recetas_normalizada').insert([
         {
           codigo_producto,
           codigo_ingrediente,
           cantidad_ingrediente: Number(cantidad_ingrediente),
+          planta,
         }
       ]).select();
 

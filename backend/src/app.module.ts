@@ -13,6 +13,7 @@ import { TablaConfigModule } from './tablaConfig/tabla-config.module';
 import { ImportacionModule } from './importacion/importacion.module';
 import { ReferenciasModule } from './referencias/referencias.module';
 import { ImplosionModule } from './implosion/implosion.module';
+import { PlantasModule } from './plantas/plantas.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ImplosionModule } from './implosion/implosion.module';
     ImportacionModule,
     ReferenciasModule,
     ImplosionModule,
+    PlantasModule,
   ],
 })
 export class AppModule { }

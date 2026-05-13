@@ -15,11 +15,14 @@ export class MatrizManoService {
     if (existente) {
       throw new Error('Ya existe un registro con este código de mano de obra');
     }
-    return this.matrizManoRepository.crear(matriz);
+    return this.matrizManoRepository.crear({
+      ...matriz,
+      planta: (matriz as any).planta ?? 'catamarca',
+    } as any);
   }
 
-  async obtenerTodos(): Promise<MatrizMano[]> {
-    return this.matrizManoRepository.obtenerTodos();
+  async obtenerTodos(planta?: 'catamarca' | 'varela' | null): Promise<MatrizMano[]> {
+    return this.matrizManoRepository.obtenerTodos(planta);
   }
 
   async obtenerPorCodigo(codigo: string): Promise<MatrizMano | null> {
@@ -39,7 +42,7 @@ export class MatrizManoService {
     return this.matrizManoRepository.eliminar(codigo);
   }
 
-  async obtenerTodosLosCodigos(): Promise<string[]> {
-    return await this.matrizManoRepository.obtenerTodosLosCodigos();
+  async obtenerTodosLosCodigos(planta?: 'catamarca' | 'varela' | null): Promise<string[]> {
+    return await this.matrizManoRepository.obtenerTodosLosCodigos(planta);
   }
 }

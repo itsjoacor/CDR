@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { usePlanta } from '../contexts/PlantaContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -194,6 +195,7 @@ const ResultadosVolumen: React.FC = () => {
   const token = Cookies.get('token') || '';
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { plantaParam, plantaParaEscritura } = usePlanta();
 
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>('');
@@ -207,6 +209,7 @@ const ResultadosVolumen: React.FC = () => {
   const [loadingCorrido, setLoadingCorrido] = useState(false);
   const [loadingPorSector, setLoadingPorSector] = useState(false);
   const [activeTab, setActiveTab] = useState('mensual');
+  const [corridoView, setCorridoView] = useState<'total' | 'sector'>('total');
 
   // ── Fetch periods on mount ──────────────────────────────────────────────
 
@@ -214,27 +217,28 @@ const ResultadosVolumen: React.FC = () => {
     (async () => {
       setLoadingPeriodos(true);
       try {
-        const res = await fetch(`${API}/implosion/periodos`, {
+        const res = await fetch(`${API}/implosion/periodos?planta=${plantaParam}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
         setPeriodos(data);
         if (data.length > 0) setSelectedPeriodo(data[0].periodo);
+        else setSelectedPeriodo('');
       } catch {
         toast({ title: 'Error', description: 'No se pudieron cargar los periodos', variant: 'destructive' });
       } finally {
         setLoadingPeriodos(false);
       }
     })();
-  }, []);
+  }, [plantaParam]);
 
-  // ── Fetch corrido on mount (independent of period selection) ────────────
+  // ── Fetch corrido — depende de planta ────────────────────────────
 
   useEffect(() => {
     (async () => {
       setLoadingCorrido(true);
       try {
-        const res = await fetch(`${API}/implosion/corrido`, {
+        const res = await fetch(`${API}/implosion/corrido?planta=${plantaParam}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setCorrido(await res.json());
@@ -244,7 +248,7 @@ const ResultadosVolumen: React.FC = () => {
         setLoadingCorrido(false);
       }
     })();
-  }, []);
+  }, [plantaParam]);
 
   // ── Fetch detalle when period or tab changes ────────────────────────────
 
@@ -252,7 +256,7 @@ const ResultadosVolumen: React.FC = () => {
     if (!selectedPeriodo) return;
     if (activeTab === 'mensual' || activeTab === 'detalle-sector') fetchDetalle(selectedPeriodo);
     if (activeTab === 'sector') fetchPorSector(selectedPeriodo);
-  }, [selectedPeriodo, activeTab]);
+  }, [selectedPeriodo, activeTab, plantaParam]);
 
   // Auto-select first sector when detalle loads
   useEffect(() => {
@@ -263,9 +267,10 @@ const ResultadosVolumen: React.FC = () => {
   }, [detalle]);
 
   const fetchDetalle = async (p: string) => {
+    if (!plantaParaEscritura) return; // detalle requiere planta puntual
     setLoadingDetalle(true);
     try {
-      const res = await fetch(`${API}/implosion/detalle/${p}`, {
+      const res = await fetch(`${API}/implosion/detalle/${p}?planta=${plantaParaEscritura}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setDetalle(await res.json());
@@ -277,9 +282,10 @@ const ResultadosVolumen: React.FC = () => {
   };
 
   const fetchPorSector = async (p: string) => {
+    if (!plantaParaEscritura) return;
     setLoadingPorSector(true);
     try {
-      const res = await fetch(`${API}/implosion/por-sector/${p}`, {
+      const res = await fetch(`${API}/implosion/por-sector/${p}?planta=${plantaParaEscritura}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPorSector(await res.json());
@@ -294,9 +300,13 @@ const ResultadosVolumen: React.FC = () => {
 
   const handleDeletePeriodo = async () => {
     if (!selectedPeriodo) return;
+    if (!plantaParaEscritura) {
+      toast({ title: 'Elegí una planta', description: 'En vista "Ambas" no se puede borrar. Cambiá el header a Catamarca o Varela.', variant: 'destructive' });
+      return;
+    }
     setDeleting(true);
     try {
-      const res = await fetch(`${API}/implosion/periodos/${selectedPeriodo}`, {
+      const res = await fetch(`${API}/implosion/periodos/${selectedPeriodo}?planta=${plantaParaEscritura}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -307,10 +317,9 @@ const ResultadosVolumen: React.FC = () => {
 
       toast({
         title: 'Periodo eliminado',
-        description: `Se borró la implosión de ${selectedPeriodo} (tabla de periodos y detalle).`,
+        description: `Se borró la implosión de ${selectedPeriodo} (${plantaParaEscritura}).`,
       });
 
-      // Actualizar estado local
       const nuevosPeriodos = periodos.filter((p) => p.periodo !== selectedPeriodo);
       setPeriodos(nuevosPeriodos);
       setDetalle([]);
@@ -319,7 +328,7 @@ const ResultadosVolumen: React.FC = () => {
 
       // Refrescar corrido
       try {
-        const corrRes = await fetch(`${API}/implosion/corrido`, {
+        const corrRes = await fetch(`${API}/implosion/corrido?planta=${plantaParam}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setCorrido(await corrRes.json());
@@ -335,12 +344,15 @@ const ResultadosVolumen: React.FC = () => {
   // Genera un XLSX con una hoja por sector productivo. Cada hoja muestra solo
   // los totales agregados por tipo_ingrediente (sin desglose de filas).
   const handleExportResumen = async () => {
-    if (!selectedPeriodo) return;
+    if (!selectedPeriodo || !plantaParaEscritura) {
+      toast({ title: 'Elegí una planta', description: 'En vista "Ambas" no se puede exportar. Cambiá el header a Catamarca o Varela.', variant: 'destructive' });
+      return;
+    }
 
     let rows = detalle;
     if (!rows.length) {
       try {
-        const res = await fetch(`${API}/implosion/detalle/${selectedPeriodo}`, {
+        const res = await fetch(`${API}/implosion/detalle/${selectedPeriodo}?planta=${plantaParaEscritura}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         rows = await res.json();
@@ -656,85 +668,146 @@ const ResultadosVolumen: React.FC = () => {
 
             {/* ── TAB 2: Corrido Gráfico ────────────────────────────────── */}
             <TabsContent value="corrido">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-teal-800">CDR Acumulado por Periodo y Sector</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loadingCorrido ? (
-                    <div className="flex justify-center py-16">
-                      <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
-                    </div>
-                  ) : chartData.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-10">Sin datos de corrido</p>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={400}>
-                      <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                        <XAxis dataKey="periodo" tick={{ fontSize: 12 }} />
-                        <YAxis
-                          tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-                          tick={{ fontSize: 11 }}
-                        />
-                        <Tooltip
-                          formatter={(value: number, name: string) => [`$${fmt(value)}`, name]}
-                          labelFormatter={(label) => `Periodo: ${label}`}
-                        />
-                        <Legend />
-                        {sectors.map((s, i) => (
-                          <Line
-                            key={s}
-                            type="monotone"
-                            dataKey={s}
-                            stroke={LINE_COLORS[i % LINE_COLORS.length]}
-                            strokeWidth={2}
-                            dot={{ r: 4 }}
-                            activeDot={{ r: 6 }}
-                          />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                {/* Selector de vista */}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium">Vista:</span>
+                  <div className="flex rounded-md border overflow-hidden">
+                    <button
+                      onClick={() => setCorridoView('total')}
+                      className={`px-4 py-1.5 text-sm font-medium transition ${
+                        corridoView === 'total'
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-white text-teal-700 hover:bg-teal-50'
+                      }`}
+                    >
+                      Total mensual
+                    </button>
+                    <button
+                      onClick={() => setCorridoView('sector')}
+                      className={`px-4 py-1.5 text-sm font-medium transition border-l ${
+                        corridoView === 'sector'
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-white text-teal-700 hover:bg-teal-50'
+                      }`}
+                    >
+                      Por sector productivo
+                    </button>
+                  </div>
+                </div>
 
-              {/* Summary table below chart */}
-              {chartData.length > 0 && (
-                <Card className="mt-4">
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-teal-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left font-semibold text-teal-800 border-b">Periodo</th>
-                            {sectors.map((s) => (
-                              <th key={s} className="px-4 py-2 text-right font-semibold text-teal-800 border-b">
-                                {s}
-                              </th>
-                            ))}
-                            <th className="px-4 py-2 text-right font-semibold text-teal-800 border-b">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {chartData.map((row) => (
-                            <tr key={row.periodo} className="border-b hover:bg-muted/40">
-                              <td className="px-4 py-2 font-mono font-semibold">{row.periodo}</td>
-                              {sectors.map((s) => (
-                                <td key={s} className="px-4 py-2 text-right">
-                                  ${fmt(row[s] as number)}
-                                </td>
-                              ))}
-                              <td className="px-4 py-2 text-right font-bold text-teal-700">
-                                ${fmt(row.total as number)}
-                              </td>
-                            </tr>
+                {/* Gráfico */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-teal-800">
+                      {corridoView === 'total'
+                        ? 'CDR Total por Mes'
+                        : 'CDR por Mes y Sector Productivo'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingCorrido ? (
+                      <div className="flex justify-center py-16">
+                        <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
+                      </div>
+                    ) : chartData.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-10">Sin datos de corrido</p>
+                    ) : corridoView === 'total' ? (
+                      /* Vista 1: una sola línea con el total mensual */
+                      <ResponsiveContainer width="100%" height={400}>
+                        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                          <XAxis dataKey="periodo" tick={{ fontSize: 12 }} />
+                          <YAxis
+                            tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <Tooltip
+                            formatter={(value: number) => [`$${fmt(value)}`, 'CDR Total']}
+                            labelFormatter={(label) => `Periodo: ${label}`}
+                          />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="total"
+                            name="CDR Total"
+                            stroke="#0d9488"
+                            strokeWidth={3}
+                            dot={{ r: 5, fill: '#0d9488' }}
+                            activeDot={{ r: 7 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      /* Vista 2: una línea por sector productivo */
+                      <ResponsiveContainer width="100%" height={400}>
+                        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                          <XAxis dataKey="periodo" tick={{ fontSize: 12 }} />
+                          <YAxis
+                            tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <Tooltip
+                            formatter={(value: number, name: string) => [`$${fmt(value)}`, name]}
+                            labelFormatter={(label) => `Periodo: ${label}`}
+                          />
+                          <Legend />
+                          {sectors.map((s, i) => (
+                            <Line
+                              key={s}
+                              type="monotone"
+                              dataKey={s}
+                              stroke={LINE_COLORS[i % LINE_COLORS.length]}
+                              strokeWidth={2}
+                              dot={{ r: 4 }}
+                              activeDot={{ r: 6 }}
+                            />
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
                   </CardContent>
                 </Card>
-              )}
+
+                {/* Tabla resumen debajo del gráfico */}
+                {chartData.length > 0 && (
+                  <Card>
+                    <CardContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-teal-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left font-semibold text-teal-800 border-b">Periodo</th>
+                              {corridoView === 'sector' && sectors.map((s) => (
+                                <th key={s} className="px-4 py-2 text-right font-semibold text-teal-800 border-b">
+                                  {s}
+                                </th>
+                              ))}
+                              <th className="px-4 py-2 text-right font-semibold text-teal-800 border-b">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {chartData.map((row) => (
+                              <tr key={row.periodo} className="border-b hover:bg-muted/40">
+                                <td className="px-4 py-2 font-mono font-semibold">{row.periodo}</td>
+                                {corridoView === 'sector' && sectors.map((s) => (
+                                  <td key={s} className="px-4 py-2 text-right">
+                                    ${fmt(row[s] as number)}
+                                  </td>
+                                ))}
+                                <td className="px-4 py-2 text-right font-bold text-teal-700">
+                                  ${fmt(row.total as number)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </TabsContent>
 
             {/* ── TAB 3: Por Sector ─────────────────────────────────────── */}

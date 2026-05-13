@@ -35,6 +35,7 @@ import {
 import Cookies from "js-cookie";
 import { Edit, Trash2, Search, Filter, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePlanta } from "../contexts/PlantaContext";
 
 type Producto = {
   codigo_producto: string;
@@ -49,6 +50,7 @@ type CdrCeroMap = Record<string, boolean>;
 const Receta: React.FC = () => {
   const token = Cookies.get("token");
   const { user } = useAuth();
+  const { plantaParam } = usePlanta();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -100,7 +102,7 @@ const Receta: React.FC = () => {
       try {
         setLoading(true);
 
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/productos/con-estado`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/productos/con-estado?planta=${plantaParam}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Error al obtener productos");
@@ -131,7 +133,7 @@ const Receta: React.FC = () => {
 
     fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [plantaParam]);
 
   // Filtros
   const filtered = productos.filter((p) => {

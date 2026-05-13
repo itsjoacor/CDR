@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { Insumo } from './insumo.model';
 import { InsumoRepository } from './insumo.repository';
 import { getSupabaseClient } from '../config/supabase.client';
+import { aplicarFiltroPlanta } from '../config/planta.helper';
 
 @Injectable({ scope: Scope.REQUEST })
 export class InsumoService {
@@ -21,19 +22,20 @@ export class InsumoService {
       return await this.insumoRepository.guardar(insumo);
     } catch (error) {
       console.error('❌ Error completo al guardar:', error);
-      
-      // Manejo específico para error de duplicado
+
       if (error.code === '23505') {
         throw new Error('Insumo ya existente');
       }
-      
+
       throw new Error('Error al insertar insumo: ' + (error?.message ?? 'Error desconocido'));
     }
   }
 
-  async obtenerTodos(): Promise<Insumo[]> {
+  async obtenerTodos(planta?: 'catamarca' | 'varela' | null): Promise<Insumo[]> {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase.from('insumos').select('*');
+    let query = supabase.from('insumos').select('*');
+    query = aplicarFiltroPlanta(query, planta ?? null);
+    const { data, error } = await query;
 
     if (error) {
       throw new Error('Error al obtener insumos: ' + error.message);
@@ -60,6 +62,7 @@ export class InsumoService {
     codigo?: string;
     grupo?: string;
     detalle?: string;
+    planta?: 'catamarca' | 'varela' | null;
   }): Promise<Insumo[]> {
     return this.insumoRepository.buscarPorFiltros(filtros);
   }

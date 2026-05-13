@@ -6,20 +6,23 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
 import { MatrizManoService } from './matriz-mano.service';
 import { MatrizManoBodyDto } from './matriz-mano-body.dto';
 import { MatrizMano } from './matriz-mano.model';
+import { normalizarPlanta } from '../config/planta.helper';
 
 @Controller('matriz-mano')
 export class MatrizManoController {
   constructor(private readonly service: MatrizManoService) { }
 
+  /** GET /matriz-mano?planta=catamarca|varela|all */
   @Get()
-  obtenerTodos(): Promise<MatrizMano[]> {
-    return this.service.obtenerTodos();
+  obtenerTodos(@Query('planta') planta?: string): Promise<MatrizMano[]> {
+    return this.service.obtenerTodos(normalizarPlanta(planta));
   }
 
   @Get(':codigo')

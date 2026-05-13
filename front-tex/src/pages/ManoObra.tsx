@@ -1,5 +1,6 @@
 import React, { useEffect, useState, Fragment } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { usePlanta } from "../contexts/PlantaContext";
 import Layout from "../components/Layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +69,7 @@ const numberOrDash = (n?: number | null) =>
 const ManoObra: React.FC = () => {
   const token = Cookies.get("token") || "";
   const { user } = useAuth();
+  const { plantaParam } = usePlanta();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -104,15 +106,15 @@ const ManoObra: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/matriz-mano`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/matriz-mano?planta=${plantaParam}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!res.ok) throw new Error("Error al obtener datos");
         const data = await res.json();
 
-        // Conservo tu campo UI 'estado'
         const dataWithEstado = data.map((item: ManoObraAPI) => ({
           ...item,
           estado: item.estado || "activo",
@@ -129,7 +131,7 @@ const ManoObra: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [plantaParam]);
 
   useEffect(() => {
     const fetchSectores = async () => {

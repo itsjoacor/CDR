@@ -1,6 +1,7 @@
 import { Injectable, Inject, Scope } from '@nestjs/common';
 import { Request } from 'express';
 import { getSupabaseClient } from '../config/supabase.client';
+import { aplicarFiltroPlanta } from '../config/planta.helper';
 import { MatrizMano } from './matriz-mano.model';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -12,9 +13,11 @@ export class MatrizManoRepository {
     return getSupabaseClient(token);
   }
 
-  async obtenerTodos(): Promise<MatrizMano[]> {
+  async obtenerTodos(planta?: 'catamarca' | 'varela' | null): Promise<MatrizMano[]> {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase.from('matriz_mano').select('*');
+    let query = supabase.from('matriz_mano').select('*');
+    query = aplicarFiltroPlanta(query, planta ?? null);
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return data as MatrizMano[];
   }
@@ -59,11 +62,11 @@ export class MatrizManoRepository {
     if (error) throw new Error(error.message);
   }
 
-  async obtenerTodosLosCodigos(): Promise<string[]> {
+  async obtenerTodosLosCodigos(planta?: 'catamarca' | 'varela' | null): Promise<string[]> {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase
-      .from('matriz_mano')
-      .select('codigo_mano_obra');
+    let query = supabase.from('matriz_mano').select('codigo_mano_obra');
+    query = aplicarFiltroPlanta(query, planta ?? null);
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return data.map((item) => item.codigo_mano_obra);
   }

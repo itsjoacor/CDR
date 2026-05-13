@@ -15,11 +15,16 @@ import {
   ListboxOptions,
 } from '@headlessui/react';
 import Cookies from 'js-cookie';
+import { usePlanta } from '../contexts/PlantaContext';
 
 const CargarEnergia: React.FC = () => {
   const token = Cookies.get('token') || '';
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { plantaParaEscritura } = usePlanta();
+
+  const [planta, setPlanta] = useState<'catamarca' | 'varela'>(plantaParaEscritura ?? 'catamarca');
+  useEffect(() => { if (plantaParaEscritura) setPlanta(plantaParaEscritura); }, [plantaParaEscritura]);
 
   const [codigoManoObra, setCodigoManoObra] = useState('');
   const [codigoEnergia, setCodigoEnergia] = useState('');
@@ -40,7 +45,7 @@ const CargarEnergia: React.FC = () => {
   useEffect(() => {
     const fetchSectores = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`,
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos?planta=${planta}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -62,7 +67,7 @@ const CargarEnergia: React.FC = () => {
     };
 
     fetchSectores();
-  }, []);
+  }, [planta]);
 
   // Validate mano_obra code when it changes
   useEffect(() => {
@@ -221,7 +226,8 @@ const CargarEnergia: React.FC = () => {
       descripcion: descripcion,
       consumo_kw_std: consumoKwStd,
       valor_kw: valorKw,
-      std_produccion: stdProduccion || null
+      std_produccion: stdProduccion || null,
+      planta,
     };
 
     try {

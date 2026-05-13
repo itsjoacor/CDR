@@ -21,8 +21,8 @@ export class MatrizEnergiaService {
     }
   }
 
-  async obtenerTodos(): Promise<MatrizEnergia[]> {
-    return this.repo.obtenerTodos();
+  async obtenerTodos(planta?: 'catamarca' | 'varela' | null): Promise<MatrizEnergia[]> {
+    return this.repo.obtenerTodos(planta);
   }
 
   async obtenerPorCodigo(codigo: string): Promise<MatrizEnergia> {

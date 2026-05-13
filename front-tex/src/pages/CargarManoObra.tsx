@@ -16,11 +16,16 @@ import {
   ListboxOptions,
 } from '@headlessui/react';
 import Cookies from 'js-cookie';
+import { usePlanta } from '../contexts/PlantaContext';
 
 const CargarManoObra: React.FC = () => {
   const token  = Cookies.get('token') || '';
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { plantaParaEscritura } = usePlanta();
+
+  const [planta, setPlanta] = useState<'catamarca' | 'varela'>(plantaParaEscritura ?? 'catamarca');
+  useEffect(() => { if (plantaParaEscritura) setPlanta(plantaParaEscritura); }, [plantaParaEscritura]);
 
   const [sectorProductivo, setSectorProductivo] = useState('');
   const [codigoManoObra, setCodigoManoObra] = useState('');
@@ -37,11 +42,11 @@ const CargarManoObra: React.FC = () => {
   const [manoObraExistente, setManoObraExistente] = useState(false);
   const [validatingCodigoManoObra, setValidatingCodigoManoObra] = useState(false);
 
-  // Fetch sectores productivos on component mount
+  // Fetch sectores productivos de la planta seleccionada
   useEffect(() => {
     const fetchSectores = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`,
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos?planta=${planta}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -63,7 +68,7 @@ const CargarManoObra: React.FC = () => {
     };
 
     fetchSectores();
-  }, []);
+  }, [planta]);
 
   // Validate mano_obra code when it changes
   useEffect(() => {
@@ -193,7 +198,8 @@ const CargarManoObra: React.FC = () => {
       horas_hombre_std: horasHombreStd,
       valor_hora_hombre: valorHoraHombre,
       horas_por_turno: horasPorTurno,
-      producto_calculado_std: productoCalculadoStd || null
+      producto_calculado_std: productoCalculadoStd || null,
+      planta,
     };
 
     try {

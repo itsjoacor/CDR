@@ -9,17 +9,25 @@ import { Save, ArrowLeft, Plus, Minus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import Cookies from 'js-cookie';
+import { usePlanta } from '../contexts/PlantaContext';
 
 const CargarInsumo: React.FC = () => {
     const token = Cookies.get('token') || '';
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { plantaParaEscritura } = usePlanta();
 
     const [grupo, setGrupo] = useState('');
     const [codigo, setCodigo] = useState('');
     const [detalle, setDetalle] = useState('');
     const [costo, setCosto] = useState<number>(0);
+    const [planta, setPlanta] = useState<'catamarca' | 'varela'>(plantaParaEscritura ?? 'catamarca');
     const [isLoading, setIsLoading] = useState(false);
+
+    // Si el header tiene una planta seleccionada, sincronizar
+    React.useEffect(() => {
+        if (plantaParaEscritura) setPlanta(plantaParaEscritura);
+    }, [plantaParaEscritura]);
 
     const resetForm = () => {
         setGrupo('');
@@ -44,7 +52,8 @@ const CargarInsumo: React.FC = () => {
                     grupo: grupo.trim(),
                     codigo: codigo.trim().toUpperCase(),
                     detalle: detalle.trim(),
-                    costo: costo
+                    costo: costo,
+                    planta,
                 }),
             });
 
@@ -118,6 +127,24 @@ const CargarInsumo: React.FC = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-6">
+                            {/* Planta */}
+                            <div className="space-y-2">
+                                <Label htmlFor="planta">Planta*</Label>
+                                <select
+                                    id="planta"
+                                    value={planta}
+                                    onChange={(e) => setPlanta(e.target.value as 'catamarca' | 'varela')}
+                                    disabled={isLoading}
+                                    className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm max-w-60"
+                                >
+                                    <option value="catamarca">🏭 Catamarca</option>
+                                    <option value="varela">🏭 Varela</option>
+                                </select>
+                                <p className="text-xs text-muted-foreground">
+                                    Planta a la que pertenece este insumo
+                                </p>
+                            </div>
+
                             {/* Grupo */}
                             <div className="space-y-2">
                                 <Label htmlFor="grupo">Grupo*</Label>

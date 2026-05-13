@@ -5,13 +5,15 @@ export class InsumoBody {
   codigo: string;
   detalle: string;
   costo: number;
+  planta?: string;
 
   public aModelo(): Insumo {
     return new Insumo(
       this.grupo,
       this.codigo,
       this.detalle,
-      this.costo
+      this.costo,
+      this.planta ?? 'catamarca',
     );
   }
 }

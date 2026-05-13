@@ -4,6 +4,8 @@ export class Producto {
     public codigo_producto: string,
     public descripcion_producto: string,
     public sector_productivo: string,
+    public planta: string = 'catamarca',
+    public lleva_flete: boolean = false,
     public created_at?: Date,
     public updated_at?: Date
   ) { }
@@ -11,4 +13,6 @@ export class Producto {
   getCodigoProducto(): string { return this.codigo_producto; }
   getDescripcionProducto(): string { return this.descripcion_producto; }
   getSectorProductivo(): string { return this.sector_productivo; }
+  getPlanta(): string { return this.planta; }
+  getLlevaFlete(): boolean { return this.lleva_flete; }
 }

@@ -7,6 +7,7 @@ import {
   Param,
   Put,
   Delete,
+  Query,
   HttpException,
   HttpStatus,
   Logger
@@ -14,6 +15,7 @@ import {
 import { ProductoService } from '../productos/producto.service';
 import { ProductoBody } from '../productos/producto-body.dto';
 import { Producto } from '../productos/producto.model';
+import { normalizarPlanta } from '../config/planta.helper';
 
 @Controller('productos')
 export class ProductoController {
@@ -22,46 +24,38 @@ export class ProductoController {
   constructor(private readonly productoService: ProductoService) { }
 
   @Post()
-  async crear(@Body() body: {
-    codigo_producto: string,
-    descripcion_producto: string,
-    sector_productivo: string
-  }): Promise<Producto> {
+  async crear(@Body() body: ProductoBody): Promise<Producto> {
     try {
-      // Directly create Producto from the raw body
       const producto = new Producto(
         body.codigo_producto,
         body.descripcion_producto,
-        body.sector_productivo
+        body.sector_productivo,
+        body.planta ?? 'catamarca',
+        body.lleva_flete ?? false,
       );
-
       return await this.productoService.crear(producto);
     } catch (error) {
       this.logger.error('Error al crear producto', error.stack);
-      throw new HttpException(
-        error.message,
-        HttpStatus.BAD_REQUEST
-      );
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
+  /** GET /productos?planta=catamarca|varela|all */
   @Get()
-  async obtenerTodos(): Promise<Producto[]> {
+  async obtenerTodos(@Query('planta') planta?: string): Promise<Producto[]> {
     try {
-      return await this.productoService.obtenerTodos();
+      return await this.productoService.obtenerTodos(normalizarPlanta(planta));
     } catch (error) {
       this.logger.error('Error al obtener productos', error.stack);
-      throw new HttpException(
-        'Error al obtener productos',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      throw new HttpException('Error al obtener productos', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
+  /** GET /productos/con-estado?planta=catamarca|varela|all */
   @Get('con-estado')
-  async obtenerConEstado() {
+  async obtenerConEstado(@Query('planta') planta?: string) {
     try {
-      return await this.productoService.obtenerTodosConEstado();
+      return await this.productoService.obtenerTodosConEstado(normalizarPlanta(planta));
     } catch (error) {
       this.logger.error('Error al obtener productos con estado', error.stack);
       throw new HttpException('Error al obtener productos con estado', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -79,10 +73,7 @@ export class ProductoController {
     } catch (error) {
       if (error instanceof HttpException) throw error;
       this.logger.error('Error al obtener producto', error.stack);
-      throw new HttpException(
-        'Error al obtener producto',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      throw new HttpException('Error al obtener producto', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -94,14 +85,13 @@ export class ProductoController {
     try {
       return await this.productoService.actualizar(codigo, {
         descripcion_producto: body.descripcion_producto,
-        sector_productivo: body.sector_productivo
+        sector_productivo: body.sector_productivo,
+        planta: body.planta,
+        lleva_flete: body.lleva_flete,
       });
     } catch (error) {
       this.logger.error('Error al actualizar producto', error.stack);
-      throw new HttpException(
-        error.message,
-        HttpStatus.BAD_REQUEST
-      );
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -112,10 +102,7 @@ export class ProductoController {
       return { message: 'Producto eliminado exitosamente' };
     } catch (error) {
       this.logger.error('Error al eliminar producto', error.stack);
-      throw new HttpException(
-        error.message,
-        HttpStatus.BAD_REQUEST
-      );
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -131,6 +118,4 @@ export class ProductoController {
       );
     }
   }
-
-
 }

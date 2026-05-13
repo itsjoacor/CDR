@@ -15,11 +15,13 @@ import {
   ListboxOptions,
 } from '@headlessui/react';
 import Cookies from 'js-cookie';
+import { usePlanta } from '../contexts/PlantaContext';
 
 const CargarProducto: React.FC = () => {
   const token = Cookies.get('token') || '';
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { plantaParaEscritura } = usePlanta();
 
   const [codigoProducto, setCodigoProducto] = useState('');
   const [descripcionProducto, setDescripcionProducto] = useState('');
@@ -28,12 +30,18 @@ const CargarProducto: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [productoExistente, setProductoExistente] = useState(false);
   const [validatingCodigo, setValidatingCodigo] = useState(false);
+  const [planta, setPlanta] = useState<'catamarca' | 'varela'>(plantaParaEscritura ?? 'catamarca');
+  const [llevaFlete, setLlevaFlete] = useState(false);
 
-  // Fetch sectores productivos on component mount
+  useEffect(() => {
+    if (plantaParaEscritura) setPlanta(plantaParaEscritura);
+  }, [plantaParaEscritura]);
+
+  // Fetch sectores productivos de la planta seleccionada
   useEffect(() => {
     const fetchSectores = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`,
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos?planta=${planta}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -55,7 +63,7 @@ const CargarProducto: React.FC = () => {
     };
 
     fetchSectores();
-  }, []);
+  }, [planta]);
 
   // Validate product code when it changes
   useEffect(() => {
@@ -134,7 +142,9 @@ const CargarProducto: React.FC = () => {
     const productoData = {
       codigo_producto: codigoProducto,
       descripcion_producto: descripcionProducto,
-      sector_productivo: sectorSeleccionado
+      sector_productivo: sectorSeleccionado,
+      planta,
+      lleva_flete: llevaFlete,
     };
 
     try {
@@ -237,6 +247,40 @@ const CargarProducto: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
+              {/* Planta */}
+              <div className="space-y-2">
+                <Label htmlFor="planta">Planta*</Label>
+                <select
+                  id="planta"
+                  value={planta}
+                  onChange={(e) => setPlanta(e.target.value as 'catamarca' | 'varela')}
+                  className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm max-w-60"
+                >
+                  <option value="catamarca">🏭 Catamarca</option>
+                  <option value="varela">🏭 Varela</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Planta a la que pertenece este producto
+                </p>
+              </div>
+
+              {/* Lleva flete */}
+              <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-md max-w-md">
+                <input
+                  type="checkbox"
+                  id="lleva_flete"
+                  checked={llevaFlete}
+                  onChange={(e) => setLlevaFlete(e.target.checked)}
+                  className="mt-1 h-4 w-4 cursor-pointer"
+                />
+                <label htmlFor="lleva_flete" className="cursor-pointer flex-1">
+                  <div className="font-semibold text-amber-900">🚚 Aplica flete</div>
+                  <div className="text-xs text-amber-800/70 mt-0.5">
+                    Si está activado, al CDR final se le suma el % de flete configurado para la planta {planta === 'catamarca' ? 'Catamarca' : 'Varela'}.
+                  </div>
+                </label>
+              </div>
+
               {/* Código Producto */}
               <div className="space-y-2">
                 <Label htmlFor="codigo_producto">Código Producto</Label>

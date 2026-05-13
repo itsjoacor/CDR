@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Fragment } from "react";
+import { usePlanta } from "../contexts/PlantaContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
@@ -50,10 +51,13 @@ interface ProductoItem {
   sector_productivo: string;
   updated_at: string;
   estado: "activo" | "inactivo";
+  planta?: string;
+  lleva_flete?: boolean;
 }
 
 const Producto: React.FC = () => {
   const { user } = useAuth();
+  const { plantaParam } = usePlanta();
   const token = Cookies.get('token');
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -77,10 +81,11 @@ const Producto: React.FC = () => {
 
   useEffect(() => {
     const fetchAll = async () => {
+      setLoading(true);
       try {
         const [resProd, resSectores] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/productos`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${import.meta.env.VITE_API_URL}/productos?planta=${plantaParam}`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos?planta=${plantaParam}`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
 
         if (!resProd.ok) throw new Error("Error al cargar productos");
@@ -92,6 +97,8 @@ const Producto: React.FC = () => {
           codigo_producto: item.codigo_producto,
           descripcion_producto: item.descripcion_producto,
           sector_productivo: item.sector_productivo,
+          planta: item.planta ?? 'catamarca',
+          lleva_flete: item.lleva_flete ?? false,
           updated_at: new Date(item.updated_at).toLocaleDateString("es-CO"),
           estado: "activo",
         }));
@@ -116,7 +123,7 @@ const Producto: React.FC = () => {
     };
 
     fetchAll();
-  }, []);
+  }, [plantaParam]);
 
   const filteredProductos = productos.filter((producto) => {
     const matchesSearch =
@@ -172,6 +179,7 @@ const Producto: React.FC = () => {
           body: JSON.stringify({
             descripcion_producto: editForm.descripcion_producto,
             sector_productivo: editForm.sector_productivo,
+            lleva_flete: editForm.lleva_flete ?? false,
           }),
         }
       );
@@ -549,6 +557,23 @@ const Producto: React.FC = () => {
                                       </div>
                                     </Listbox>
                                   </div>
+                                </div>
+
+                                {/* Checkbox lleva_flete */}
+                                <div className="mt-4 flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                                  <input
+                                    type="checkbox"
+                                    id={`flete-${producto.codigo_producto}`}
+                                    checked={editForm.lleva_flete === true}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, lleva_flete: e.target.checked }))}
+                                    className="mt-1 h-4 w-4 cursor-pointer"
+                                  />
+                                  <label htmlFor={`flete-${producto.codigo_producto}`} className="cursor-pointer flex-1">
+                                    <div className="font-semibold text-amber-900">🚚 Aplica flete</div>
+                                    <div className="text-xs text-amber-800/70 mt-0.5">
+                                      Si está activo, al CDR final del producto se le suma el % de flete configurado para su planta ({producto.planta ?? 'catamarca'}).
+                                    </div>
+                                  </label>
                                 </div>
                                 <div className="flex justify-end mt-4 space-x-2">
                                   <Button variant="outline" size="sm" onClick={handleSave}>

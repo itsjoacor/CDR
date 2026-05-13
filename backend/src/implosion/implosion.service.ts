@@ -14,7 +14,11 @@ export class ImplosionService {
 
   // ─── IMPORT ───────────────────────────────────────────────────────────────
 
-  async importarPeriodo(file: Express.Multer.File, periodo: string) {
+  async importarPeriodo(
+    file: Express.Multer.File,
+    periodo: string,
+    planta: 'catamarca' | 'varela' = 'catamarca',
+  ) {
     if (!/^\d{4}-\d{2}$/.test(periodo)) {
       throw new BadRequestException('El periodo debe tener formato YYYY-MM (ej: 2025-04)');
     }
@@ -174,8 +178,8 @@ export class ImplosionService {
     const excelCodigoNorm: Record<string, string> = {};
     for (const c of codigosExcel) excelCodigoNorm[normalizar(c)] = c;
 
-    // 4. Fetch recetas_normalizada para todas las variantes
-    const recetas = await this.fetchRecetasByProductos(supabase, [...variantes]);
+    // 4. Fetch recetas_normalizada para todas las variantes — filtrado por la planta del producto
+    const recetas = await this.fetchRecetasByProductos(supabase, [...variantes], planta);
 
     // Mapeo "código DB → código Excel" (solo si el normalizado coincide con alguno del Excel)
     const dbToExcel: Record<string, string> = {};
@@ -216,27 +220,29 @@ export class ImplosionService {
       };
     }
 
-    // 5. Fetch product info (nombre, sector) — consultamos por los códigos DB (canónicos)
+    // 5. Fetch product info (nombre, sector, lleva_flete) — solo productos de la planta seleccionada
     // Chunked para evitar IN clauses demasiado grandes (Postgres soporta ~30k, Supabase URL-len menos)
     const IN_CHUNK = 200;
     const codigosDbCargados = [...new Set(recetasFiltradas.map((r: any) => r.codigo_producto))];
-    const prodMap: Record<string, { nombre: string; sector: string }> = {};
+    const prodMap: Record<string, { nombre: string; sector: string; lleva_flete: boolean }> = {};
     for (let i = 0; i < codigosDbCargados.length; i += IN_CHUNK) {
       const slice = codigosDbCargados.slice(i, i + IN_CHUNK);
       const { data: prodData } = await supabase
         .from('productos')
-        .select('codigo_producto, descripcion_producto, sector_productivo')
-        .in('codigo_producto', slice);
+        .select('codigo_producto, descripcion_producto, sector_productivo, lleva_flete')
+        .in('codigo_producto', slice)
+        .eq('planta', planta);
       (prodData ?? []).forEach((p: any) => {
         prodMap[p.codigo_producto] = {
           nombre: p.descripcion_producto ?? '',
           sector: p.sector_productivo ?? '',
+          lleva_flete: p.lleva_flete ?? false,
         };
       });
     }
 
     // 5b. Fetch porcentaje_mantencion por sector — para aplicar mantención al cdr_volumen
-    // del producto producido (NO del ingrediente). Sin sector mapeado o pct null → 0%.
+    // del producto producido. Sin sector mapeado o pct null → 0%.
     const sectorPctMap: Record<string, number> = {};
     {
       const { data: sectoresData } = await supabase
@@ -247,6 +253,15 @@ export class ImplosionService {
         sectorPctMap[s.nombre] = Number.isFinite(pct) ? pct : 0;
       });
     }
+
+    // 5c. Obtener % flete actual de la planta (para cdr_volumen_final cuando lleva_flete=true)
+    const { data: plantaRow } = await supabase
+      .from('plantas')
+      .select('porcentaje_flete')
+      .eq('nombre', planta)
+      .single();
+    const porcentaje_flete = Number((plantaRow as any)?.porcentaje_flete ?? 0);
+    const factor_flete = porcentaje_flete / 100;
 
     // 6. Fetch ingredient names from the 4 possible source tables (chunked + parallel)
     const codIngredientes = [...new Set(recetasFiltradas.map((r: any) => r.codigo_ingrediente))];
@@ -285,20 +300,23 @@ export class ImplosionService {
     };
 
     // 7. Build detail rows — volumen viene del Excel, mapeado via dbToExcel
-    // CDR volumen usa valor_cdr (CDR unitario del ingrediente, resuelto recursivamente
-    // para sub-productos por el trigger de la DB) × volumen, MULTIPLICADO por
-    // (1 + % mantención / 100) del sector del producto producido. Así queda alineado
-    // con base_cdr_final del producto. valor_cdr del ingrediente queda intacto.
+    // cdr_volumen = valor_cdr × volumen × (1 + % mantención / 100) del sector del producto.
+    // flete_aporte = cdr_volumen × factor_flete (solo si el producto tiene lleva_flete=true).
+    // cdr_volumen_final = cdr_volumen + flete_aporte.
     const detalles = recetasFiltradas.map((r: any) => {
       const excelCod = dbToExcel[r.codigo_producto];
       const volumen = safeNum(volumenMap[excelCod]);
       const cantIng = safeNum(r.cantidad_ingrediente);
       const costoIng = safeNum(r.costo_ingrediente);
       const valorCdr = safeNum(r.valor_cdr);
-      const cantidad_producida = cantIng * volumen; // cantidad consumida del ingrediente
-      const prod = prodMap[r.codigo_producto] ?? { nombre: '', sector: '' };
-      const pct = sectorPctMap[prod.sector] ?? 0;
-      const cdr_volumen = valorCdr * volumen * (1 + pct / 100);
+      const cantidad_producida = cantIng * volumen;
+      const prod = prodMap[r.codigo_producto] ?? { nombre: '', sector: '', lleva_flete: false };
+      const pctMant = sectorPctMap[prod.sector] ?? 0;
+      const cdr_volumen = valorCdr * volumen * (1 + pctMant / 100);
+
+      const flete_aporte = prod.lleva_flete ? cdr_volumen * factor_flete : 0;
+      const cdr_volumen_final = cdr_volumen + flete_aporte;
+
       const tipo_ingrediente = eneCodigosTmp.has(r.codigo_ingrediente)
         ? 'energia'
         : manoCodigosTmp.has(r.codigo_ingrediente)
@@ -308,7 +326,8 @@ export class ImplosionService {
         : 'insumo';
       return {
         periodo,
-        codigo_producto: r.codigo_producto, // versión canónica de la DB
+        planta,
+        codigo_producto: r.codigo_producto,
         nombre_producto: prod.nombre,
         sector_productivo: prod.sector,
         codigo_ingrediente: r.codigo_ingrediente,
@@ -319,17 +338,23 @@ export class ImplosionService {
         cantidad_producida,
         costo_ingrediente: costoIng,
         cdr_volumen,
+        flete_aporte,
+        cdr_volumen_final,
       };
     });
 
-    // 7. Upsert period catalog entry
+    // 7. Upsert period catalog entry (PK compuesta: periodo + planta)
     const { error: perErr } = await supabase
       .from('implosion_periodos')
-      .upsert({ periodo }, { onConflict: 'periodo' });
+      .upsert({ periodo, planta }, { onConflict: 'periodo,planta' });
     if (perErr) throw new Error(`Error guardando periodo: ${perErr.message}`);
 
-    // 8. Delete existing detail for this period (re-import = full replace)
-    await supabase.from('implosion_detalle').delete().eq('periodo', periodo);
+    // 8. Delete existing detail for this (periodo, planta) — re-import = full replace
+    await supabase
+      .from('implosion_detalle')
+      .delete()
+      .eq('periodo', periodo)
+      .eq('planta', planta);
 
     // 9. Insert in batches of 500
     const BATCH = 500;
@@ -358,22 +383,25 @@ export class ImplosionService {
     };
   }
 
-  private async fetchRecetasByProductos(supabase: any, codigos: string[]): Promise<any[]> {
+  private async fetchRecetasByProductos(supabase: any, codigos: string[], planta?: 'catamarca' | 'varela'): Promise<any[]> {
     if (!codigos.length) return [];
     const PAGE = 1000;
-    const IN_CHUNK = 200; // Chunkeamos la lista de códigos (IN clause) para no saturar
+    const IN_CHUNK = 200;
     const all: any[] = [];
 
     for (let c = 0; c < codigos.length; c += IN_CHUNK) {
       const codSlice = codigos.slice(c, c + IN_CHUNK);
       let from = 0;
       while (true) {
-        const { data, error } = await supabase
+        let query = supabase
           .from('recetas_normalizada')
-          .select('codigo_producto, codigo_ingrediente, cantidad_ingrediente, costo_ingrediente, valor_cdr')
+          .select('codigo_producto, codigo_ingrediente, cantidad_ingrediente, costo_ingrediente, valor_cdr, planta')
           .in('codigo_producto', codSlice)
           .range(from, from + PAGE - 1);
+        // Si nos pasan planta, filtrar: solo recetas cuyo producto padre sea de esa planta
+        if (planta) query = query.eq('planta', planta);
 
+        const { data, error } = await query;
         if (error) throw new Error(`Error paginando recetas_normalizada: ${error.message}`);
         if (!data || data.length === 0) break;
         all.push(...data);
@@ -387,49 +415,53 @@ export class ImplosionService {
 
   // ─── PERIODOS ─────────────────────────────────────────────────────────────
 
-  async getPeriodos() {
+  async getPeriodos(planta?: 'catamarca' | 'varela' | null) {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase
+    let query = supabase
       .from('implosion_periodos')
-      .select('periodo, created_at')
+      .select('periodo, planta, created_at')
       .order('periodo', { ascending: false });
+    if (planta) query = query.eq('planta', planta);
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return data ?? [];
   }
 
-  async deletePeriodo(periodo: string) {
+  async deletePeriodo(periodo: string, planta: 'catamarca' | 'varela') {
     if (!/^\d{4}-\d{2}$/.test(periodo)) {
       throw new BadRequestException('El periodo debe tener formato YYYY-MM');
     }
     const supabase = await this.getSupabase();
 
-    // 1. Borrar detalle primero
+    // 1. Borrar detalle primero (filtrado por periodo + planta)
     const { error: errDetalle, data: borradas } = await supabase
       .from('implosion_detalle')
       .delete()
       .eq('periodo', periodo)
+      .eq('planta', planta)
       .select('id');
     if (errDetalle) {
-      throw new Error(`Error borrando detalle de ${periodo}: ${errDetalle.message}`);
+      throw new Error(`Error borrando detalle de ${periodo}/${planta}: ${errDetalle.message}`);
     }
 
-    // 2. Borrar periodo
+    // 2. Borrar entrada en implosion_periodos
     const { error: errPer } = await supabase
       .from('implosion_periodos')
       .delete()
-      .eq('periodo', periodo);
+      .eq('periodo', periodo)
+      .eq('planta', planta);
     if (errPer) {
       throw new Error(
         `Detalle borrado (${(borradas ?? []).length} filas) pero falló borrar el periodo: ${errPer.message}`,
       );
     }
 
-    return { deleted: periodo, filas_borradas: (borradas ?? []).length };
+    return { deleted: `${periodo} / ${planta}`, filas_borradas: (borradas ?? []).length };
   }
 
   // ─── DETALLE (tabla mensual) ───────────────────────────────────────────────
 
-  async getDetalle(periodo: string): Promise<any[]> {
+  async getDetalle(periodo: string, planta: 'catamarca' | 'varela'): Promise<any[]> {
     const supabase = await this.getSupabase();
     const PAGE = 1000;
     let all: any[] = [];
@@ -440,6 +472,7 @@ export class ImplosionService {
         .from('implosion_detalle')
         .select('*')
         .eq('periodo', periodo)
+        .eq('planta', planta)
         .order('codigo_producto', { ascending: true })
         .range(from, from + PAGE - 1);
 
@@ -455,22 +488,21 @@ export class ImplosionService {
 
   // ─── CORRIDO (gráfico acumulado) ──────────────────────────────────────────
 
-  async getCorrido() {
-    // Returns aggregated cdr_volumen per periodo+sector for the line chart
+  async getCorrido(planta?: 'catamarca' | 'varela' | null) {
     const supabase = await this.getSupabase();
-
-    // Fetch only the columns needed for aggregation
     const PAGE = 1000;
     let all: any[] = [];
     let from = 0;
 
     while (true) {
-      const { data, error } = await supabase
+      let query = supabase
         .from('implosion_detalle')
-        .select('periodo, sector_productivo, cdr_volumen, cantidad_producida')
+        .select('periodo, planta, sector_productivo, cdr_volumen, cdr_volumen_final, cantidad_producida')
         .order('periodo', { ascending: true })
         .range(from, from + PAGE - 1);
+      if (planta) query = query.eq('planta', planta);
 
+      const { data, error } = await query;
       if (error) throw new Error(error.message);
       if (!data || data.length === 0) break;
       all = all.concat(data);
@@ -478,19 +510,22 @@ export class ImplosionService {
       from += PAGE;
     }
 
-    // Aggregate: { periodo+sector -> { total_cdr, total_cantidad } }
-    const agg: Record<string, { periodo: string; sector_productivo: string; total_cdr: number; total_cantidad: number }> = {};
+    // Aggregate: { periodo+planta+sector -> totals }
+    const agg: Record<string, { periodo: string; planta: string; sector_productivo: string; total_cdr: number; total_cdr_final: number; total_cantidad: number }> = {};
     for (const row of all) {
-      const key = `${row.periodo}__${row.sector_productivo ?? 'Sin sector'}`;
+      const key = `${row.periodo}__${row.planta}__${row.sector_productivo ?? 'Sin sector'}`;
       if (!agg[key]) {
         agg[key] = {
           periodo: row.periodo,
+          planta: row.planta,
           sector_productivo: row.sector_productivo ?? 'Sin sector',
           total_cdr: 0,
+          total_cdr_final: 0,
           total_cantidad: 0,
         };
       }
       agg[key].total_cdr += Number(row.cdr_volumen) || 0;
+      agg[key].total_cdr_final += Number(row.cdr_volumen_final ?? row.cdr_volumen) || 0;
       agg[key].total_cantidad += Number(row.cantidad_producida) || 0;
     }
 
@@ -499,40 +534,44 @@ export class ImplosionService {
 
   // ─── EXPORT XLSX ──────────────────────────────────────────────────────────
 
-  async exportPeriodo(periodo: string): Promise<Buffer> {
-    const rows = await this.getDetalle(periodo);
+  async exportPeriodo(periodo: string, planta: 'catamarca' | 'varela'): Promise<Buffer> {
+    const rows = await this.getDetalle(periodo, planta);
 
-    // Map to clean column order for the spreadsheet
     const data = rows.map((r: any) => ({
       periodo: r.periodo,
+      planta: r.planta,
       codigo_producto: r.codigo_producto,
       nombre_producto: r.nombre_producto,
       sector_productivo: r.sector_productivo,
       codigo_ingrediente: r.codigo_ingrediente,
       nombre_ingrediente: r.nombre_ingrediente,
+      tipo_ingrediente: r.tipo_ingrediente,
       volumen: r.volumen,
       cantidad_ingrediente: r.cantidad_ingrediente,
       cantidad_producida: r.cantidad_producida,
       costo_ingrediente: r.costo_ingrediente,
       cdr_volumen: r.cdr_volumen,
+      flete_aporte: r.flete_aporte ?? 0,
+      cdr_volumen_final: r.cdr_volumen_final ?? r.cdr_volumen,
     }));
 
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(data);
-    XLSX.utils.book_append_sheet(workbook, worksheet, `implosion_${periodo}`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, `implosion_${planta}_${periodo}`);
     return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
   }
 
   // ─── POR SECTOR ────────────────────────────────────────────────────────────
 
-  async getPorSector(periodo: string) {
+  async getPorSector(periodo: string, planta: 'catamarca' | 'varela') {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('implosion_detalle')
       .select(
-        'sector_productivo, codigo_producto, nombre_producto, codigo_ingrediente, nombre_ingrediente, volumen, cantidad_producida, cdr_volumen',
+        'sector_productivo, codigo_producto, nombre_producto, codigo_ingrediente, nombre_ingrediente, volumen, cantidad_producida, cdr_volumen, cdr_volumen_final, flete_aporte',
       )
       .eq('periodo', periodo)
+      .eq('planta', planta)
       .order('sector_productivo', { ascending: true })
       .order('codigo_producto', { ascending: true });
 

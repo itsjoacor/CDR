@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Cookies from 'js-cookie';
+import { usePlanta } from '../contexts/PlantaContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface MatrizEnergia {
@@ -52,6 +53,7 @@ const numberOrDash = (n?: number | null) =>
 const MatrizEnergia: React.FC = () => {
   const token = Cookies.get('token') || '';
   const { user } = useAuth();
+  const { plantaParam } = usePlanta();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -78,15 +80,16 @@ const MatrizEnergia: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         const [energiaRes, sectoresRes, manoRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/matriz-energia`, {
+          fetch(`${import.meta.env.VITE_API_URL}/matriz-energia?planta=${plantaParam}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos`, {
+          fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos?planta=${plantaParam}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`${import.meta.env.VITE_API_URL}/matriz-mano`, {
+          fetch(`${import.meta.env.VITE_API_URL}/matriz-mano?planta=${plantaParam}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -115,7 +118,7 @@ const MatrizEnergia: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [plantaParam]);
 
   const calcularPromedio = (campo: keyof MatrizEnergia) => {
     const nums = data.map(d => (typeof d[campo] === 'number' ? Number(d[campo]) : 0));

@@ -1,6 +1,7 @@
 import { Injectable, Inject, Scope } from '@nestjs/common';
 import { Request } from 'express';
 import { getSupabaseClient } from '../config/supabase.client';
+import { aplicarFiltroPlanta } from '../config/planta.helper';
 import { ResultadosCdr } from './resultado-cdr.interface';
 import { ResultadosCdrModel } from './resultado-cdr.model';
 
@@ -14,11 +15,11 @@ export class ResultadosCdrRepository {
     return getSupabaseClient(token);
   }
 
-  async findAll(): Promise<ResultadosCdr[]> {
+  async findAll(planta?: 'catamarca' | 'varela' | null): Promise<ResultadosCdr[]> {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase
-      .from(this.table)
-      .select('*');
+    let query = supabase.from(this.table).select('*');
+    query = aplicarFiltroPlanta(query, planta ?? null);
+    const { data, error } = await query;
 
     if (error) throw new Error(error.message);
     return data.map(ResultadosCdrModel.fromSupabase);

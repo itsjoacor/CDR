@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { RecetaNormalizadaService } from '../recetaNormalizada/receta-normalizada.service';
 import { CreateRecetaNormalizadaDto } from '../recetaNormalizada/receta-nomralizada.dto';
+import { normalizarPlanta } from '../config/planta.helper';
 
 @Controller('recetas-normalizada')
 export class RecetaNormalizadaController {
@@ -40,9 +41,10 @@ export class RecetaNormalizadaController {
     };
   }
 
+  /** GET /recetas-normalizada?planta=catamarca|varela|all */
   @Get()
-  obtenerTodas() {
-    return this.service.obtenerTodas();
+  obtenerTodas(@Query('planta') planta?: string) {
+    return this.service.obtenerTodas(normalizarPlanta(planta));
   }
 
   /** NUEVO: GET por producto */

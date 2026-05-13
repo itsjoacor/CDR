@@ -1,6 +1,7 @@
 import { Injectable, Inject, Scope } from '@nestjs/common';
 import { Request } from 'express';
 import { getSupabaseClient } from '../config/supabase.client';
+import { aplicarFiltroPlanta } from '../config/planta.helper';
 import { Insumo } from './insumo.model';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -16,15 +17,15 @@ export class InsumoRepository {
     codigo?: string;
     grupo?: string;
     detalle?: string;
+    planta?: 'catamarca' | 'varela' | null;
   }): Promise<Insumo[]> {
     const supabase = await this.getSupabase();
-    let query = supabase
-      .from('insumos')
-      .select('*');
+    let query = supabase.from('insumos').select('*');
 
     if (filtros.codigo) query = query.eq('codigo', filtros.codigo);
     if (filtros.grupo) query = query.ilike('grupo', `%${filtros.grupo}%`);
     if (filtros.detalle) query = query.ilike('detalle', `%${filtros.detalle}%`);
+    query = aplicarFiltroPlanta(query, filtros.planta ?? null);
 
     const { data, error } = await query;
 
@@ -44,6 +45,7 @@ export class InsumoRepository {
           codigo: insumo.codigo,
           detalle: insumo.detalle,
           costo: insumo.costo,
+          planta: insumo.planta ?? 'catamarca',
           updated_at: new Date().toISOString(),
         }
       ])
