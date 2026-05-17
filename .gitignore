@@ -81,6 +81,10 @@ lerna-debug.log*
 backend/test_*.js
 *.xlsx
 
+# CSVs de datos (productos, recetas, etc.) — son datos del cliente, no código
+productos-*.csv
+recetas-*.csv
+
 
 # temp directory
 .temp

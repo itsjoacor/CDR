@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, RefreshCw, Database } from 'lucide-react';
 import Cookies from 'js-cookie';
+import { usePlanta } from '../contexts/PlantaContext';
 
 type Sector = {
   nombre: string;
@@ -20,6 +21,7 @@ export default function ActualizacionMantencion() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const token = Cookies.get('token') || '';
+  const { plantaParam, plantaParaEscritura, plantaLabel } = usePlanta();
 
   const [loading, setLoading] = useState(true);
   const [sectores, setSectores] = useState<Sector[]>([]);
@@ -37,13 +39,13 @@ export default function ActualizacionMantencion() {
   useEffect(() => {
     fetchSectores();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [plantaParam]);
 
   async function fetchSectores() {
     try {
       setLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/sectores-productivos/mantencion`,
+        `${import.meta.env.VITE_API_URL}/sectores-productivos/mantencion?planta=${plantaParam}`,
         { headers }
       );
       if (!response.ok) throw await buildError(response, 'No se pudo cargar la lista');
@@ -78,6 +80,14 @@ export default function ActualizacionMantencion() {
   }
 
   async function saveOne(nombre: string) {
+    if (!plantaParaEscritura) {
+      toast({
+        title: 'Elegí una planta',
+        description: 'En modo "Ambas plantas" no se puede actualizar. Cambiá el header a Catamarca o Varela.',
+        variant: 'destructive',
+      });
+      return;
+    }
     const current = sectores.find((s) => s.nombre === nombre);
     const raw = editing[nombre];
     const base = current?.porcentaje_mantencion ?? 1;
@@ -97,7 +107,7 @@ export default function ActualizacionMantencion() {
     try {
       const url = `${import.meta.env.VITE_API_URL}/sectores-productivos/${encodeURIComponent(
         nombre
-      )}/porcentaje-mantencion-v2`;
+      )}/porcentaje-mantencion-v2?planta=${plantaParaEscritura}`;
 
       const response = await fetch(url, {
         method: 'PUT',
@@ -144,7 +154,10 @@ export default function ActualizacionMantencion() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Actualizar Porcentaje de Mantención por Sector</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Actualizar Porcentaje de Mantención por Sector</span>
+              <Badge variant="outline">Planta: {plantaLabel}</Badge>
+            </CardTitle>
           </CardHeader>
 
           <CardContent>

@@ -60,13 +60,14 @@ export class SectorProductivoRepository {
     ));
   }
 
-  async obtenerPorNombre(nombre: string): Promise<SectorProductivo | null> {
+  async obtenerPorNombre(nombre: string, planta?: 'catamarca' | 'varela'): Promise<SectorProductivo | null> {
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase
+    let query = supabase
       .from('sectores_productivos')
       .select('*')
-      .eq('nombre', nombre)
-      .single();
+      .eq('nombre', nombre);
+    if (planta) query = query.eq('planta', planta);
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       if (error.code === 'PGRST116') {
@@ -74,6 +75,7 @@ export class SectorProductivoRepository {
       }
       throw new Error(`Error al obtener sector productivo: ${error.message}`);
     }
+    if (!data) return null;
 
     return new SectorProductivo(
       data.nombre,
@@ -101,8 +103,8 @@ export class SectorProductivoRepository {
     return data as Array<{ nombre: string; porcentaje_mantencion: number | null }>;
   }
 
-  // === V2: obtener porcentaje de mantención de un sector por nombre ===
-  async getPorcentajeMantencionV2(nombre: string): Promise<number> {
+  // === V2: obtener porcentaje de mantención de un sector por (nombre, planta) ===
+  async getPorcentajeMantencionV2(nombre: string, planta: 'catamarca' | 'varela'): Promise<number> {
     if (!nombre?.trim()) {
       throw new (await import('@nestjs/common')).HttpException(
         'El nombre es requerido',
@@ -115,6 +117,7 @@ export class SectorProductivoRepository {
       .from('sectores_productivos')
       .select('porcentaje_mantencion')
       .eq('nombre', nombre)
+      .eq('planta', planta)
       .maybeSingle();
 
     if (error) {
@@ -125,7 +128,7 @@ export class SectorProductivoRepository {
     }
     if (!data) {
       throw new (await import('@nestjs/common')).HttpException(
-        `Sector "${nombre}" no encontrado`,
+        `Sector "${nombre}" no encontrado en planta ${planta}`,
         (await import('@nestjs/common')).HttpStatus.NOT_FOUND,
       );
     }
@@ -133,9 +136,10 @@ export class SectorProductivoRepository {
     return valor === null || valor === undefined ? 1 : Number(valor);
   }
 
-  // === V2: actualizar porcentaje de mantención (0..100, entero) ===
+  // === V2: actualizar porcentaje de mantención (0..100, entero) por (nombre, planta) ===
   async updatePorcentajeMantencionV2(
     nombre: string,
+    planta: 'catamarca' | 'varela',
     porcentaje: number,
   ): Promise<import('./sectores-productivos.model').SectorProductivoMantencionV2> {
     const { HttpException, HttpStatus } = await import('@nestjs/common');
@@ -151,25 +155,27 @@ export class SectorProductivoRepository {
 
     const supabase = await (this as any).getSupabase();
 
-    // verificar existencia
+    // verificar existencia en esa planta
     const { data: exists, error: errFind } = await supabase
       .from('sectores_productivos')
       .select('nombre')
       .eq('nombre', nombre)
+      .eq('planta', planta)
       .maybeSingle();
 
     if (errFind) {
       throw new HttpException('Error verificando sector: ' + errFind.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
     if (!exists) {
-      throw new HttpException(`Sector "${nombre}" no encontrado`, HttpStatus.NOT_FOUND);
+      throw new HttpException(`Sector "${nombre}" no encontrado en planta ${planta}`, HttpStatus.NOT_FOUND);
     }
 
-    // actualizar
+    // actualizar solo la fila de esa planta
     const { data, error } = await supabase
       .from('sectores_productivos')
       .update({ porcentaje_mantencion: valor })
       .eq('nombre', nombre)
+      .eq('planta', planta)
       .select('nombre, porcentaje_mantencion')
       .maybeSingle();
 

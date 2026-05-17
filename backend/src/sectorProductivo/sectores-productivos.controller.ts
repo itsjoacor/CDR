@@ -64,21 +64,31 @@ export class SectorProductivoController {
     return this.sectorProductivoService.listarSectoresMantencionV2(normalizarPlanta(planta));
   }
 
-  // === V2: GET un sector (endpoint nuevo) ===
-  // GET /sectores-productivos/:nombre/porcentaje-mantencion-v2
+  // === V2: GET un sector ===
+  // GET /sectores-productivos/:nombre/porcentaje-mantencion-v2?planta=catamarca|varela
   @Get(':nombre/porcentaje-mantencion-v2')
-  async getPorcentajeMantencionV2(@Param('nombre') nombre: string) {
-    const porcentaje = await this.sectorProductivoService.getPorcentajeMantencionV2(nombre);
-    return { nombre, porcentajeMantencion: porcentaje };
+  async getPorcentajeMantencionV2(
+    @Param('nombre') nombre: string,
+    @Query('planta') planta?: string,
+  ) {
+    if (!planta) {
+      throw new HttpException('Falta query param ?planta=catamarca|varela', HttpStatus.BAD_REQUEST);
+    }
+    const porcentaje = await this.sectorProductivoService.getPorcentajeMantencionV2(nombre, planta);
+    return { nombre, planta, porcentajeMantencion: porcentaje };
   }
 
-  // === V2: PUT un sector (endpoint nuevo) ===
-  // PUT /sectores-productivos/:nombre/porcentaje-mantencion-v2
+  // === V2: PUT un sector ===
+  // PUT /sectores-productivos/:nombre/porcentaje-mantencion-v2?planta=catamarca|varela
   @Put(':nombre/porcentaje-mantencion-v2')
   async updatePorcentajeMantencionV2(
     @Param('nombre') nombre: string,
     @Body() body: UpdatePorcentajeMantencionV2Dto,
+    @Query('planta') planta?: string,
   ) {
-    return this.sectorProductivoService.updatePorcentajeMantencionV2(nombre, body.porcentajeMantencion);
+    if (!planta) {
+      throw new HttpException('Falta query param ?planta=catamarca|varela', HttpStatus.BAD_REQUEST);
+    }
+    return this.sectorProductivoService.updatePorcentajeMantencionV2(nombre, planta, body.porcentajeMantencion);
   }
 }
