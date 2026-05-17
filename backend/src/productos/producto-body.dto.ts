@@ -7,4 +7,5 @@ export class ProductoBody {
   sector_productivo: string;
   planta?: string;
   lleva_flete?: boolean;
+  m3?: number;
 }

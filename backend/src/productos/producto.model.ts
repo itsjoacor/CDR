@@ -6,6 +6,7 @@ export class Producto {
     public sector_productivo: string,
     public planta: string = 'catamarca',
     public lleva_flete: boolean = false,
+    public m3: number = 0,
     public created_at?: Date,
     public updated_at?: Date
   ) { }
@@ -15,4 +16,5 @@ export class Producto {
   getSectorProductivo(): string { return this.sector_productivo; }
   getPlanta(): string { return this.planta; }
   getLlevaFlete(): boolean { return this.lleva_flete; }
+  getM3(): number { return this.m3; }
 }

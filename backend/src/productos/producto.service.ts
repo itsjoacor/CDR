@@ -18,7 +18,7 @@ export class ProductoService {
       throw new Error('Ya existe un producto con este código');
     }
     const creado = await this.productoRepository.crear(producto);
-    // Si nace con flete=true, recalcular su CDR final
+    // Si nace con flete=true (y m3>0 o cualquiera, dejamos al recalc decidir), recalcular su CDR final
     if (creado.lleva_flete) {
       await this.plantasService.recalcularFleteDeProducto(creado.codigo_producto);
     }
@@ -37,9 +37,10 @@ export class ProductoService {
     const antes = await this.productoRepository.obtenerPorCodigo(codigo);
     const actualizado = await this.productoRepository.actualizar(codigo, producto);
 
-    // Si cambió lleva_flete o planta → recalcular flete del producto
+    // Si cambió lleva_flete, m3 o planta → recalcular flete del producto
     const cambioFlete = antes && (
       antes.lleva_flete !== actualizado.lleva_flete ||
+      Number(antes.m3) !== Number(actualizado.m3) ||
       antes.planta !== actualizado.planta
     );
     if (cambioFlete) {

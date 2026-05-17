@@ -14,7 +14,7 @@ import { PlantasService, PlantaNombre } from './plantas.service';
 export class PlantasController {
   constructor(private readonly plantasService: PlantasService) {}
 
-  /** GET /plantas — lista las plantas con sus % flete */
+  /** GET /plantas — lista las plantas con sus valor_flete */
   @Get()
   async listar() {
     try {
@@ -36,21 +36,21 @@ export class PlantasController {
   }
 
   /**
-   * PUT /plantas/:nombre/flete — actualizar % flete + recalcular productos
-   * Body: { porcentaje_flete: number }
+   * PUT /plantas/:nombre/flete — actualizar valor_flete ($ por m³) + recalcular productos
+   * Body: { valor_flete: number }
    */
   @Put(':nombre/flete')
   async actualizarFlete(
     @Param('nombre') nombre: string,
-    @Body() body: { porcentaje_flete: number },
+    @Body() body: { valor_flete: number },
   ) {
-    if (body?.porcentaje_flete === undefined || body?.porcentaje_flete === null) {
-      throw new BadRequestException('Falta porcentaje_flete en el body');
+    if (body?.valor_flete === undefined || body?.valor_flete === null) {
+      throw new BadRequestException('Falta valor_flete en el body');
     }
     try {
       return await this.plantasService.actualizarFlete(
         nombre as PlantaNombre,
-        Number(body.porcentaje_flete),
+        Number(body.valor_flete),
       );
     } catch (err: any) {
       if (err instanceof HttpException) throw err;

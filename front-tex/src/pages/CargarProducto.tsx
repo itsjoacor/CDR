@@ -32,6 +32,7 @@ const CargarProducto: React.FC = () => {
   const [validatingCodigo, setValidatingCodigo] = useState(false);
   const [planta, setPlanta] = useState<'catamarca' | 'varela'>(plantaParaEscritura ?? 'catamarca');
   const [llevaFlete, setLlevaFlete] = useState(false);
+  const [m3, setM3] = useState<string>('0');
 
   useEffect(() => {
     if (plantaParaEscritura) setPlanta(plantaParaEscritura);
@@ -145,6 +146,7 @@ const CargarProducto: React.FC = () => {
       sector_productivo: sectorSeleccionado,
       planta,
       lleva_flete: llevaFlete,
+      m3: Number(m3) || 0,
     };
 
     try {
@@ -264,21 +266,41 @@ const CargarProducto: React.FC = () => {
                 </p>
               </div>
 
-              {/* Lleva flete */}
-              <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-md max-w-md">
-                <input
-                  type="checkbox"
-                  id="lleva_flete"
-                  checked={llevaFlete}
-                  onChange={(e) => setLlevaFlete(e.target.checked)}
-                  className="mt-1 h-4 w-4 cursor-pointer"
-                />
-                <label htmlFor="lleva_flete" className="cursor-pointer flex-1">
-                  <div className="font-semibold text-amber-900">🚚 Aplica flete</div>
-                  <div className="text-xs text-amber-800/70 mt-0.5">
-                    Si está activado, al CDR final se le suma el % de flete configurado para la planta {planta === 'catamarca' ? 'Catamarca' : 'Varela'}.
-                  </div>
-                </label>
+              {/* Lleva flete + m3 */}
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-md max-w-md space-y-3">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="lleva_flete"
+                    checked={llevaFlete}
+                    onChange={(e) => setLlevaFlete(e.target.checked)}
+                    className="mt-1 h-4 w-4 cursor-pointer"
+                  />
+                  <label htmlFor="lleva_flete" className="cursor-pointer flex-1">
+                    <div className="font-semibold text-amber-900">🚚 Aplica flete</div>
+                    <div className="text-xs text-amber-800/70 mt-0.5">
+                      Si está activado, al CDR final se le suma <code>valor_flete (planta {planta === 'catamarca' ? 'Catamarca' : 'Varela'}) × m³</code>.
+                    </div>
+                  </label>
+                </div>
+                <div className="flex items-center gap-2 pl-7">
+                  <Label htmlFor="m3" className="text-sm text-amber-900 font-medium">
+                    m³ por unidad:
+                  </Label>
+                  <Input
+                    id="m3"
+                    type="number"
+                    step="0.0001"
+                    min={0}
+                    value={m3}
+                    onChange={(e) => setM3(e.target.value)}
+                    disabled={!llevaFlete}
+                    className="w-32 h-8 text-sm"
+                  />
+                  <span className="text-xs text-amber-800/70">
+                    {llevaFlete ? 'espacio en el camión' : '(activá "Aplica flete")'}
+                  </span>
+                </div>
               </div>
 
               {/* Código Producto */}

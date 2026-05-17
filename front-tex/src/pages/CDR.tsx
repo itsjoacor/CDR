@@ -271,7 +271,7 @@ const ResultadosCDR: React.FC = () => {
                   <TableHead>Código Producto</TableHead>
                   <TableHead>Sector Productivo</TableHead>
                   <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right" title="CDR + mantención + flete (si aplica)">CDR Total</TableHead>
+                  <TableHead className="text-right" title="CDR + mantención + (valor_flete × m³ si aplica)">CDR Total</TableHead>
                   <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>

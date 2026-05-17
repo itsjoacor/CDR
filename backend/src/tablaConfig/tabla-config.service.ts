@@ -2,48 +2,50 @@ import { Injectable, Inject, Scope } from '@nestjs/common';
 import { Request } from 'express';
 import { TablaConfigRepository } from './tabla-config.repository';
 import { TablaConfigBodyDto } from './tabla-config.dto';
+import { PlantaConfig } from './tabla-config.model';
+import { validarPlantaEscritura, normalizarPlanta } from '../config/planta.helper';
 
 @Injectable({ scope: Scope.REQUEST })
 export class TablaConfigService {
   constructor(
     private readonly repo: TablaConfigRepository,
-    @Inject('REQUEST') private readonly request: Request
-  ) { }
+    @Inject('REQUEST') private readonly request: Request,
+  ) {}
 
-  listarTodos() {
-    return this.repo.listarTodos();
+  listarTodos(planta?: string | null) {
+    return this.repo.listarTodos(normalizarPlanta(planta));
   }
 
-  obtenerUno(nombre: string) {
-    return this.repo.obtenerPorNombre(nombre);
+  obtenerUno(nombre: string, planta: string) {
+    return this.repo.obtenerPorNombre(nombre, validarPlantaEscritura(planta));
   }
 
   crear(dto: TablaConfigBodyDto) {
     return this.repo.crear(dto);
   }
 
-  actualizar(nombre: string, valor: number) {
-    return this.repo.actualizar(nombre, valor);
+  actualizar(nombre: string, planta: string, valor: number) {
+    return this.repo.actualizar(nombre, validarPlantaEscritura(planta), valor);
   }
 
-  eliminar(nombre: string) {
-    return this.repo.eliminar(nombre);
+  eliminar(nombre: string, planta: string) {
+    return this.repo.eliminar(nombre, validarPlantaEscritura(planta));
   }
 
-  // Add specific methods
-  actualizarMatrizEnergia(valor: number) {
-    return this.repo.actualizar('matriz_energia', valor);
+  // Helpers específicos por concepto
+  obtenerMatrizMano(planta: string) {
+    return this.repo.obtenerPorNombre('matriz_mano', validarPlantaEscritura(planta));
   }
 
-  actualizarMatrizMano(valor: number) {
-    return this.repo.actualizar('matriz_mano', valor);
+  obtenerMatrizEnergia(planta: string) {
+    return this.repo.obtenerPorNombre('matriz_energia', validarPlantaEscritura(planta));
   }
 
-  obtenerMatrizEnergia() {
-    return this.repo.obtenerPorNombre('matriz_energia');
+  actualizarMatrizMano(planta: string, valor: number) {
+    return this.repo.actualizar('matriz_mano', validarPlantaEscritura(planta), valor);
   }
 
-  obtenerMatrizMano() {
-    return this.repo.obtenerPorNombre('matriz_mano');
+  actualizarMatrizEnergia(planta: string, valor: number) {
+    return this.repo.actualizar('matriz_energia', validarPlantaEscritura(planta), valor);
   }
 }

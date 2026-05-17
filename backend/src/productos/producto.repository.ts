@@ -20,6 +20,7 @@ export class ProductoRepository {
       row.sector_productivo,
       row.planta ?? 'catamarca',
       row.lleva_flete ?? false,
+      Number(row.m3 ?? 0),
       row.created_at ? new Date(row.created_at) : undefined,
       row.updated_at ? new Date(row.updated_at) : undefined,
     );
@@ -35,6 +36,7 @@ export class ProductoRepository {
         sector_productivo: producto.sector_productivo,
         planta: producto.planta ?? 'catamarca',
         lleva_flete: producto.lleva_flete ?? false,
+        m3: Number(producto.m3 ?? 0),
       }])
       .select()
       .single();
@@ -87,6 +89,7 @@ export class ProductoRepository {
     if (producto.sector_productivo !== undefined) update.sector_productivo = producto.sector_productivo;
     if (producto.planta !== undefined) update.planta = producto.planta;
     if (producto.lleva_flete !== undefined) update.lleva_flete = producto.lleva_flete;
+    if (producto.m3 !== undefined) update.m3 = Number(producto.m3);
 
     const { data, error } = await supabase
       .from('productos')
@@ -135,6 +138,7 @@ export class ProductoRepository {
       sector_productivo:    item.sector_productivo,
       planta:               item.planta ?? 'catamarca',
       lleva_flete:          item.lleva_flete ?? false,
+      m3:                   Number(item.m3 ?? 0),
       updated_at:           item.updated_at ?? null,
       tiene_costo_cero:     zeroCostSet.has(item.codigo_producto),
       tiene_cdr_cero:       cdrMap[item.codigo_producto] ?? false,

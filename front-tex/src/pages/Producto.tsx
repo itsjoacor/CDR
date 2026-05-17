@@ -53,6 +53,7 @@ interface ProductoItem {
   estado: "activo" | "inactivo";
   planta?: string;
   lleva_flete?: boolean;
+  m3?: number;
 }
 
 const Producto: React.FC = () => {
@@ -99,6 +100,7 @@ const Producto: React.FC = () => {
           sector_productivo: item.sector_productivo,
           planta: item.planta ?? 'catamarca',
           lleva_flete: item.lleva_flete ?? false,
+          m3: Number(item.m3 ?? 0),
           updated_at: new Date(item.updated_at).toLocaleDateString("es-CO"),
           estado: "activo",
         }));
@@ -180,6 +182,7 @@ const Producto: React.FC = () => {
             descripcion_producto: editForm.descripcion_producto,
             sector_productivo: editForm.sector_productivo,
             lleva_flete: editForm.lleva_flete ?? false,
+            m3: Number(editForm.m3 ?? 0),
           }),
         }
       );
@@ -559,21 +562,41 @@ const Producto: React.FC = () => {
                                   </div>
                                 </div>
 
-                                {/* Checkbox lleva_flete */}
-                                <div className="mt-4 flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                                  <input
-                                    type="checkbox"
-                                    id={`flete-${producto.codigo_producto}`}
-                                    checked={editForm.lleva_flete === true}
-                                    onChange={(e) => setEditForm(prev => ({ ...prev, lleva_flete: e.target.checked }))}
-                                    className="mt-1 h-4 w-4 cursor-pointer"
-                                  />
-                                  <label htmlFor={`flete-${producto.codigo_producto}`} className="cursor-pointer flex-1">
-                                    <div className="font-semibold text-amber-900">🚚 Aplica flete</div>
-                                    <div className="text-xs text-amber-800/70 mt-0.5">
-                                      Si está activo, al CDR final del producto se le suma el % de flete configurado para su planta ({producto.planta ?? 'catamarca'}).
-                                    </div>
-                                  </label>
+                                {/* Flete: checkbox + input m3 */}
+                                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md space-y-3">
+                                  <div className="flex items-start gap-3">
+                                    <input
+                                      type="checkbox"
+                                      id={`flete-${producto.codigo_producto}`}
+                                      checked={editForm.lleva_flete === true}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, lleva_flete: e.target.checked }))}
+                                      className="mt-1 h-4 w-4 cursor-pointer"
+                                    />
+                                    <label htmlFor={`flete-${producto.codigo_producto}`} className="cursor-pointer flex-1">
+                                      <div className="font-semibold text-amber-900">🚚 Aplica flete</div>
+                                      <div className="text-xs text-amber-800/70 mt-0.5">
+                                        Si está activo, al CDR final se le suma <code>valor_flete (planta {producto.planta ?? 'catamarca'}) × m³</code>.
+                                      </div>
+                                    </label>
+                                  </div>
+                                  <div className="flex items-center gap-2 pl-7">
+                                    <label htmlFor={`m3-${producto.codigo_producto}`} className="text-sm text-amber-900 font-medium">
+                                      m³ por unidad:
+                                    </label>
+                                    <Input
+                                      id={`m3-${producto.codigo_producto}`}
+                                      type="number"
+                                      step="0.0001"
+                                      min={0}
+                                      value={editForm.m3 ?? 0}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, m3: Number(e.target.value) }))}
+                                      disabled={editForm.lleva_flete !== true}
+                                      className="w-32 h-8 text-sm"
+                                    />
+                                    <span className="text-xs text-amber-800/70">
+                                      {editForm.lleva_flete ? 'espacio que ocupa el producto en el camión' : '(activá "Aplica flete" para editar)'}
+                                    </span>
+                                  </div>
                                 </div>
                                 <div className="flex justify-end mt-4 space-x-2">
                                   <Button variant="outline" size="sm" onClick={handleSave}>

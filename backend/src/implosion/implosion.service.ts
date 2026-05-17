@@ -220,16 +220,16 @@ export class ImplosionService {
       };
     }
 
-    // 5. Fetch product info (nombre, sector, lleva_flete) — solo productos de la planta seleccionada
+    // 5. Fetch product info (nombre, sector, lleva_flete, m3) — solo productos de la planta seleccionada
     // Chunked para evitar IN clauses demasiado grandes (Postgres soporta ~30k, Supabase URL-len menos)
     const IN_CHUNK = 200;
     const codigosDbCargados = [...new Set(recetasFiltradas.map((r: any) => r.codigo_producto))];
-    const prodMap: Record<string, { nombre: string; sector: string; lleva_flete: boolean }> = {};
+    const prodMap: Record<string, { nombre: string; sector: string; lleva_flete: boolean; m3: number }> = {};
     for (let i = 0; i < codigosDbCargados.length; i += IN_CHUNK) {
       const slice = codigosDbCargados.slice(i, i + IN_CHUNK);
       const { data: prodData } = await supabase
         .from('productos')
-        .select('codigo_producto, descripcion_producto, sector_productivo, lleva_flete')
+        .select('codigo_producto, descripcion_producto, sector_productivo, lleva_flete, m3')
         .in('codigo_producto', slice)
         .eq('planta', planta);
       (prodData ?? []).forEach((p: any) => {
@@ -237,6 +237,7 @@ export class ImplosionService {
           nombre: p.descripcion_producto ?? '',
           sector: p.sector_productivo ?? '',
           lleva_flete: p.lleva_flete ?? false,
+          m3: Number(p.m3 ?? 0),
         };
       });
     }
@@ -254,14 +255,15 @@ export class ImplosionService {
       });
     }
 
-    // 5c. Obtener % flete actual de la planta (para cdr_volumen_final cuando lleva_flete=true)
+    // 5c. Obtener valor_flete actual de la planta ($ por m³)
+    // Costo de flete total por producto = valor_flete × m3 × volumen producido.
+    // Se distribuye proporcionalmente al cdr_volumen de cada ingrediente del producto.
     const { data: plantaRow } = await supabase
       .from('plantas')
-      .select('porcentaje_flete')
+      .select('valor_flete')
       .eq('nombre', planta)
       .single();
-    const porcentaje_flete = Number((plantaRow as any)?.porcentaje_flete ?? 0);
-    const factor_flete = porcentaje_flete / 100;
+    const valor_flete = Number((plantaRow as any)?.valor_flete ?? 0);
 
     // 6. Fetch ingredient names from the 4 possible source tables (chunked + parallel)
     const codIngredientes = [...new Set(recetasFiltradas.map((r: any) => r.codigo_ingrediente))];
@@ -301,8 +303,25 @@ export class ImplosionService {
 
     // 7. Build detail rows — volumen viene del Excel, mapeado via dbToExcel
     // cdr_volumen = valor_cdr × volumen × (1 + % mantención / 100) del sector del producto.
-    // flete_aporte = cdr_volumen × factor_flete (solo si el producto tiene lleva_flete=true).
+    // flete total del producto = valor_flete × m3 × volumen (solo si lleva_flete=true).
+    // Ese total se distribuye proporcionalmente al cdr_volumen de cada ingrediente.
     // cdr_volumen_final = cdr_volumen + flete_aporte.
+
+    // 7a. Primera pasada — acumular cdr_volumen total y volumen por producto
+    const cdrVolumenPorProducto: Record<string, number> = {};
+    const volumenPorProducto: Record<string, number> = {};
+    for (const r of recetasFiltradas as any[]) {
+      const excelCod = dbToExcel[r.codigo_producto];
+      const volumen = safeNum(volumenMap[excelCod]);
+      const valorCdr = safeNum(r.valor_cdr);
+      const prod = prodMap[r.codigo_producto];
+      const pctMant = prod ? (sectorPctMap[prod.sector] ?? 0) : 0;
+      const cdr_volumen = valorCdr * volumen * (1 + pctMant / 100);
+      cdrVolumenPorProducto[r.codigo_producto] = (cdrVolumenPorProducto[r.codigo_producto] ?? 0) + cdr_volumen;
+      volumenPorProducto[r.codigo_producto] = volumen;
+    }
+
+    // 7b. Segunda pasada — calcular flete_aporte por fila distribuyendo el total
     const detalles = recetasFiltradas.map((r: any) => {
       const excelCod = dbToExcel[r.codigo_producto];
       const volumen = safeNum(volumenMap[excelCod]);
@@ -310,11 +329,19 @@ export class ImplosionService {
       const costoIng = safeNum(r.costo_ingrediente);
       const valorCdr = safeNum(r.valor_cdr);
       const cantidad_producida = cantIng * volumen;
-      const prod = prodMap[r.codigo_producto] ?? { nombre: '', sector: '', lleva_flete: false };
+      const prod = prodMap[r.codigo_producto] ?? { nombre: '', sector: '', lleva_flete: false, m3: 0 };
       const pctMant = sectorPctMap[prod.sector] ?? 0;
       const cdr_volumen = valorCdr * volumen * (1 + pctMant / 100);
 
-      const flete_aporte = prod.lleva_flete ? cdr_volumen * factor_flete : 0;
+      // Flete total del producto = valor_flete × m3 × volumen, distribuido pro-rata por cdr_volumen
+      let flete_aporte = 0;
+      if (prod.lleva_flete && prod.m3 > 0 && valor_flete > 0) {
+        const fleteTotalProducto = valor_flete * prod.m3 * volumen;
+        const totalCdrProd = cdrVolumenPorProducto[r.codigo_producto] ?? 0;
+        if (totalCdrProd > 0) {
+          flete_aporte = fleteTotalProducto * (cdr_volumen / totalCdrProd);
+        }
+      }
       const cdr_volumen_final = cdr_volumen + flete_aporte;
 
       const tipo_ingrediente = eneCodigosTmp.has(r.codigo_ingrediente)

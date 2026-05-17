@@ -65,9 +65,9 @@ const Actualizacion: React.FC = () => {
           {/* Mano de Obra Card */}
           <Card className={`${currentUpdate.color} h-full`}>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex items-center space-x-2 text-lg">
                 {currentUpdate.icon}
-                <h2 className="text-lg">Mano de Obra</h2>
+                <span>Mano de Obra</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
@@ -116,9 +116,9 @@ const Actualizacion: React.FC = () => {
           {/* Matriz Energética Card */}
           <Card className={`${currentUpdate.color} h-full`}>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex items-center space-x-2 text-lg">
                 {currentUpdate.icon}
-                <h2 className="text-lg">Matriz Energética</h2>
+                <span>Matriz Energética</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
