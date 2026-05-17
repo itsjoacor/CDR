@@ -36,8 +36,12 @@ export class MatrizEnergiaRepository {
   async crear(data: MatrizEnergia): Promise<MatrizEnergia> {
     try {
       const supabase = await this.getSupabase();
-      // Eliminar std_produccion para que lo maneje el trigger
-      const { std_produccion, ...insertData } = data;
+      // Si el usuario no provee std_produccion (null/undefined), el trigger
+      // BEFORE INSERT lo autocompleta desde matriz_mano. Si lo provee, se respeta.
+      const insertData: any = { ...data };
+      if (insertData.std_produccion === undefined || insertData.std_produccion === null) {
+        delete insertData.std_produccion;
+      }
 
       const { data: insertedData, error } = await supabase
         .from('matriz_energia')
@@ -64,9 +68,14 @@ export class MatrizEnergiaRepository {
 
   async actualizar(codigo: string, data: Partial<MatrizEnergia>): Promise<void> {
     const supabase = await this.getSupabase();
+    // std_produccion en matriz_energia es read-only desde la UI:
+    // se sincroniza automáticamente desde matriz_mano via trigger sync_std_mano_a_energia.
+    // Filtramos por si llegara desde el body para evitar pisar el valor sincronizado.
+    const { std_produccion, ...updateData } = data as any;
+
     const { error } = await supabase
       .from('matriz_energia')
-      .update(data)
+      .update(updateData)
       .eq('codigo_energia', codigo);
     if (error) throw new Error(error.message);
   }

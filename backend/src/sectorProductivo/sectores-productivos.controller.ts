@@ -28,7 +28,11 @@ export class SectorProductivoController {
   @Post()
   async crear(@Body() body: SectorProductivoBody): Promise<SectorProductivo> {
     try {
-      const sector = body.aModelo();
+      // Build sector con todos los campos opcionales
+      const sector = Object.assign(new SectorProductivo(body.nombre), {
+        planta: body.planta,
+        porcentaje_mantencion: body.porcentaje_mantencion,
+      }) as any;
       return await this.sectorProductivoService.crear(sector);
     } catch (error) {
       this.logger.error('Error al crear sector productivo', error.stack);

@@ -166,7 +166,7 @@ const MatrizEnergia: React.FC = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            // Solo enviamos editables
+            // Editables. std_produccion NO se envía: se sincroniza automáticamente desde matriz_mano.
             codigo_energia: editForm.codigo_energia,
             descripcion: editForm.descripcion,
             codigo_mano_obra: editForm.codigo_mano_obra,
@@ -530,13 +530,16 @@ const MatrizEnergia: React.FC = () => {
                                       />
                                     </div>
 
-                                    {/* Solo lectura (muestran lo actual) */}
                                     <div className="space-y-2">
-                                      <Label>Producción Estándar (solo lectura)</Label>
+                                      <Label>Producción Estándar (se sincroniza desde Mano de Obra)</Label>
                                       <Input
                                         value={numberOrDash(editForm.std_produccion as number)}
                                         disabled
                                       />
+                                      <p className="text-xs text-muted-foreground">
+                                        Para modificar el std, editalo en la fila correspondiente de Mano de Obra.
+                                        Al cambiarlo allí se actualiza automáticamente acá.
+                                      </p>
                                     </div>
 
                                     <div className="space-y-2">

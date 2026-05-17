@@ -13,11 +13,19 @@ export class SectorProductivoRepository {
     return getSupabaseClient(token);
   }
 
-  async crear(sector: SectorProductivo & { planta?: string }): Promise<SectorProductivo> {
+  async crear(sector: SectorProductivo & { planta?: string; porcentaje_mantencion?: number }): Promise<SectorProductivo> {
     const supabase = await this.getSupabase();
+    const insertRow: any = {
+      nombre: sector.nombre,
+      planta: sector.planta ?? 'catamarca',
+    };
+    if (sector.porcentaje_mantencion !== undefined && sector.porcentaje_mantencion !== null) {
+      insertRow.porcentaje_mantencion = Number(sector.porcentaje_mantencion);
+    }
+
     const { data, error } = await supabase
       .from('sectores_productivos')
-      .insert([{ nombre: sector.nombre, planta: sector.planta ?? 'catamarca' }])
+      .insert([insertRow])
       .select()
       .single();
 

@@ -31,6 +31,7 @@ import Actualizacion from "./pages/Actualizacion";
 import ActualizacionME from "./pages/ActualizacionME";
 import ActualizacionMO from "./pages/ActualizacionMO";
 import ActualizarMantencion from "./pages/ActualizarMantencion";
+import SectoresProductivos from "./pages/SectoresProductivos";
 import CDRPorSector from "./pages/CDRPorSector";
 import Importacion from "./pages/Importacion";
 import ImplosionVolumen from "./pages/ImplosionVolumen";
@@ -83,6 +84,7 @@ const App = () => (
                 <Route path="/actualizarME" element={<ActualizacionME />} />
                 <Route path="/actualizarMO" element={<ActualizacionMO />} />
                 <Route path="/actualizarMantencion" element={<ActualizarMantencion />} />
+                <Route path="/sectores-productivos" element={<SectoresProductivos />} />
                 <Route path="/actualizarFleteCatamarca" element={<ActualizarFleteCatamarca />} />
                 <Route path="/actualizarFleteVarela" element={<ActualizarFleteVarela />} />
                 <Route path="/importacion" element={<Importacion />} />

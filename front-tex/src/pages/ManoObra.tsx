@@ -190,6 +190,7 @@ const ManoObra: React.FC = () => {
         valor_hora_hombre: editForm.valor_hora_hombre,
         horas_hombre_std: editForm.horas_hombre_std,
         sector_productivo: editForm.sector_productivo,
+        std_produccion: editForm.std_produccion,
       };
 
       const response = await fetch(
@@ -529,8 +530,8 @@ const ManoObra: React.FC = () => {
                         </TableRow>
 
                         {/* Panel de edición inline:
-                            - Editables: descripcion, valor_hora_hombre, horas_hombre_std, sector_productivo
-                            - Solo lectura: consumo_kw_std, std_produccion, horas_por_turno, producto_calculado_std,
+                            - Editables: descripcion, valor_hora_hombre, horas_hombre_std, sector_productivo, std_produccion
+                            - Solo lectura: consumo_kw_std, horas_por_turno, producto_calculado_std,
                                            costo_mano_obra, cantidad_personal_estimado */}
                         {editingId === mo.codigo_mano_obra && (
                           <TableRow className="bg-muted/30">
@@ -665,12 +666,18 @@ const ManoObra: React.FC = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                      <Label>Std Producción (solo lectura)</Label>
+                                      <Label>Std Producción</Label>
                                       <Input
-                                        value={numberOrDash(
-                                          editForm.std_produccion as number
-                                        )}
-                                        disabled
+                                        type="number"
+                                        step="0.01"
+                                        min={0}
+                                        value={editForm.std_produccion ?? ''}
+                                        onChange={(e) =>
+                                          setEditForm((prev) => ({
+                                            ...prev,
+                                            std_produccion: e.target.value === '' ? undefined : Number(e.target.value),
+                                          }))
+                                        }
                                       />
                                     </div>
 

@@ -1,13 +1,21 @@
 // sectores-productivos-body.dto.ts
-import { IsInt, Min, Max, IsNotEmpty } from 'class-validator';
-import { SectorProductivo } from '../sectorProductivo/sectores-productivos.model';
+import { IsInt, Min, Max, IsNotEmpty, IsOptional, IsString, IsIn } from 'class-validator';
 
 export class SectorProductivoBody {
+  @IsString()
+  @IsNotEmpty()
   nombre: string;
 
-  public aModelo(): SectorProductivo {
-    return new SectorProductivo(this.nombre);
-  }
+  @IsOptional()
+  @IsString()
+  @IsIn(['catamarca', 'varela'])
+  planta?: 'catamarca' | 'varela';
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  porcentaje_mantencion?: number;
 }
 
 export class UpdatePorcentajeMantencionV2Dto {

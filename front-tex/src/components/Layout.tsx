@@ -29,11 +29,14 @@ import {
   RefreshCcw,
   DollarSign,
   UploadCloud,
+  DownloadCloud,
   Menu,
   ChevronRight,
   BarChart2,
   Truck,
   Building2,
+  Settings,
+  Database,
 } from 'lucide-react';
 
 import Whool from '../TexCDR.png';
@@ -55,25 +58,39 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     navigate('/login');
   };
 
-  // Mantengo tus rutas e íconos
-  const navigationItems = [
+  // Rutas organizadas por sección. Items con `sectionHeader` se renderean como cabecera.
+  type NavLink = { path: string; label: string; icon: any; color?: string; indent?: boolean };
+  type NavHeader = { sectionHeader: string; sectionIcon: any };
+  type NavItem = NavLink | NavHeader;
+
+  const navigationItems: NavItem[] = [
+    // Operación principal
     { path: '/', label: 'Dashboard', icon: Home },
     { path: '/receta', label: 'Receta', icon: ClipboardList, color: 'text-sky-400' },
     { path: '/producto', label: 'Productos', icon: ShoppingCart, color: 'text-orange-300' },
     { path: '/insumos', label: 'Insumos', icon: Package, color: 'text-purple-300' },
     { path: '/mano-obra', label: 'Mano de Obra', icon: HardHat, color: 'text-orange-400' },
     { path: '/matriz-energetica', label: 'Matriz Energética', icon: Zap, color: 'text-yellow-300' },
-    { path: '/actualizar', label: 'Actualizar costos', icon: RefreshCcw },
-    { path: '/actualizarMantencion', label: 'Actualizar Mantención', icon: RefreshCcw },
-    // Submenu de fletes
-    { path: '/actualizarFleteCatamarca', label: 'Flete Catamarca', icon: Truck, color: 'text-amber-400', section: 'fletes' },
-    { path: '/actualizarFleteVarela', label: 'Flete Varela', icon: Truck, color: 'text-sky-400', section: 'fletes' },
     { path: '/resultados-cdr', label: 'CDR', icon: DollarSign, color: 'text-green-400' },
     { path: '/resultados-cdr-mantencion', label: 'CDR Sectorizado', icon: DollarSign },
     { path: '/implosion-volumen', label: 'Implosión Volumen', icon: UploadCloud, color: 'text-teal-400' },
     { path: '/resultados-volumen', label: 'Resultados Volumen', icon: BarChart2, color: 'text-teal-400' },
-    { path: '/importacion', label: 'Importación', icon: UploadCloud },
-    { path: '/exportacion', label: 'Exportación', icon: UploadCloud },
+
+    // Fletes
+    { sectionHeader: 'Actualizar Fletes', sectionIcon: Truck },
+    { path: '/actualizarFleteCatamarca', label: 'Flete Catamarca', icon: Truck, color: 'text-amber-400', indent: true },
+    { path: '/actualizarFleteVarela', label: 'Flete Varela', icon: Truck, color: 'text-sky-400', indent: true },
+
+    // Variables globales
+    { sectionHeader: 'Variables Globales', sectionIcon: Settings },
+    { path: '/actualizar', label: 'Actualizar costos', icon: RefreshCcw, indent: true },
+    { path: '/actualizarMantencion', label: 'Actualizar Mantención', icon: RefreshCcw, indent: true },
+    { path: '/sectores-productivos', label: 'Sectores Productivos', icon: Building2, indent: true, color: 'text-blue-400' },
+
+    // Datos
+    { sectionHeader: 'Datos', sectionIcon: Database },
+    { path: '/importacion', label: 'Importación', icon: UploadCloud, indent: true },
+    { path: '/exportacion', label: 'Exportación', icon: DownloadCloud, indent: true },
   ];
 
   return (
@@ -105,47 +122,51 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                   {/* Menú de navegación */}
                   <nav className="p-2 overflow-y-auto flex-1">
                     {navigationItems.map((item, idx) => {
+                      // Encabezado de sección
+                      if ('sectionHeader' in item) {
+                        const SectionIcon = item.sectionIcon;
+                        return (
+                          <div
+                            key={`section-${idx}`}
+                            className="mt-3 mb-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
+                          >
+                            <SectionIcon className="h-3 w-3" />
+                            {item.sectionHeader}
+                          </div>
+                        );
+                      }
+
                       const Active = location.pathname === item.path;
                       const Icon = item.icon;
-                      // Encabezado de sección "Actualizar Fletes" antes del primer item de fletes
-                      const isFirstFlete = (item as any).section === 'fletes' &&
-                        (navigationItems[idx - 1] as any)?.section !== 'fletes';
                       return (
-                        <React.Fragment key={item.path}>
-                          {isFirstFlete && (
-                            <div className="mt-2 mb-1 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                              <Truck className="h-3 w-3" />
-                              Actualizar Fletes
-                            </div>
-                          )}
-                          <Link
-                            to={item.path}
-                            onClick={() => setOpen(false)}
-                            className={[
-                              'group flex items-center justify-between rounded-md px-3 py-2 transition-colors',
-                              Active
-                                ? 'bg-primary text-primary-foreground'
-                                : 'hover:bg-muted text-foreground',
-                              (item as any).section === 'fletes' ? 'ml-3' : '',
-                            ].join(' ')}
-                          >
-                            <span className="flex items-center gap-3">
-                              <Icon
-                                size={20}
-                                className={`${item.color ?? 'text-muted-foreground'} ${
-                                  Active ? 'text-primary-foreground' : ''
-                                }`}
-                              />
-                              <span className="font-medium">{item.label}</span>
-                            </span>
-                            <ChevronRight
-                              size={18}
-                              className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-                                Active ? 'opacity-100' : ''
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setOpen(false)}
+                          className={[
+                            'group flex items-center justify-between rounded-md px-3 py-2 transition-colors',
+                            Active
+                              ? 'bg-primary text-primary-foreground'
+                              : 'hover:bg-muted text-foreground',
+                            item.indent ? 'ml-3' : '',
+                          ].join(' ')}
+                        >
+                          <span className="flex items-center gap-3">
+                            <Icon
+                              size={20}
+                              className={`${item.color ?? 'text-muted-foreground'} ${
+                                Active ? 'text-primary-foreground' : ''
                               }`}
                             />
-                          </Link>
-                        </React.Fragment>
+                            <span className="font-medium">{item.label}</span>
+                          </span>
+                          <ChevronRight
+                            size={18}
+                            className={`opacity-0 group-hover:opacity-100 transition-opacity ${
+                              Active ? 'opacity-100' : ''
+                            }`}
+                          />
+                        </Link>
                       );
                     })}
                   </nav>
