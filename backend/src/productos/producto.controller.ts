@@ -32,6 +32,7 @@ export class ProductoController {
         body.sector_productivo,
         body.planta ?? 'catamarca',
         body.lleva_flete ?? false,
+        Number(body.m3 ?? 0),
       );
       return await this.productoService.crear(producto);
     } catch (error) {
@@ -88,6 +89,7 @@ export class ProductoController {
         sector_productivo: body.sector_productivo,
         planta: body.planta,
         lleva_flete: body.lleva_flete,
+        m3: body.m3,
       });
     } catch (error) {
       this.logger.error('Error al actualizar producto', error.stack);

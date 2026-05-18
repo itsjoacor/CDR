@@ -5,9 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { PlantaProvider } from "./contexts/PlantaContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import SeleccionPlanta from "./pages/SeleccionPlanta";
-import ActualizarFleteCatamarca from "./pages/ActualizarFleteCatamarca";
-import ActualizarFleteVarela from "./pages/ActualizarFleteVarela";
+import ActualizarFlete from "./pages/_ActualizarFlete";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -45,6 +45,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ThemeProvider>
         <AuthProvider>
           <PlantaProvider>
           <Routes>
@@ -85,8 +86,10 @@ const App = () => (
                 <Route path="/actualizarMO" element={<ActualizacionMO />} />
                 <Route path="/actualizarMantencion" element={<ActualizarMantencion />} />
                 <Route path="/sectores-productivos" element={<SectoresProductivos />} />
-                <Route path="/actualizarFleteCatamarca" element={<ActualizarFleteCatamarca />} />
-                <Route path="/actualizarFleteVarela" element={<ActualizarFleteVarela />} />
+                <Route path="/actualizar-flete" element={<ActualizarFlete />} />
+                {/* Aliases para links viejos — la planta la define el selector global del header */}
+                <Route path="/actualizarFleteCatamarca" element={<ActualizarFlete />} />
+                <Route path="/actualizarFleteVarela" element={<ActualizarFlete />} />
                 <Route path="/importacion" element={<Importacion />} />
                 <Route path="/implosion-volumen" element={<ImplosionVolumen />} />
               </Route>
@@ -96,6 +99,7 @@ const App = () => (
           </Routes>
           </PlantaProvider>
         </AuthProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

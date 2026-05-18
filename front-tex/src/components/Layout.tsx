@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlanta, PlantaView } from '../contexts/PlantaContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -37,6 +38,8 @@ import {
   Building2,
   Settings,
   Database,
+  Moon,
+  Sun,
 } from 'lucide-react';
 
 import Whool from '../TexCDR.png';
@@ -49,6 +52,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
   const { planta, setPlanta, plantaLabel, plantaColor } = usePlanta();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -76,10 +80,9 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     { path: '/implosion-volumen', label: 'Implosión Volumen', icon: UploadCloud, color: 'text-teal-400' },
     { path: '/resultados-volumen', label: 'Resultados Volumen', icon: BarChart2, color: 'text-teal-400' },
 
-    // Fletes
-    { sectionHeader: 'Actualizar Fletes', sectionIcon: Truck },
-    { path: '/actualizarFleteCatamarca', label: 'Flete Catamarca', icon: Truck, color: 'text-amber-400', indent: true },
-    { path: '/actualizarFleteVarela', label: 'Flete Varela', icon: Truck, color: 'text-sky-400', indent: true },
+    // Flete (usa la planta del selector global del header)
+    { sectionHeader: 'Actualizar Flete', sectionIcon: Truck },
+    { path: '/actualizar-flete', label: 'Flete', icon: Truck, color: 'text-amber-400', indent: true },
 
     // Variables globales
     { sectionHeader: 'Variables Globales', sectionIcon: Settings },
@@ -209,6 +212,17 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                   {user?.role === 'admin' ? 'Administrador' : 'Usuario'}
                 </Badge>
               </div>
+              <Button
+                onClick={toggleTheme}
+                variant="outline"
+                size="icon"
+                aria-label={theme === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'}
+                title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+              >
+                {theme === 'dark'
+                  ? <Sun className="h-4 w-4" />
+                  : <Moon className="h-4 w-4" />}
+              </Button>
               <Button onClick={handleLogout} variant="outline" size="sm">
                 Cerrar Sesión
               </Button>

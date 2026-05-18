@@ -60,7 +60,7 @@ const Exportacion: React.FC = () => {
             description: 'Exportar la receta de productos con insumos y procesos',
             icon: ClipboardList,
             iconColor: 'text-sky-400',
-            color: 'bg-blue-50 border-blue-200',
+            color: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
             buttonColor: 'bg-blue-600 hover:bg-blue-700',
         },
         {
@@ -68,7 +68,7 @@ const Exportacion: React.FC = () => {
             description: 'Exportar catálogo de mano de obra con salarios y tiempos',
             icon: HardHat,
             iconColor: 'text-orange-400',
-            color: 'bg-orange-50 border-orange-200',
+            color: 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800',
             buttonColor: 'bg-orange-600 hover:bg-orange-700',
         },
         {
@@ -76,7 +76,7 @@ const Exportacion: React.FC = () => {
             description: 'Exportar datos de mano de energía y equipos',
             icon: Zap,
             iconColor: 'text-yellow-400',
-            color: 'bg-yellow-50 border-yellow-200',
+            color: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800',
             buttonColor: 'bg-yellow-600 hover:bg-yellow-700',
         },
         {
@@ -84,7 +84,7 @@ const Exportacion: React.FC = () => {
             description: 'Exportar inventario de insumos',
             icon: Package,
             iconColor: 'text-purple-400',
-            color: 'bg-purple-50 border-purple-200',
+            color: 'bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800',
             buttonColor: 'bg-purple-600 hover:bg-purple-700',
         },
         {
@@ -92,7 +92,7 @@ const Exportacion: React.FC = () => {
             description: 'Exportar insumos SOLAMENTE utilizado en recetas',
             icon: Package,
             iconColor: 'text-red-400',
-            color: 'bg-red-50 border-red-200',
+            color: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
             buttonColor: 'bg-red-600 hover:bg-red-700',
         },
         {
@@ -100,7 +100,7 @@ const Exportacion: React.FC = () => {
             description: 'Exportar catálogo de productos terminados',
             icon: ShoppingCart,
             iconColor: 'text-orange-300',
-            color: 'bg-orange-50 border-orange-200',
+            color: 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800',
             buttonColor: 'bg-orange-600 hover:bg-orange-700',
         },
         {
@@ -108,7 +108,7 @@ const Exportacion: React.FC = () => {
             description: 'Exportar resultados de cálculo CDR',
             icon: DollarSign,
             iconColor: 'text-green-400',
-            color: 'bg-green-50 border-green-200',
+            color: 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800',
             buttonColor: 'bg-green-600 hover:bg-green-700',
         },
     ];
@@ -254,7 +254,7 @@ const Exportacion: React.FC = () => {
                 {/* Header */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <Badge variant="outline" className="bg-blue-50">
+                        <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800">
                             📤 Exportación - Descarga de Datos
                         </Badge>
                         <p className="text-sm text-muted-foreground mt-2">
@@ -268,9 +268,9 @@ const Exportacion: React.FC = () => {
                 </div>
 
                 {/* ── Implosión por mes ──────────────────────────────────── */}
-                <Card className="border-l-4 border-l-teal-500 bg-teal-50 border-teal-200">
+                <Card className="border-l-4 border-l-teal-500 bg-teal-50 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-teal-800">
+                        <CardTitle className="flex items-center gap-2 text-teal-800 dark:text-teal-200">
                             <BarChart2 className="h-5 w-5" />
                             Implosión Volumen — por mes
                         </CardTitle>
@@ -293,7 +293,7 @@ const Exportacion: React.FC = () => {
                         ) : (
                             <div className="flex items-center gap-3 flex-wrap">
                                 <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
-                                    <SelectTrigger className="w-40 bg-white">
+                                    <SelectTrigger className="w-40 bg-white dark:bg-card">
                                         <SelectValue placeholder="Seleccionar mes" />
                                     </SelectTrigger>
                                     <SelectContent>

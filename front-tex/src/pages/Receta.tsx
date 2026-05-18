@@ -216,16 +216,16 @@ const Receta: React.FC = () => {
 
     // PRIORIDAD: CDR cero (rojo) sobre costo cero (rojo)
     if (tieneCdrCero) {
-      return "bg-red-50 hover:bg-red-100";
+      return "bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50";
     }
     
     // Si no tiene CDR cero pero tiene costo cero, también rojo
     if (tieneCostoCero) {
-      return "bg-red-50 hover:bg-red-100";
+      return "bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50";
     }
 
     // Si no tiene ni CDR cero ni costo cero, verde
-    return "bg-green-50 hover:bg-green-100";
+    return "bg-green-50 hover:bg-green-100 dark:bg-green-950/40 dark:hover:bg-green-900/50";
   };
 
   return (
@@ -267,7 +267,7 @@ const Receta: React.FC = () => {
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 />
                 {showSuggestions && searchTerm.length > 0 && filtered.length > 0 && (
-                  <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                  <div className="absolute z-20 mt-1 w-full bg-white dark:bg-card border rounded-md shadow-lg max-h-60 overflow-auto">
                     {filtered.slice(0, 8).map((p) => (
                       <div
                         key={p.codigo_producto}
@@ -285,7 +285,7 @@ const Receta: React.FC = () => {
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <select
-                className="border rounded-md px-2 h-9"
+                className="border rounded-md px-2 h-9 bg-background text-foreground"
                 value={sectorSeleccionado || ""}
                 onChange={(e) => {
                   setCurrentPage(1);

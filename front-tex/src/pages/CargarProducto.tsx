@@ -293,6 +293,7 @@ const CargarProducto: React.FC = () => {
                     step="0.0001"
                     min={0}
                     value={m3}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setM3(e.target.value)}
                     disabled={!llevaFlete}
                     className="w-32 h-8 text-sm"

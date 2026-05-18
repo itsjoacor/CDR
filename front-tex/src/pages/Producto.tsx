@@ -69,6 +69,8 @@ const Producto: React.FC = () => {
   const [productosLista, setProductosLista] = useState<ProductoItem[]>([]);
   const [productoSeleccionado, setProductoSeleccionado] = useState<string | null>(null);
   const [sectorSeleccionado, setSectorSeleccionado] = useState<string | null>(null);
+  type FleteFiltro = 'todos' | 'con-flete' | 'sin-flete';
+  const [fleteFiltro, setFleteFiltro] = useState<FleteFiltro>('todos');
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ProductoItem>>({});
@@ -144,7 +146,11 @@ const Producto: React.FC = () => {
     const matchesProducto = productoSeleccionado
       ? producto.codigo_producto === productoSeleccionado
       : true;
-    return matchesSearch && matchesSector && matchesProducto;
+    const matchesFlete =
+      fleteFiltro === 'con-flete' ? producto.lleva_flete === true
+      : fleteFiltro === 'sin-flete' ? producto.lleva_flete !== true
+      : true;
+    return matchesSearch && matchesSector && matchesProducto && matchesFlete;
   });
 
   const handleEdit = (item: ProductoItem) => {
@@ -245,15 +251,15 @@ const Producto: React.FC = () => {
   const getSectorColor = (sector: string) => {
     switch (sector) {
       case "Confección":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200";
       case "Textil":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200";
       case "Marroquinería":
-        return "bg-purple-100 text-purple-800";
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200";
       case "Calzado":
-        return "bg-orange-100 text-orange-800";
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700/40 dark:text-gray-200";
     }
   };
 
@@ -266,7 +272,7 @@ const Producto: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <Badge variant="outline" className="bg-green-50">
+            <Badge variant="outline" className="bg-green-50 dark:bg-green-950/40 dark:text-green-200 dark:border-green-800">
               🏭 Productos - Productos Finales
             </Badge>
             <p className="text-sm text-muted-foreground mt-2">
@@ -295,7 +301,7 @@ const Producto: React.FC = () => {
                 className="w-full"
               />
               {showSuggestions && searchTerm.length > 0 && filteredProductos.length > 0 && (
-                <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                <div className="absolute z-20 mt-1 w-full bg-white dark:bg-card border rounded-md shadow-lg max-h-60 overflow-auto">
                   {filteredProductos.slice(0, 8).map((p) => (
                     <div
                       key={p.codigo_producto}
@@ -318,7 +324,7 @@ const Producto: React.FC = () => {
                 onChange={setProductoSeleccionado}
               >
                 <div className="relative w-full">
-                  <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-blue-300 flex items-center justify-between">
+                  <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white dark:bg-card text-left focus:ring-2 ring-blue-300 flex items-center justify-between">
                     {productoSeleccionado || "Filtrar por producto"}
                     <svg
                       className="w-5 h-5 text-gray-400"
@@ -328,7 +334,7 @@ const Producto: React.FC = () => {
                       <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                     </svg>
                   </ListboxButton>
-                  <ListboxOptions className="absolute mt-1 w-full bg-white border rounded-md shadow-md z-10 max-h-60 overflow-auto">
+                  <ListboxOptions className="absolute mt-1 w-full bg-white dark:bg-card border rounded-md shadow-md z-10 max-h-60 overflow-auto">
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
                         <li
@@ -349,7 +355,7 @@ const Producto: React.FC = () => {
                           <li
                             className={`cursor-pointer px-4 py-2 rounded-md ${active
                               ? "bg-blue-100 text-blue-800"
-                              : "text-gray-800"
+                              : "text-gray-800 dark:text-gray-200"
                               } ${selected ? "font-medium" : ""}`}
                           >
                             {p.codigo_producto} - {p.descripcion_producto}
@@ -369,7 +375,7 @@ const Producto: React.FC = () => {
                 onChange={setSectorSeleccionado}
               >
                 <div className="relative w-full">
-                  <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white text-left focus:ring-2 ring-green-300 flex items-center justify-between">
+                  <ListboxButton className="w-full px-4 py-2 border rounded-md bg-white dark:bg-card text-left focus:ring-2 ring-green-300 flex items-center justify-between">
                     {sectorSeleccionado || "Filtrar por sector"}
                     <svg
                       className="w-5 h-5 text-gray-400"
@@ -379,7 +385,7 @@ const Producto: React.FC = () => {
                       <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                     </svg>
                   </ListboxButton>
-                  <ListboxOptions className="absolute mt-1 w-full bg-white border rounded-md shadow-md z-10 max-h-60 overflow-auto">
+                  <ListboxOptions className="absolute mt-1 w-full bg-white dark:bg-card border rounded-md shadow-md z-10 max-h-60 overflow-auto">
                     <ListboxOption value={null} as={Fragment}>
                       {({ active }) => (
                         <li
@@ -396,7 +402,7 @@ const Producto: React.FC = () => {
                           <li
                             className={`cursor-pointer px-4 py-2 rounded-md ${active
                               ? "bg-green-100 text-green-800"
-                              : "text-gray-800"
+                              : "text-gray-800 dark:text-gray-200"
                               } ${selected ? "font-medium" : ""}`}
                           >
                             {s}
@@ -407,6 +413,30 @@ const Producto: React.FC = () => {
                   </ListboxOptions>
                 </div>
               </Listbox>
+            </div>
+
+            {/* Filtro por Flete */}
+            <div className="flex-1">
+              <div className="flex items-center gap-1 border rounded-md p-1 bg-white dark:bg-card h-[42px]">
+                {([
+                  { v: 'todos',     label: 'Todos' },
+                  { v: 'con-flete', label: '🚚 Con flete' },
+                  { v: 'sin-flete', label: 'Sin flete' },
+                ] as { v: FleteFiltro; label: string }[]).map(opt => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setFleteFiltro(opt.v)}
+                    className={`flex-1 text-sm px-2 py-1.5 rounded transition-colors ${
+                      fleteFiltro === opt.v
+                        ? 'bg-amber-100 text-amber-900 font-medium border border-amber-300 dark:bg-amber-900/40 dark:text-amber-100 dark:border-amber-700'
+                        : 'text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             </div>
           </CardContent>
@@ -534,10 +564,10 @@ const Producto: React.FC = () => {
                                       onChange={(value) => setEditForm(prev => ({ ...prev, sector_productivo: value }))}
                                     >
                                       <div className="relative">
-                                        <ListboxButton className="w-full px-3 py-2 border rounded-md bg-white text-left text-sm">
+                                        <ListboxButton className="w-full px-3 py-2 border rounded-md bg-white dark:bg-card text-left text-sm">
                                           {editForm.sector_productivo || "Seleccionar sector"}
                                         </ListboxButton>
-                                        <ListboxOptions className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-md max-h-60 overflow-auto">
+                                        <ListboxOptions className="absolute z-10 mt-1 w-full bg-white dark:bg-card border rounded-md shadow-md max-h-60 overflow-auto">
                                           {sectores.map((sector, i) => (
                                             <ListboxOption
                                               key={i}
@@ -548,7 +578,7 @@ const Producto: React.FC = () => {
                                                 <li
                                                   className={`cursor-pointer px-4 py-2 rounded-md ${active
                                                     ? "bg-gray-100 text-gray-900"
-                                                    : "text-gray-800"
+                                                    : "text-gray-800 dark:text-gray-200"
                                                     } ${selected ? "font-medium" : ""}`}
                                                 >
                                                   {sector}
@@ -563,7 +593,7 @@ const Producto: React.FC = () => {
                                 </div>
 
                                 {/* Flete: checkbox + input m3 */}
-                                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md space-y-3">
+                                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md space-y-3 dark:bg-amber-950/30 dark:border-amber-800">
                                   <div className="flex items-start gap-3">
                                     <input
                                       type="checkbox"
@@ -573,14 +603,14 @@ const Producto: React.FC = () => {
                                       className="mt-1 h-4 w-4 cursor-pointer"
                                     />
                                     <label htmlFor={`flete-${producto.codigo_producto}`} className="cursor-pointer flex-1">
-                                      <div className="font-semibold text-amber-900">🚚 Aplica flete</div>
-                                      <div className="text-xs text-amber-800/70 mt-0.5">
+                                      <div className="font-semibold text-amber-900 dark:text-amber-100">🚚 Aplica flete</div>
+                                      <div className="text-xs text-amber-800/70 mt-0.5 dark:text-amber-200/70">
                                         Si está activo, al CDR final se le suma <code>valor_flete (planta {producto.planta ?? 'catamarca'}) × m³</code>.
                                       </div>
                                     </label>
                                   </div>
                                   <div className="flex items-center gap-2 pl-7">
-                                    <label htmlFor={`m3-${producto.codigo_producto}`} className="text-sm text-amber-900 font-medium">
+                                    <label htmlFor={`m3-${producto.codigo_producto}`} className="text-sm text-amber-900 dark:text-amber-100 font-medium">
                                       m³ por unidad:
                                     </label>
                                     <Input
@@ -588,12 +618,19 @@ const Producto: React.FC = () => {
                                       type="number"
                                       step="0.0001"
                                       min={0}
-                                      value={editForm.m3 ?? 0}
-                                      onChange={(e) => setEditForm(prev => ({ ...prev, m3: Number(e.target.value) }))}
+                                      value={editForm.m3 === undefined || editForm.m3 === null ? '' : editForm.m3}
+                                      onFocus={(e) => e.target.select()}
+                                      onChange={(e) => {
+                                        const raw = e.target.value;
+                                        setEditForm(prev => ({
+                                          ...prev,
+                                          m3: raw === '' ? 0 : Number(raw),
+                                        }));
+                                      }}
                                       disabled={editForm.lleva_flete !== true}
                                       className="w-32 h-8 text-sm"
                                     />
-                                    <span className="text-xs text-amber-800/70">
+                                    <span className="text-xs text-amber-800/70 dark:text-amber-200/70">
                                       {editForm.lleva_flete ? 'espacio que ocupa el producto en el camión' : '(activá "Aplica flete" para editar)'}
                                     </span>
                                   </div>

@@ -341,8 +341,8 @@ const RecetaDetallada: React.FC = () => {
                         key={k}
                         className={
                           red
-                            ? "bg-red-50 hover:bg-red-100"
-                            : "bg-white hover:bg-muted/30"
+                            ? "bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50"
+                            : "bg-white hover:bg-muted/30 dark:bg-card dark:hover:bg-muted/30"
                         }
                       >
                         {/* Producto */}

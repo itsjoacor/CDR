@@ -5,22 +5,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Truck, Save, RefreshCw, Loader2, AlertTriangle, DollarSign } from 'lucide-react';
+import { Truck, Save, RefreshCw, Loader2, AlertTriangle, DollarSign, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { usePlanta } from '../contexts/PlantaContext';
 import Cookies from 'js-cookie';
 
 type Planta = 'catamarca' | 'varela';
-type Color = 'amber' | 'sky';
 
-const COLORS = {
-  amber: {
+const COLORS: Record<Planta, {
+  bg: string; border: string; text: string; button: string; badge: string;
+}> = {
+  catamarca: {
     bg: 'bg-amber-50',
     border: 'border-amber-300',
     text: 'text-amber-800',
     button: 'bg-amber-600 hover:bg-amber-700',
     badge: 'bg-amber-100 text-amber-800 border-amber-300',
   },
-  sky: {
+  varela: {
     bg: 'bg-sky-50',
     border: 'border-sky-300',
     text: 'text-sky-800',
@@ -29,26 +31,91 @@ const COLORS = {
   },
 };
 
-interface Props {
-  planta: Planta;
-  color: Color;
-}
-
 const formatARS = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const ActualizarFlete: React.FC<Props> = ({ planta, color }) => {
+const ActualizarFlete: React.FC = () => {
   const token = Cookies.get('token') ?? '';
   const { toast } = useToast();
-  const c = COLORS[color];
-  const titulo = planta === 'catamarca' ? 'Catamarca' : 'Varela';
+  const { plantaParaEscritura } = usePlanta();
 
+  // Hooks SIEMPRE al tope — no se pueden invocar condicionalmente.
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [actualValor, setActualValor] = useState<number>(0);
   const [nuevoValor, setNuevoValor] = useState<string>('0');
+  const [conteoProductosFlete, setConteoProductosFlete] = useState<{ total: number; conFlete: number; conFleteYM3: number } | null>(null);
 
-  const cargarFleteActual = async () => {
+  const planta: Planta | null = plantaParaEscritura;
+  const titulo = planta === 'catamarca' ? 'Catamarca' : planta === 'varela' ? 'Varela' : '';
+  const c = planta ? COLORS[planta] : null;
+
+  useEffect(() => {
+    if (!planta) return;
+    let cancelado = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/plantas/${planta}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('No se pudo cargar el flete actual');
+        const data = await res.json();
+        const v = Number(data?.valor_flete ?? 0);
+        if (cancelado) return;
+        setActualValor(v);
+        setNuevoValor(String(v));
+      } catch (err: any) {
+        if (!cancelado) toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [planta, token]);
+
+  useEffect(() => {
+    if (!planta) return;
+    let cancelado = false;
+    (async () => {
+      try {
+        const r = await fetch(`${import.meta.env.VITE_API_URL}/productos?planta=${planta}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!r.ok) return;
+        const prods = await r.json();
+        if (cancelado) return;
+        setConteoProductosFlete({
+          total: prods.length,
+          conFlete: prods.filter((p: any) => p.lleva_flete === true).length,
+          conFleteYM3: prods.filter((p: any) => p.lleva_flete === true && Number(p.m3 ?? 0) > 0).length,
+        });
+      } catch { /* silencioso */ }
+    })();
+    return () => { cancelado = true; };
+  }, [planta, actualValor, token]);
+
+  // Early return DESPUÉS de declarar todos los hooks.
+  if (!planta || !c) {
+    return (
+      <Layout title="Actualizar Flete">
+        <Card className="max-w-2xl border-amber-300 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-800">
+              <Building2 className="h-5 w-5" />
+              Elegí una planta específica
+            </CardTitle>
+            <CardDescription>
+              El flete se configura por planta. Cambiá el selector de planta (arriba a la derecha)
+              a <strong>Catamarca</strong> o <strong>Varela</strong> para editar su valor.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </Layout>
+    );
+  }
+
+  const recargar = async () => {
     setLoading(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/plantas/${planta}`, {
@@ -65,8 +132,6 @@ const ActualizarFlete: React.FC<Props> = ({ planta, color }) => {
       setLoading(false);
     }
   };
-
-  useEffect(() => { cargarFleteActual(); }, [planta]);
 
   const guardar = async () => {
     const nuevo = Number(nuevoValor);
@@ -97,7 +162,6 @@ const ActualizarFlete: React.FC<Props> = ({ planta, color }) => {
       setActualValor(Number(data.valor_flete));
       setNuevoValor(String(data.valor_flete));
 
-      // Contar cuántos productos tienen lleva_flete=true y m3>0 (los que realmente pagan flete)
       const conteoRes = await fetch(`${import.meta.env.VITE_API_URL}/productos?planta=${planta}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -131,25 +195,6 @@ const ActualizarFlete: React.FC<Props> = ({ planta, color }) => {
     }
   };
 
-  // Conteo para mostrar en el UI
-  const [conteoProductosFlete, setConteoProductosFlete] = useState<{ total: number; conFlete: number; conFleteYM3: number } | null>(null);
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch(`${import.meta.env.VITE_API_URL}/productos?planta=${planta}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!r.ok) return;
-        const prods = await r.json();
-        setConteoProductosFlete({
-          total: prods.length,
-          conFlete: prods.filter((p: any) => p.lleva_flete === true).length,
-          conFleteYM3: prods.filter((p: any) => p.lleva_flete === true && Number(p.m3 ?? 0) > 0).length,
-        });
-      } catch { /* silencioso */ }
-    })();
-  }, [planta, actualValor]);
-
   return (
     <Layout title={`Actualizar Flete — ${titulo}`}>
       <div className="space-y-6 max-w-2xl">
@@ -172,7 +217,6 @@ const ActualizarFlete: React.FC<Props> = ({ planta, color }) => {
           )}
         </div>
 
-        {/* Card principal */}
         <Card className={`${c.bg} ${c.border} border-2`}>
           <CardHeader>
             <CardTitle className={`flex items-center gap-2 ${c.text}`}>
@@ -217,7 +261,6 @@ const ActualizarFlete: React.FC<Props> = ({ planta, color }) => {
                   </div>
                 </div>
 
-                {/* Warning si cambia */}
                 {Number(nuevoValor) !== actualValor && Number.isFinite(Number(nuevoValor)) && (
                   <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-300 rounded-md text-sm text-yellow-800">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
@@ -230,7 +273,7 @@ const ActualizarFlete: React.FC<Props> = ({ planta, color }) => {
                 )}
 
                 <div className="flex gap-2 pt-2 border-t">
-                  <Button onClick={cargarFleteActual} variant="outline" disabled={saving || loading}>
+                  <Button onClick={recargar} variant="outline" disabled={saving || loading}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Recargar
                   </Button>
@@ -251,7 +294,6 @@ const ActualizarFlete: React.FC<Props> = ({ planta, color }) => {
           </CardContent>
         </Card>
 
-        {/* Info adicional */}
         <Card>
           <CardContent className="pt-6 text-sm text-muted-foreground space-y-2">
             <p>

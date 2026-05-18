@@ -262,7 +262,7 @@ const Importacion: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <Badge variant="outline" className="bg-green-50">
+            <Badge variant="outline" className="bg-green-50 dark:bg-green-950/40 dark:text-green-200 dark:border-green-800">
               📥 Importación - Carga de Datos
             </Badge>
             <p className="text-sm text-muted-foreground mt-2">
@@ -277,7 +277,7 @@ const Importacion: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
           {/* === IMPORTAR INSUMOS === */}
-          <Card className="bg-green-50 border-green-200 hover:shadow-md transition-shadow flex flex-col">
+          <Card className="bg-green-50 border-green-200 hover:shadow-md transition-shadow flex flex-col dark:bg-green-950/30 dark:border-green-800">
             <CardHeader>
               <CardTitle className="flex items-center space-x-3">
                 <span className="text-2xl">📦</span>
@@ -326,7 +326,7 @@ const Importacion: React.FC = () => {
           </Card>
 
           {/* === IMPORTAR PRODUCTOS === */}
-          <Card className="bg-orange-50 border-orange-200 hover:shadow-md transition-shadow flex flex-col">
+          <Card className="bg-orange-50 border-orange-200 hover:shadow-md transition-shadow flex flex-col dark:bg-orange-950/30 dark:border-orange-800">
             <CardHeader>
               <CardTitle className="flex items-center space-x-3">
                 <span className="text-2xl">🏭</span>
@@ -388,11 +388,11 @@ const Importacion: React.FC = () => {
         )}
 
         {/* Nota de seguridad */}
-        <Card className="bg-yellow-50 border-yellow-200">
+        <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800">
           <CardHeader>
-            <CardTitle className="text-yellow-800">⚠️ Importante</CardTitle>
+            <CardTitle className="text-yellow-800 dark:text-yellow-200">⚠️ Importante</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-yellow-800">
+          <CardContent className="text-sm text-yellow-800 dark:text-yellow-200">
             <p>
               <strong>Recorda no modificar ni el orden ni los titulos de las columas, el reemplazo podria ser caotico.</strong>
             </p>
@@ -552,7 +552,7 @@ const useRecetasMasivas = () => {
 
 // Card compacto para la grilla (estado bloqueado)
 const RecetasMasivasCard: React.FC<{ onUnlock: () => void; active: boolean }> = ({ onUnlock, active }) => (
-  <Card className={`flex flex-col ${active ? 'bg-red-50 border-red-300' : 'bg-slate-50 border-slate-200'} hover:shadow-md transition-shadow`}>
+  <Card className={`flex flex-col ${active ? 'bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-800' : 'bg-slate-50 border-slate-200 dark:bg-slate-900/50 dark:border-slate-700'} hover:shadow-md transition-shadow`}>
     <CardHeader>
       <CardTitle className="flex items-center space-x-3">
         <span className="text-2xl">{active ? '⚠️' : '🔒'}</span>
@@ -569,7 +569,7 @@ const RecetasMasivasCard: React.FC<{ onUnlock: () => void; active: boolean }> = 
         onClick={onUnlock}
         disabled={active}
         variant="outline"
-        className={active ? 'border-red-400 text-red-700' : 'border-slate-400'}
+        className={active ? 'border-red-400 text-red-700 dark:text-red-300 dark:border-red-700' : 'border-slate-400 dark:border-slate-600'}
       >
         <Lock className="h-4 w-4 mr-2" />
         {active ? 'Sección activa ↓' : 'Desbloquear sección'}
@@ -588,13 +588,13 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
   } = state;
 
   return (
-    <Card className="bg-red-50 border-red-400 border-2">
+    <Card className="bg-red-50 border-red-400 border-2 dark:bg-red-950/30 dark:border-red-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-red-800 text-xl">
+        <CardTitle className="flex items-center gap-2 text-red-800 dark:text-red-200 text-xl">
           <ShieldAlert className="h-6 w-6 animate-pulse" />
           ⚠️ ZONA PELIGROSA — PROCEDA CON PRECAUCIÓN
         </CardTitle>
-        <CardDescription className="text-red-700">
+        <CardDescription className="text-red-700 dark:text-red-300">
           Esta sección modifica masivamente la tabla <code>recetas_normalizada</code>.
           Las acciones son <strong>irreversibles</strong>.
         </CardDescription>
@@ -603,7 +603,7 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
 
         {/* PASO 1: contraseña */}
         {step === 'password' && (
-          <div className="space-y-3 p-4 bg-white border border-red-300 rounded-md">
+          <div className="space-y-3 p-4 bg-white dark:bg-card border border-red-300 dark:border-red-800 rounded-md">
             <div className="flex items-center gap-2 text-red-700 font-semibold">
               <Lock className="h-4 w-4" />
               Ingresá la contraseña de seguridad
@@ -628,7 +628,7 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
 
         {/* PASO 2: backup obligatorio */}
         {step === 'backup' && (
-          <div className="space-y-3 p-4 bg-white border-2 border-red-400 rounded-md">
+          <div className="space-y-3 p-4 bg-white dark:bg-card border-2 border-red-400 dark:border-red-700 rounded-md">
             <div className="flex items-center gap-2 text-red-800 font-bold">
               <AlertCircle className="h-5 w-5" />
               Para continuar es OBLIGATORIO descargar un backup local de las recetas
@@ -652,31 +652,31 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
 
         {/* PASO 3: elegir modo + subir archivo */}
         {(step === 'ready' || step === 'processing' || step === 'done') && (
-          <div className="space-y-4 p-4 bg-white border border-red-300 rounded-md">
+          <div className="space-y-4 p-4 bg-white dark:bg-card border border-red-300 dark:border-red-800 rounded-md">
             <div className="flex items-center gap-2 text-green-700 text-sm">
               <CheckCircle2 className="h-4 w-4" />
               Backup descargado correctamente
             </div>
 
             {/* Formato requerido del archivo (compartido para ambos modos) */}
-            <div className="p-3 bg-slate-50 border border-slate-300 rounded-md space-y-3">
+            <div className="p-3 bg-slate-50 border border-slate-300 rounded-md space-y-3 dark:bg-slate-900/50 dark:border-slate-700">
               <div className="flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4 text-slate-700" />
-                <span className="text-sm font-semibold text-slate-800">Formato requerido (.csv, .xlsx)</span>
+                <FileSpreadsheet className="h-4 w-4 text-slate-700 dark:text-slate-200" />
+                <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Formato requerido (.csv, .xlsx)</span>
               </div>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 dark:text-slate-300">
                 El sistema acepta <strong>cualquiera de estas dos variantes</strong>. Las descripciones del archivo se <strong>ignoran</strong> — siempre se buscan en la base de datos.
               </p>
 
               {/* Variante 1: solo códigos */}
               <div>
                 <p className="text-[11px] font-semibold text-slate-700 mb-1">Variante 1 — solo códigos (mínimo requerido):</p>
-                <table className="text-xs border border-slate-300 rounded w-auto bg-white">
-                  <thead className="bg-slate-100">
+                <table className="text-xs border border-slate-300 rounded w-auto bg-white dark:bg-card dark:border-slate-700">
+                  <thead className="bg-slate-100 dark:bg-slate-800">
                     <tr>
-                      <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_producto</th>
-                      <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_ingrediente</th>
-                      <th className="px-3 py-1.5 font-semibold text-slate-700">cantidad_ingrediente</th>
+                      <th className="px-3 py-1.5 border-r font-semibold text-slate-700 dark:text-slate-200">codigo_producto</th>
+                      <th className="px-3 py-1.5 border-r font-semibold text-slate-700 dark:text-slate-200">codigo_ingrediente</th>
+                      <th className="px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-200">cantidad_ingrediente</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -693,22 +693,22 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
               <div>
                 <p className="text-[11px] font-semibold text-slate-700 mb-1">Variante 2 — con descripciones (opcional, se ignoran):</p>
                 <div className="overflow-x-auto">
-                  <table className="text-xs border border-slate-300 rounded w-auto bg-white">
-                    <thead className="bg-slate-100">
+                  <table className="text-xs border border-slate-300 rounded w-auto bg-white dark:bg-card dark:border-slate-700">
+                    <thead className="bg-slate-100 dark:bg-slate-800">
                       <tr>
-                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_producto</th>
-                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700">descripcion</th>
-                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700">codigo_ingrediente</th>
-                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700">descripcion_ingrediente</th>
-                        <th className="px-3 py-1.5 font-semibold text-slate-700">cantidad</th>
+                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700 dark:text-slate-200">codigo_producto</th>
+                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700 dark:text-slate-200">descripcion</th>
+                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700 dark:text-slate-200">codigo_ingrediente</th>
+                        <th className="px-3 py-1.5 border-r font-semibold text-slate-700 dark:text-slate-200">descripcion_ingrediente</th>
+                        <th className="px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-200">cantidad</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr className="border-t">
                         <td className="px-3 py-1 border-r font-mono">400022002118</td>
-                        <td className="px-3 py-1 border-r text-slate-400 italic">HILADO 10/1…</td>
+                        <td className="px-3 py-1 border-r text-slate-400 italic dark:text-slate-500">HILADO 10/1…</td>
                         <td className="px-3 py-1 border-r font-mono">4012</td>
-                        <td className="px-3 py-1 border-r text-slate-400 italic">MANO OBRA HILADO</td>
+                        <td className="px-3 py-1 border-r text-slate-400 italic dark:text-slate-500">MANO OBRA HILADO</td>
                         <td className="px-3 py-1 font-mono">0.9</td>
                       </tr>
                     </tbody>
@@ -716,23 +716,23 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 💡 Las descripciones (producto e ingrediente) siempre se obtienen de las tablas <code>productos</code>, <code>insumos</code>, <code>matriz_mano</code> y <code>matriz_energia</code> — no del archivo.
               </p>
             </div>
 
             {/* Selector de modo */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-red-800">Modo de importación</label>
+              <label className="text-sm font-semibold text-red-800 dark:text-red-200">Modo de importación</label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <button
                   onClick={() => setMode('new')}
                   disabled={step === 'processing'}
                   className={`text-left p-3 rounded-md border-2 transition ${
-                    mode === 'new' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                    mode === 'new' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'
                   }`}
                 >
-                  <div className="font-semibold text-blue-900">📥 Insertar nuevas</div>
+                  <div className="font-semibold text-blue-900 dark:text-blue-200">📥 Insertar nuevas</div>
                   <div className="text-xs text-slate-600 mt-1">
                     Solo recetas 100% nuevas. Si algún producto ya tiene receta → frena el proceso.
                   </div>
@@ -741,10 +741,10 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
                   onClick={() => setMode('update')}
                   disabled={step === 'processing'}
                   className={`text-left p-3 rounded-md border-2 transition ${
-                    mode === 'update' ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'
+                    mode === 'update' ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/40' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'
                   }`}
                 >
-                  <div className="font-semibold text-orange-900">🔄 Reemplazar receta</div>
+                  <div className="font-semibold text-orange-900 dark:text-orange-200">🔄 Reemplazar receta</div>
                   <div className="text-xs text-slate-600 mt-1">
                     Mezcla nuevas + reemplaza existentes. Para los productos que ya existen, <strong>borra la receta vieja completa</strong> antes de insertar la nueva.
                   </div>
@@ -753,7 +753,7 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
                   onClick={() => setMode('patch')}
                   disabled={step === 'processing'}
                   className={`text-left p-3 rounded-md border-2 transition ${
-                    mode === 'patch' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
+                    mode === 'patch' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'
                   }`}
                 >
                   <div className="font-semibold text-emerald-900">✏️ Actualizar ingrediente</div>
@@ -782,7 +782,7 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
                 )}
               </div>
               {file && (
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-slate-600 dark:text-slate-300">
                   📄 {file.name} ({(file.size / 1024).toFixed(1)} KB)
                 </p>
               )}
@@ -812,8 +812,8 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
 
             {/* Conflictos en modo "new" */}
             {productosConflicto.length > 0 && (
-              <div className="p-3 bg-red-100 border border-red-400 rounded-md">
-                <p className="font-semibold text-red-800 mb-2">
+              <div className="p-3 bg-red-100 border border-red-400 rounded-md dark:bg-red-950/40 dark:border-red-700">
+                <p className="font-semibold text-red-800 dark:text-red-200 mb-2">
                   ❌ {productosConflicto.length} producto(s) ya tienen receta. Cambiá a modo "Reemplazar receta" o quitalos del archivo:
                 </p>
                 <div className="max-h-40 overflow-y-auto text-xs text-red-700 space-y-0.5">
@@ -829,8 +829,8 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
 
             {/* Ingredientes faltantes en modo "patch" */}
             {ingredientesFaltantes.length > 0 && (
-              <div className="p-3 bg-red-100 border border-red-400 rounded-md">
-                <p className="font-semibold text-red-800 mb-2">
+              <div className="p-3 bg-red-100 border border-red-400 rounded-md dark:bg-red-950/40 dark:border-red-700">
+                <p className="font-semibold text-red-800 dark:text-red-200 mb-2">
                   ❌ {totalFaltantes} ingrediente(s) NO existen en la receta. El modo "Actualizar ingrediente" requiere que ya estén cargados:
                 </p>
                 <div className="max-h-48 overflow-y-auto text-xs text-red-700 space-y-1">
@@ -858,8 +858,8 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
 
             {/* Resultado */}
             {result && (
-              <div className="p-3 bg-green-50 border border-green-300 rounded-md">
-                <p className="font-semibold text-green-800 flex items-center gap-2">
+              <div className="p-3 bg-green-50 border border-green-300 rounded-md dark:bg-green-950/30 dark:border-green-800">
+                <p className="font-semibold text-green-800 dark:text-green-200 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4" />
                   Importación exitosa
                 </p>
@@ -876,7 +876,7 @@ const RecetasMasivasFullSection: React.FC<{ state: ReturnType<typeof useRecetasM
 
             {/* Error */}
             {errorMsg && !productosConflicto.length && (
-              <div className="p-3 bg-red-100 border border-red-400 rounded-md text-sm text-red-800">
+              <div className="p-3 bg-red-100 border border-red-400 rounded-md text-sm text-red-800 dark:bg-red-950/40 dark:border-red-700 dark:text-red-200">
                 <strong>Error:</strong> {errorMsg}
               </div>
             )}

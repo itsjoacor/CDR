@@ -111,15 +111,14 @@ export class PlantasService {
       .in('codigo_producto', codigos);
     if (errCdr) throw new Error(`Error listando resultados_cdr: ${errCdr.message}`);
 
+    // valor_cdr_final ahora es columna GENERATED en DB: la DB la recalcula sola.
+    // Solo escribimos monto_flete.
     const updates = (cdrs ?? []).map((r: any) => {
-      const baseConMantencion = Number(r.base_cdr_final ?? r.base_cdr ?? 0);
       const m3 = m3Map[r.codigo_producto] ?? 0;
       const monto_flete = valor_flete * m3;
-      const valor_cdr_final = baseConMantencion + monto_flete;
       return {
         codigo_producto: r.codigo_producto,
         monto_flete,
-        valor_cdr_final,
       };
     });
 
@@ -130,7 +129,7 @@ export class PlantasService {
       for (const u of slice) {
         const { error } = await supabase
           .from('resultados_cdr')
-          .update({ monto_flete: u.monto_flete, valor_cdr_final: u.valor_cdr_final })
+          .update({ monto_flete: u.monto_flete })
           .eq('codigo_producto', u.codigo_producto);
         if (!error) actualizados++;
       }
@@ -161,19 +160,17 @@ export class PlantasService {
       .single();
     if (!cdr) return;
 
-    const baseConMantencion = Number((cdr as any).base_cdr_final ?? (cdr as any).base_cdr ?? 0);
-
     let monto_flete = 0;
     if ((prod as any).lleva_flete) {
       const planta = await this.obtener((prod as any).planta);
       const m3 = Number((prod as any).m3 ?? 0);
       monto_flete = Number(planta.valor_flete) * m3;
     }
-    const valor_cdr_final = baseConMantencion + monto_flete;
 
+    // valor_cdr_final es GENERATED en DB — la calcula sola al cambiar monto_flete.
     await supabase
       .from('resultados_cdr')
-      .update({ monto_flete, valor_cdr_final })
+      .update({ monto_flete })
       .eq('codigo_producto', codigo_producto);
   }
 }

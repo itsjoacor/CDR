@@ -200,7 +200,7 @@ const ResultadosCDR: React.FC = () => {
 
               {/* Dropdown de sugerencias */}
               {mostrarSugerencias && busquedaNorm && sugerencias.length > 0 && (
-                <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-72 overflow-y-auto">
+                <div className="absolute z-50 mt-1 w-full bg-white dark:bg-card border rounded-md shadow-lg max-h-72 overflow-y-auto">
                   {sugerencias.map((s) => (
                     <button
                       key={s.codigo_producto}
@@ -237,7 +237,7 @@ const ResultadosCDR: React.FC = () => {
               <select
                 value={sectorSeleccionado}
                 onChange={(e) => setSectorSeleccionado(e.target.value)}
-                className="border rounded-md px-2 h-9"
+                className="border rounded-md px-2 h-9 bg-background text-foreground"
               >
                 <option value="">Todos</option>
                 {sectores.map((s) => (
@@ -279,8 +279,8 @@ const ResultadosCDR: React.FC = () => {
                 {filtrados.map((item) => {
                   const esCdrCero = cdrStatus[item.codigo_producto];
                   const rowColor = esCdrCero
-                    ? 'bg-red-100 hover:bg-red-200'
-                    : 'bg-green-100 hover:bg-green-200';
+                    ? 'bg-red-100 hover:bg-red-200 dark:bg-red-950/40 dark:hover:bg-red-900/50'
+                    : 'bg-green-100 hover:bg-green-200 dark:bg-green-950/40 dark:hover:bg-green-900/50';
                   const total = Number(
                     item.valor_cdr_final ?? item.base_cdr_final ?? item.base_cdr ?? 0
                   );
@@ -303,7 +303,7 @@ const ResultadosCDR: React.FC = () => {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
-                        {tieneFlete && <span className="ml-1 text-xs text-amber-700" title="Incluye flete">🚚</span>}
+                        {tieneFlete && <span className="ml-1 text-xs text-amber-700 dark:text-amber-300" title="Incluye flete">🚚</span>}
                       </TableCell>
                       <TableCell className="text-center">
                         <Button
