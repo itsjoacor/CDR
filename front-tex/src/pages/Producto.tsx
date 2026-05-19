@@ -226,10 +226,16 @@ const Producto: React.FC = () => {
         `${import.meta.env.VITE_API_URL}/productos/${codigo}`,
         {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
-      if (!response.ok) throw new Error("Error al eliminar");
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Error al eliminar: ${text}`);
+      }
 
       setProductos((prev) =>
         prev.filter((item) => item.codigo_producto !== codigo)

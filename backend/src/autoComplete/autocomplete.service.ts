@@ -24,12 +24,15 @@ export class AutocompleteService {
   }
 
   async autocompleteIngrediente(codigo: string) {
-    const [producto, insumo, mano, energia] = await Promise.all([
+    // Autocomplete: el código puede existir en varias plantas. Buscamos el
+    // primer match para conseguir descripción (no nos importa la planta acá).
+    const [producto, insumosRes, mano, energia] = await Promise.all([
       this.productoRepo.obtenerPorCodigo(codigo),
-      this.insumoRepo.buscarPorCodigo(codigo),
+      this.insumoRepo.buscarPorFiltros({ codigo, planta: null }),
       this.matrizManoRepo.obtenerPorCodigo(codigo),
       this.matrizEnergiaRepo.obtenerPorCodigo(codigo),
     ]);
+    const insumo = insumosRes?.[0];
 
     if (producto) return { descripcion: producto.descripcion_producto || 'Ingrediente no encontrado' };
     if (insumo)   return { descripcion: insumo.detalle              || 'Ingrediente no encontrado' };

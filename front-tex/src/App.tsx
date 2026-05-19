@@ -36,6 +36,7 @@ import CDRPorSector from "./pages/CDRPorSector";
 import Importacion from "./pages/Importacion";
 import ImplosionVolumen from "./pages/ImplosionVolumen";
 import ResultadosVolumen from "./pages/ResultadosVolumen";
+import ManualCarga from "./pages/ManualCarga";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/insumos" element={<Insumos />} />
               <Route path="/resultados-cdr-mantencion" element={<CDRPorSector />} />
               <Route path="/resultados-volumen" element={<ResultadosVolumen />} />
+              <Route path="/manual-carga" element={<ManualCarga />} />
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
                 <Route path="/cargarReceta" element={<CargarReceta />} />

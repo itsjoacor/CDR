@@ -43,12 +43,13 @@ export class InsumoService {
     return data as Insumo[];
   }
 
-  async obtenerInsumoPorCodigo(codigo: string): Promise<Insumo> {
+  async obtenerInsumoPorCodigo(codigo: string, planta: 'catamarca' | 'varela'): Promise<Insumo> {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('insumos')
       .select('*')
       .eq('codigo', codigo)
+      .eq('planta', planta)
       .single();
 
     if (error || !data) {
@@ -67,12 +68,19 @@ export class InsumoService {
     return this.insumoRepository.buscarPorFiltros(filtros);
   }
 
-  async actualizarInsumo(codigo: string, insumo: Partial<Insumo>): Promise<Insumo> {
+  async actualizarInsumo(
+    codigo: string,
+    planta: 'catamarca' | 'varela',
+    insumo: Partial<Insumo>,
+  ): Promise<Insumo> {
     const supabase = await this.getSupabase();
+    // No permitir que el body cambie la PK
+    const { codigo: _c, planta: _p, ...resto } = insumo as any;
     const { data, error } = await supabase
       .from('insumos')
-      .update({ ...insumo, updated_at: new Date().toISOString() })
+      .update({ ...resto, updated_at: new Date().toISOString() })
       .eq('codigo', codigo)
+      .eq('planta', planta)
       .select()
       .single();
 
@@ -82,9 +90,13 @@ export class InsumoService {
     return data as Insumo;
   }
 
-  async eliminarInsumo(codigo: string): Promise<void> {
+  async eliminarInsumo(codigo: string, planta: 'catamarca' | 'varela'): Promise<void> {
     const supabase = await this.getSupabase();
-    const { error } = await supabase.from('insumos').delete().eq('codigo', codigo);
+    const { error } = await supabase
+      .from('insumos')
+      .delete()
+      .eq('codigo', codigo)
+      .eq('planta', planta);
 
     if (error) {
       throw new Error('Error al eliminar insumo: ' + error.message);

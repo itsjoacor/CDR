@@ -41,6 +41,7 @@ interface Insumo {
   codigo: string;
   detalle: string;
   costo: number;
+  planta: 'catamarca' | 'varela';
   updated_at?: string | null;
   estado?: "disponible" | "agotado" | "descontinuado";
   stock?: number;
@@ -114,8 +115,13 @@ const Insumos: React.FC = () => {
     }
 
     try {
+      // La planta la sacamos de la fila que estamos editando (cada insumo vive en una planta)
+      const fila = insumos.find((i) => i.codigo === editingId);
+      if (!fila?.planta) {
+        throw new Error('No se pudo determinar la planta del insumo a editar');
+      }
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/insumos/${editingId}`,
+        `${import.meta.env.VITE_API_URL}/insumos/${editingId}?planta=${fila.planta}`,
         {
           method: "PUT",
           headers: {
@@ -163,10 +169,10 @@ const Insumos: React.FC = () => {
     setEditForm({});
   };
 
-  const handleDelete = async (codigo: string) => {
+  const handleDelete = async (codigo: string, planta: 'catamarca' | 'varela') => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/insumos/${codigo}`,
+        `${import.meta.env.VITE_API_URL}/insumos/${codigo}?planta=${planta}`,
         {
           method: "DELETE",
           headers: {
@@ -319,7 +325,7 @@ const Insumos: React.FC = () => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(insumo.codigo)}>
+                                    <AlertDialogAction onClick={() => handleDelete(insumo.codigo, insumo.planta)}>
                                       Eliminar
                                     </AlertDialogAction>
                                   </AlertDialogFooter>

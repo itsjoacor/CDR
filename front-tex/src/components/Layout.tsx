@@ -40,6 +40,7 @@ import {
   Database,
   Moon,
   Sun,
+  BookOpen,
 } from 'lucide-react';
 
 import Whool from '../TexCDR.png';
@@ -94,6 +95,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     { sectionHeader: 'Datos', sectionIcon: Database },
     { path: '/importacion', label: 'Importación', icon: UploadCloud, indent: true },
     { path: '/exportacion', label: 'Exportación', icon: DownloadCloud, indent: true },
+    { path: '/manual-carga', label: 'Manual de Carga', icon: BookOpen, indent: true, color: 'text-sky-400' },
   ];
 
   return (

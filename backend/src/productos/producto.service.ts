@@ -15,7 +15,17 @@ export class ProductoService {
   async crear(producto: Producto): Promise<Producto> {
     const existe = await this.productoRepository.obtenerPorCodigo(producto.codigo_producto);
     if (existe) {
-      throw new Error('Ya existe un producto con este código');
+      // Los códigos de producto son globalmente únicos. Mensaje friendly
+      // según si el conflicto es con la misma planta o con la otra.
+      if (existe.planta === producto.planta) {
+        throw new Error(
+          `Ya existe un producto con código ${producto.codigo_producto} en planta ${existe.planta}.`
+        );
+      }
+      throw new Error(
+        `El código ${producto.codigo_producto} ya está cargado en planta ${existe.planta}. ` +
+        `No se puede crear en planta ${producto.planta} porque los códigos de producto son únicos a nivel global.`
+      );
     }
     const creado = await this.productoRepository.crear(producto);
     // Si nace con flete=true (y m3>0 o cualquiera, dejamos al recalc decidir), recalcular su CDR final

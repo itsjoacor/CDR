@@ -60,12 +60,13 @@ export class InsumoRepository {
     return data;
   }
 
-  async buscarPorCodigo(codigo: string): Promise<Insumo | null> {
+  async buscarPorCodigo(codigo: string, planta: 'catamarca' | 'varela'): Promise<Insumo | null> {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('insumos')
       .select('*')
       .eq('codigo', codigo)
+      .eq('planta', planta)
       .single();
 
     if (error) {

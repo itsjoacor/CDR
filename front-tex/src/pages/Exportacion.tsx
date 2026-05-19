@@ -127,17 +127,24 @@ const Exportacion: React.FC = () => {
         }
     };
 
-    // Export single table in specified format
-    const exportTable = async (tableName: string, format: 'csv' | 'xlsx' = 'xlsx') => {
+    // Export single table in specified format (template=true → solo headers, sin datos)
+    const exportTable = async (
+        tableName: string,
+        format: 'csv' | 'xlsx' = 'xlsx',
+        template = false,
+    ) => {
         try {
             toast({
-                title: "Exportación iniciada",
-                description: `Los datos de ${tableName} se están exportando...`,
+                title: template ? 'Generando molde' : 'Exportación iniciada',
+                description: template
+                    ? `Preparando molde vacío de ${tableName}...`
+                    : `Los datos de ${tableName} se están exportando...`,
             });
 
             const normalizedTableName = normalizarNombreTabla(tableName);
+            const templateQs = template ? '&template=true' : '';
             const response = await fetch(
-                `${import.meta.env.VITE_API_URL}/export?table=${normalizedTableName}&format=${format}&planta=${plantaParam}`,
+                `${import.meta.env.VITE_API_URL}/export?table=${normalizedTableName}&format=${format}&planta=${plantaParam}${templateQs}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${user?.token}`,
@@ -153,20 +160,21 @@ const Exportacion: React.FC = () => {
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `${tableName}.${format}`;
+            const suffix = template ? '_molde' : '';
+            link.download = `${tableName}${suffix}.${format}`;
             link.click();
             window.URL.revokeObjectURL(url);
 
             toast({
-                title: "Exportación completada",
-                description: `El archivo ${tableName}.${format} ha sido descargado.`,
+                title: template ? 'Molde descargado' : 'Exportación completada',
+                description: `El archivo ${tableName}${suffix}.${format} ha sido descargado.`,
             });
         } catch (error) {
             console.error(`Error exporting ${tableName}:`, error);
             toast({
-                title: "Error en exportación",
+                title: 'Error en exportación',
                 description: `No se pudo exportar ${tableName}: ${error.message}`,
-                variant: "destructive",
+                variant: 'destructive',
             });
         }
     };
@@ -354,6 +362,14 @@ const Exportacion: React.FC = () => {
                                                     onClick={() => exportTable(table.name, 'csv')}
                                                 >
                                                     CSV
+                                                </span>
+                                                <span>|</span>
+                                                <span
+                                                    className="font-medium cursor-pointer hover:underline text-sky-700 dark:text-sky-300"
+                                                    onClick={() => exportTable(table.name, 'xlsx', true)}
+                                                    title="Descargar plantilla vacía con solo los headers para llenar"
+                                                >
+                                                    Molde
                                                 </span>
                                             </div>
                                         </div>

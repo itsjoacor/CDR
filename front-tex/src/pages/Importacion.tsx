@@ -36,6 +36,29 @@ const Importacion: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [result, setResult] = useState<ImportSummary | null>(null);
+
+  // Cuando cambia la planta del selector global, resetear todo el estado
+  // del importer (archivos seleccionados, resultados previos, errores).
+  // Si no, queda info de la planta anterior mostrada en la UI y confunde.
+  React.useEffect(() => {
+    setSelectedFile(null);
+    setSelectedFileProd(null);
+    setSelectedFileMano(null);
+    setSelectedFileEne(null);
+    setResult(null);
+    setResultProd(null);
+    setResultMano(null);
+    setResultEne(null);
+    setErrorMsg(null);
+    setErrorMsgProd(null);
+    setErrorMsgMano(null);
+    setErrorMsgEne(null);
+    setUploadProgress(0);
+    setUploadProgressProd(0);
+    setUploadProgressMano(0);
+    setUploadProgressEne(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plantaParaEscritura]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Productos
@@ -44,6 +67,20 @@ const Importacion: React.FC = () => {
   const [uploadProgressProd, setUploadProgressProd] = useState(0);
   const [resultProd, setResultProd] = useState<ImportSummary | null>(null);
   const [errorMsgProd, setErrorMsgProd] = useState<string | null>(null);
+
+  // Mano de Obra
+  const [selectedFileMano, setSelectedFileMano] = useState<File | null>(null);
+  const [uploadingMano, setUploadingMano] = useState(false);
+  const [uploadProgressMano, setUploadProgressMano] = useState(0);
+  const [resultMano, setResultMano] = useState<ImportSummary | null>(null);
+  const [errorMsgMano, setErrorMsgMano] = useState<string | null>(null);
+
+  // Matriz Energética
+  const [selectedFileEne, setSelectedFileEne] = useState<File | null>(null);
+  const [uploadingEne, setUploadingEne] = useState(false);
+  const [uploadProgressEne, setUploadProgressEne] = useState(0);
+  const [resultEne, setResultEne] = useState<ImportSummary | null>(null);
+  const [errorMsgEne, setErrorMsgEne] = useState<string | null>(null);
 
 
   // --- helpers ---
@@ -79,11 +116,71 @@ const Importacion: React.FC = () => {
     };
   };
 
+  // Acepta SI/NO (es), TRUE/FALSE, 1/0, yes/no — todo case-insensitive.
+  // Si no matchea nada (campo vacío / ausente) → false.
+  const parseBoolLleva = (raw: any): boolean => {
+    if (raw === true) return true;
+    if (raw === false || raw === null || raw === undefined) return false;
+    const s = String(raw).trim().toUpperCase();
+    return s === 'SI' || s === 'SÍ' || s === 'TRUE' || s === '1' || s === 'YES' || s === 'Y' || s === 'VERDADERO';
+  };
+
+  // Parsea número aceptando coma (es-AR: "0,00016") o punto ("0.00016") como decimal.
+  // Si tiene ambos: asume "1.234,56" → 1234.56 (dot=miles, coma=decimal).
+  const parseDecimal = (raw: any): number => {
+    if (raw === null || raw === undefined) return 0;
+    const s = String(raw).trim();
+    if (s === '') return 0;
+    let normalized: string;
+    if (s.includes('.') && s.includes(',')) {
+      normalized = s.replace(/\./g, '').replace(',', '.');
+    } else if (s.includes(',')) {
+      normalized = s.replace(',', '.');
+    } else {
+      normalized = s;
+    }
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   const normalizeProductoRow = (r: Record<string, any>) => ({
     codigo_producto:      (r.codigo_producto ?? '').toString().trim(),
     descripcion_producto: (r.descripcion_producto ?? '').toString().trim(),
     sector_productivo:    (r.sector_productivo ?? '').toString().trim(),
+    lleva_flete:          parseBoolLleva(r.lleva_flete),
+    m3:                   parseDecimal(r.m3),
   });
+
+  // Mano de Obra: clave (sector_productivo, codigo_mano_obra, planta)
+  // Generadas por la DB (no se mandan): costo_mano_obra, cantidad_personal_estimado
+  const normalizeManoRow = (r: Record<string, any>) => ({
+    sector_productivo:       (r.sector_productivo ?? '').toString().trim(),
+    codigo_mano_obra:        (r.codigo_mano_obra ?? '').toString().trim(),
+    descripcion:             (r.descripcion ?? '').toString().trim(),
+    consumo_kw_std:          parseDecimal(r.consumo_kw_std),
+    std_produccion:          parseDecimal(r.std_produccion),
+    horas_hombre_std:        parseDecimal(r.horas_hombre_std),
+    valor_hora_hombre:       parseDecimal(r.valor_hora_hombre),
+    horas_por_turno:         parseDecimal(r.horas_por_turno),
+    producto_calculado_std:  r.producto_calculado_std?.toString().trim() || null,
+  });
+
+  // Matriz Energética: clave (codigo_energia, planta)
+  // Generadas por la DB (no se mandan): total_pesos_std, costo_energia_unidad
+  // std_produccion es opcional (se autocompleta desde matriz_mano si no se manda)
+  const normalizeEneRow = (r: Record<string, any>) => {
+    const stdRaw = r.std_produccion;
+    const stdProvisto = stdRaw !== undefined && stdRaw !== null && String(stdRaw).trim() !== '';
+    return {
+      sector_productivo:   (r.sector_productivo ?? '').toString().trim(),
+      codigo_mano_obra:    (r.codigo_mano_obra ?? '').toString().trim(),
+      codigo_energia:      (r.codigo_energia ?? '').toString().trim(),
+      descripcion:         (r.descripcion ?? '').toString().trim(),
+      consumo_kw_std:      parseDecimal(r.consumo_kw_std),
+      valor_kw:            parseDecimal(r.valor_kw),
+      ...(stdProvisto ? { std_produccion: parseDecimal(stdRaw) } : {}),
+    };
+  };
 
   const handleFileChangeProd = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
@@ -131,6 +228,29 @@ const Importacion: React.FC = () => {
         .map((r) => ({ ...r, planta: plantaParaEscritura }));
 
       if (!rows.length) throw new Error('No se encontraron filas válidas con columnas: codigo_producto, descripcion_producto, sector_productivo.');
+      setUploadProgressProd(60);
+
+      // Pre-check: rechazar el import entero si algún código del CSV ya existe en la OTRA planta.
+      // Productos son globalmente únicos — el mismo código no puede vivir en ambas plantas.
+      const codigos = rows.map((r) => r.codigo_producto);
+      const { data: existentes, error: checkError } = await supabase
+        .from('productos')
+        .select('codigo_producto, planta, descripcion_producto')
+        .in('codigo_producto', codigos);
+      if (checkError) throw new Error(`Error chequeando duplicados: ${checkError.message}`);
+      const conflictos = (existentes ?? []).filter((p: any) => p.planta !== plantaParaEscritura);
+      if (conflictos.length > 0) {
+        const muestra = conflictos
+          .slice(0, 10)
+          .map((c: any) => `  • ${c.codigo_producto} (en ${c.planta}): ${c.descripcion_producto}`)
+          .join('\n');
+        const masTexto = conflictos.length > 10 ? `\n  ... y ${conflictos.length - 10} más.` : '';
+        throw new Error(
+          `Hay ${conflictos.length} código(s) en el CSV que ya están cargados en la otra planta. ` +
+          `Los códigos de producto son únicos a nivel global, no se puede crearlos también en ${plantaParaEscritura}.\n\nConflictos:\n${muestra}${masTexto}`
+        );
+      }
+
       setUploadProgressProd(70);
 
       const { error: upsertError, count } = await supabase
@@ -155,6 +275,140 @@ const Importacion: React.FC = () => {
       toast({ title: 'Error al importar', description: msg, variant: 'destructive' });
     } finally {
       setUploadingProd(false);
+    }
+  };
+
+  // === MANO DE OBRA ===
+  const handleFileChangeMano = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setResultMano(null);
+    setErrorMsgMano(null);
+    if (!file) return;
+    const isCsv = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+    if (!isCsv) {
+      setSelectedFileMano(null);
+      toast({ title: 'Formato inválido', description: 'Seleccioná un archivo .csv', variant: 'destructive' });
+      return;
+    }
+    setSelectedFileMano(file);
+    toast({ title: 'Archivo seleccionado', description: `${file.name} (${(file.size / 1024).toFixed(2)} KB)` });
+  };
+
+  const handleUploadMano = async () => {
+    if (!selectedFileMano) {
+      toast({ title: 'No hay archivo', description: 'Seleccioná un CSV primero.', variant: 'destructive' });
+      return;
+    }
+    if (!plantaParaEscritura) {
+      toast({ title: 'Planta no definida', description: 'Elegí Catamarca o Varela arriba (no "Ambas Plantas").', variant: 'destructive' });
+      return;
+    }
+    setUploadingMano(true);
+    setUploadProgressMano(10);
+    setResultMano(null);
+    setErrorMsgMano(null);
+    try {
+      const rawRows = await parseCsv(selectedFileMano);
+      if (!rawRows.length) throw new Error('El CSV está vacío.');
+      setUploadProgressMano(40);
+
+      const rows = rawRows
+        .map(normalizeManoRow)
+        .filter((r) => r.codigo_mano_obra && r.sector_productivo && r.descripcion)
+        .map((r) => ({ ...r, planta: plantaParaEscritura }));
+
+      if (!rows.length) throw new Error('No se encontraron filas válidas con columnas: sector_productivo, codigo_mano_obra, descripcion (y números).');
+      setUploadProgressMano(70);
+
+      const { error: upsertError, count } = await supabase
+        .from('matriz_mano')
+        .upsert(rows, { onConflict: 'sector_productivo,codigo_mano_obra,planta', ignoreDuplicates: false, count: 'exact' });
+
+      if (upsertError) throw new Error(upsertError.message);
+      setUploadProgressMano(100);
+
+      const res: ImportSummary = {
+        mode: 'upsert',
+        total_rows: rows.length,
+        inserted_or_updated: count ?? rows.length,
+        message: `UPSERT completado: ${count ?? rows.length} filas de mano de obra insertadas/actualizadas.`,
+      };
+      setResultMano(res);
+      toast({ title: 'Importación completada', description: res.message });
+      setSelectedFileMano(null);
+    } catch (err: any) {
+      const msg = err?.message || 'Error importando CSV';
+      setErrorMsgMano(msg);
+      toast({ title: 'Error al importar', description: msg, variant: 'destructive' });
+    } finally {
+      setUploadingMano(false);
+    }
+  };
+
+  // === MATRIZ ENERGÉTICA ===
+  const handleFileChangeEne = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setResultEne(null);
+    setErrorMsgEne(null);
+    if (!file) return;
+    const isCsv = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+    if (!isCsv) {
+      setSelectedFileEne(null);
+      toast({ title: 'Formato inválido', description: 'Seleccioná un archivo .csv', variant: 'destructive' });
+      return;
+    }
+    setSelectedFileEne(file);
+    toast({ title: 'Archivo seleccionado', description: `${file.name} (${(file.size / 1024).toFixed(2)} KB)` });
+  };
+
+  const handleUploadEne = async () => {
+    if (!selectedFileEne) {
+      toast({ title: 'No hay archivo', description: 'Seleccioná un CSV primero.', variant: 'destructive' });
+      return;
+    }
+    if (!plantaParaEscritura) {
+      toast({ title: 'Planta no definida', description: 'Elegí Catamarca o Varela arriba (no "Ambas Plantas").', variant: 'destructive' });
+      return;
+    }
+    setUploadingEne(true);
+    setUploadProgressEne(10);
+    setResultEne(null);
+    setErrorMsgEne(null);
+    try {
+      const rawRows = await parseCsv(selectedFileEne);
+      if (!rawRows.length) throw new Error('El CSV está vacío.');
+      setUploadProgressEne(40);
+
+      const rows = rawRows
+        .map(normalizeEneRow)
+        .filter((r) => r.codigo_energia && r.codigo_mano_obra && r.sector_productivo && r.descripcion)
+        .map((r) => ({ ...r, planta: plantaParaEscritura }));
+
+      if (!rows.length) throw new Error('No se encontraron filas válidas con columnas: sector_productivo, codigo_mano_obra, codigo_energia, descripcion (y números).');
+      setUploadProgressEne(70);
+
+      const { error: upsertError, count } = await supabase
+        .from('matriz_energia')
+        .upsert(rows, { onConflict: 'codigo_energia,planta', ignoreDuplicates: false, count: 'exact' });
+
+      if (upsertError) throw new Error(upsertError.message);
+      setUploadProgressEne(100);
+
+      const res: ImportSummary = {
+        mode: 'upsert',
+        total_rows: rows.length,
+        inserted_or_updated: count ?? rows.length,
+        message: `UPSERT completado: ${count ?? rows.length} filas de matriz energética insertadas/actualizadas.`,
+      };
+      setResultEne(res);
+      toast({ title: 'Importación completada', description: res.message });
+      setSelectedFileEne(null);
+    } catch (err: any) {
+      const msg = err?.message || 'Error importando CSV';
+      setErrorMsgEne(msg);
+      toast({ title: 'Error al importar', description: msg, variant: 'destructive' });
+    } finally {
+      setUploadingEne(false);
     }
   };
 
@@ -228,10 +482,10 @@ const Importacion: React.FC = () => {
 
       setUploadProgress(70);
 
-      // 3) UPSERT por PK (codigo)
+      // 3) UPSERT por PK compuesta (codigo, planta) — mismo código puede existir en ambas plantas como filas distintas
       const { error: upsertError, count } = await supabase
         .from('insumos')
-        .upsert(rows, { onConflict: 'codigo', ignoreDuplicates: false, count: 'exact' });
+        .upsert(rows, { onConflict: 'codigo,planta', ignoreDuplicates: false, count: 'exact' });
 
       if (upsertError) throw new Error(upsertError.message);
 
@@ -369,6 +623,104 @@ const Importacion: React.FC = () => {
               {errorMsgProd && (
                 <p className="text-xs text-red-700 bg-white rounded p-2 border border-red-200">
                   ❌ {errorMsgProd}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* === IMPORTAR MANO DE OBRA === */}
+          <Card className="bg-orange-50 border-orange-200 hover:shadow-md transition-shadow flex flex-col dark:bg-orange-950/30 dark:border-orange-800">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <span className="text-2xl">👷</span>
+                <div className="text-lg font-semibold">Importar Mano de Obra</div>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                CSV con <code>sector_productivo, codigo_mano_obra, descripcion, consumo_kw_std, std_produccion, horas_hombre_std, valor_hora_hombre, horas_por_turno</code>. UPSERT por (sector, codigo, planta).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col flex-1 space-y-3">
+              <Input
+                id="csv-upload-mano"
+                type="file"
+                accept=".csv"
+                onChange={handleFileChangeMano}
+                disabled={uploadingMano}
+              />
+              {selectedFileMano && (
+                <div className="text-xs text-orange-700 flex items-center gap-1 truncate">
+                  <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{selectedFileMano.name}</span>
+                  <span className="text-muted-foreground shrink-0">({(selectedFileMano.size / 1024).toFixed(1)} KB)</span>
+                </div>
+              )}
+              {uploadingMano && <Progress value={uploadProgressMano} />}
+              <div className="flex-1" />
+              <Button
+                onClick={handleUploadMano}
+                disabled={!selectedFileMano || uploadingMano}
+                className="w-full text-white bg-orange-600 hover:bg-orange-700"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Mano de Obra
+              </Button>
+              {resultMano && !errorMsgMano && (
+                <p className="text-xs text-orange-700 bg-white dark:bg-card rounded p-2 border border-orange-200 dark:border-orange-800">
+                  ✅ {resultMano.message}
+                </p>
+              )}
+              {errorMsgMano && (
+                <p className="text-xs text-red-700 bg-white dark:bg-card rounded p-2 border border-red-200 dark:border-red-800">
+                  ❌ {errorMsgMano}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* === IMPORTAR MATRIZ ENERGÉTICA === */}
+          <Card className="bg-yellow-50 border-yellow-200 hover:shadow-md transition-shadow flex flex-col dark:bg-yellow-950/30 dark:border-yellow-800">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <span className="text-2xl">⚡</span>
+                <div className="text-lg font-semibold">Importar Matriz Energética</div>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                CSV con <code>sector_productivo, codigo_mano_obra, codigo_energia, descripcion, consumo_kw_std, valor_kw</code> (y opcional <code>std_produccion</code>). UPSERT por (codigo_energia, planta).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col flex-1 space-y-3">
+              <Input
+                id="csv-upload-ene"
+                type="file"
+                accept=".csv"
+                onChange={handleFileChangeEne}
+                disabled={uploadingEne}
+              />
+              {selectedFileEne && (
+                <div className="text-xs text-yellow-700 dark:text-yellow-300 flex items-center gap-1 truncate">
+                  <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{selectedFileEne.name}</span>
+                  <span className="text-muted-foreground shrink-0">({(selectedFileEne.size / 1024).toFixed(1)} KB)</span>
+                </div>
+              )}
+              {uploadingEne && <Progress value={uploadProgressEne} />}
+              <div className="flex-1" />
+              <Button
+                onClick={handleUploadEne}
+                disabled={!selectedFileEne || uploadingEne}
+                className="w-full text-white bg-yellow-600 hover:bg-yellow-700"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Matriz Energética
+              </Button>
+              {resultEne && !errorMsgEne && (
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 bg-white dark:bg-card rounded p-2 border border-yellow-200 dark:border-yellow-800">
+                  ✅ {resultEne.message}
+                </p>
+              )}
+              {errorMsgEne && (
+                <p className="text-xs text-red-700 bg-white dark:bg-card rounded p-2 border border-red-200 dark:border-red-800">
+                  ❌ {errorMsgEne}
                 </p>
               )}
             </CardContent>

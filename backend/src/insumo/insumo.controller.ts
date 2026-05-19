@@ -9,7 +9,8 @@ import {
   Query,
   Param,
   Put,
-  Delete
+  Delete,
+  BadRequestException,
 } from '@nestjs/common';
 import { InsumoService } from './insumo.service';
 import { plainToInstance } from 'class-transformer';
@@ -22,6 +23,18 @@ export class InsumoController {
   private readonly logger = new Logger(InsumoController.name);
 
   constructor(private readonly insumoService: InsumoService) { }
+
+  /** Helper: parsea y valida que la planta sea catamarca o varela (requerido) */
+  private requirePlanta(raw?: string): 'catamarca' | 'varela' {
+    const p = (raw ?? '').toLowerCase();
+    if (p !== 'catamarca' && p !== 'varela') {
+      throw new BadRequestException(
+        'Falta query param "planta" (debe ser catamarca o varela). ' +
+        'Los insumos viven por planta — hay que especificar de cuál.'
+      );
+    }
+    return p;
+  }
 
   /** GET /insumos?planta=catamarca|varela|all */
   @Get()
@@ -61,25 +74,39 @@ export class InsumoController {
     });
   }
 
+  /** GET /insumos/:codigo?planta=catamarca|varela */
   @Get(':codigo')
-  async obtenerInsumo(@Param('codigo') codigo: string) {
-    return this.insumoService.obtenerInsumoPorCodigo(codigo);
+  async obtenerInsumo(
+    @Param('codigo') codigo: string,
+    @Query('planta') planta?: string,
+  ) {
+    const p = this.requirePlanta(planta);
+    return this.insumoService.obtenerInsumoPorCodigo(codigo, p);
   }
 
+  /** PUT /insumos/:codigo?planta=catamarca|varela */
   @Put(':codigo')
   async actualizarInsumo(
     @Param('codigo') codigo: string,
     @Body() insumo: Partial<Insumo>,
+    @Query('planta') planta?: string,
   ): Promise<Insumo> {
-    return this.insumoService.actualizarInsumo(codigo, insumo);
+    const p = this.requirePlanta(planta);
+    return this.insumoService.actualizarInsumo(codigo, p, insumo);
   }
 
+  /** DELETE /insumos/:codigo?planta=catamarca|varela */
   @Delete(':codigo')
-  async eliminarInsumo(@Param('codigo') codigo: string): Promise<{ message: string }> {
+  async eliminarInsumo(
+    @Param('codigo') codigo: string,
+    @Query('planta') planta?: string,
+  ): Promise<{ message: string }> {
     try {
-      await this.insumoService.eliminarInsumo(codigo);
+      const p = this.requirePlanta(planta);
+      await this.insumoService.eliminarInsumo(codigo, p);
       return { message: 'Insumo eliminado exitosamente' };
     } catch (error) {
+      if (error instanceof BadRequestException) throw error;
       this.logger.error('Error al eliminar insumo', error.stack);
       throw new HttpException(
         `Error: ${error.message}`,

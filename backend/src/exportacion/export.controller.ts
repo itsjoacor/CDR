@@ -7,12 +7,13 @@ import { normalizarPlanta } from '../config/planta.helper';
 export class ExportController {
   constructor(private readonly exportService: ExportService) {}
 
-  /** GET /export?table=insumos&format=xlsx&planta=catamarca|varela|all */
+  /** GET /export?table=insumos&format=xlsx&planta=catamarca|varela|all&template=true */
   @Get()
   async exportTable(
     @Query('table') table: string,
     @Query('format') format: 'csv' | 'xlsx' = 'xlsx',
     @Query('planta') planta: string | undefined,
+    @Query('template') template: string | undefined,
     @Res() res: Response,
   ) {
     if (!table) {
@@ -20,8 +21,22 @@ export class ExportController {
     }
     const plantaNorm = normalizarPlanta(planta);
     const suffix = plantaNorm ? `_${plantaNorm}` : '';
+    const isTemplate = template === 'true' || template === '1';
+    const fileSuffix = isTemplate ? '_molde' : suffix;
 
     try {
+      if (isTemplate) {
+        const buffer = this.exportService.exportTemplate(table, format);
+        if (format === 'xlsx') {
+          res.setHeader('Content-Disposition', `attachment; filename=${table}${fileSuffix}.xlsx`);
+          res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        } else {
+          res.setHeader('Content-Disposition', `attachment; filename=${table}${fileSuffix}.csv`);
+          res.setHeader('Content-Type', 'text/csv');
+        }
+        return res.send(buffer);
+      }
+
       if (format === 'xlsx') {
         const buffer = await this.exportService.exportTable(table, format, plantaNorm);
         res.setHeader('Content-Disposition', `attachment; filename=${table}${suffix}.xlsx`);
