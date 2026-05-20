@@ -123,36 +123,20 @@ export class ProductoRepository {
     const productos = productosResult.data ?? [];
     const zeroCostSet = new Set((zeroCostResult.data ?? []).map((r: any) => r.codigo_producto));
 
-    // Round 2: CDR cero para todos los productos — UN solo RPC batch en vez de
-    // 600 llamadas en paralelo (la fn `batch_tiene_valor_cdr_cero` de la
-    // migration 013 envuelve a `tiene_valor_cdr_cero` y la corre por cada
-    // codigo en una sola query intra-DB; la lógica de "qué es CDR cero" no
-    // cambia).
-    const cdrMap: Record<string, boolean> = {};
-    const codigos = productos.map((p: any) => p.codigo_producto);
-    if (codigos.length > 0) {
-      const { data: batchData, error: batchErr } = await supabase.rpc(
-        'batch_tiene_valor_cdr_cero',
-        { p_codigos: codigos },
-      );
-      if (batchErr) {
-        // Fallback compatible si la migration 013 todavía no se aplicó:
-        // hacemos el round 2 igual que antes para no romper la respuesta.
-        const cdrResults = await Promise.all(
-          productos.map(async (p: any) => {
-            const { data, error } = await supabase.rpc('tiene_valor_cdr_cero', {
-              p_codigo_producto: p.codigo_producto,
-            });
-            return [p.codigo_producto, error ? false : !!data] as const;
-          }),
-        );
-        for (const [c, v] of cdrResults) cdrMap[c] = v;
-      } else {
-        for (const row of (batchData ?? []) as any[]) {
-          cdrMap[row.codigo_producto] = !!row.tiene_cdr_cero;
-        }
-      }
-    }
+    // CDR cero: producto con AL MENOS UNA fila de receta con valor_cdr = 0.
+    // Equivalente set-based a la fn `tiene_valor_cdr_cero` definida en la DB
+    // (que hacía EXISTS por código). Antes la llamábamos N veces — ahora UN
+    // solo SELECT distinto contra recetas_normalizada usando el indice parcial
+    // idx_recetas_normalizada_valor_cdr_cero creado en la migration 013.
+    let cdrCeroQuery = supabase
+      .from('recetas_normalizada')
+      .select('codigo_producto')
+      .eq('valor_cdr', 0);
+    cdrCeroQuery = aplicarFiltroPlanta(cdrCeroQuery, planta ?? null);
+    const { data: cdrCeroRows, error: cdrCeroErr } = await cdrCeroQuery;
+    if (cdrCeroErr) throw new Error(cdrCeroErr.message);
+
+    const cdrCeroSet = new Set<string>((cdrCeroRows ?? []).map((r: any) => r.codigo_producto));
 
     return productos.map((item: any) => ({
       codigo_producto:      item.codigo_producto,
@@ -163,7 +147,7 @@ export class ProductoRepository {
       m3:                   Number(item.m3 ?? 0),
       updated_at:           item.updated_at ?? null,
       tiene_costo_cero:     zeroCostSet.has(item.codigo_producto),
-      tiene_cdr_cero:       cdrMap[item.codigo_producto] ?? false,
+      tiene_cdr_cero:       cdrCeroSet.has(item.codigo_producto),
     }));
   }
 

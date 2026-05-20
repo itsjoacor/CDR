@@ -86,35 +86,33 @@ export class RecetaNormalizadaRepository {
     if (!codigos || codigos.length === 0) return {};
     const supabase = await this.getSupabase();
 
-    // Una sola RPC batch (migration 013) que evalua N códigos intra-DB en vez
-    // de N round-trips. Conserva exactamente la lógica original de
-    // `tiene_valor_cdr_cero` (la nueva RPC solo es un wrapper de unnest).
-    const { data: batchData, error: batchErr } = await supabase.rpc(
-      'batch_tiene_valor_cdr_cero',
-      { p_codigos: codigos },
-    );
+    // Equivalente set-based a la fn vieja `tiene_valor_cdr_cero` (EXISTS
+    // SELECT 1 FROM recetas_normalizada WHERE codigo_producto = X AND valor_cdr = 0).
+    // Hacemos UN solo SELECT filtrando por los códigos pedidos y devolvemos
+    // un map { codigo: boolean }. Mismo resultado que la RPC, sin loops.
+    const { data, error } = await supabase
+      .from('recetas_normalizada')
+      .select('codigo_producto')
+      .in('codigo_producto', codigos)
+      .eq('valor_cdr', 0);
 
-    if (!batchErr && batchData) {
-      const map: Record<string, boolean> = {};
-      for (const row of batchData as any[]) {
-        map[row.codigo_producto] = !!row.tiene_cdr_cero;
-      }
-      // Asegurar que TODOS los códigos pedidos tengan entrada (default false)
-      for (const c of codigos) if (!(c in map)) map[c] = false;
-      return map;
+    if (error) {
+      // Fallback al patrón antiguo si algo falla (no rompe el endpoint).
+      const results = await Promise.all(
+        codigos.map(async (codigo) => {
+          const { data, error } = await supabase.rpc('tiene_valor_cdr_cero', {
+            p_codigo_producto: codigo,
+          });
+          return { codigo, value: error ? false : (data || false) };
+        }),
+      );
+      return Object.fromEntries(results.map(r => [r.codigo, r.value]));
     }
 
-    // Fallback al patrón antiguo si la migration 013 no está aplicada en
-    // este entorno (no rompe el endpoint).
-    const results = await Promise.all(
-      codigos.map(async (codigo) => {
-        const { data, error } = await supabase.rpc('tiene_valor_cdr_cero', {
-          p_codigo_producto: codigo,
-        });
-        return { codigo, value: error ? false : (data || false) };
-      }),
-    );
-    return Object.fromEntries(results.map(r => [r.codigo, r.value]));
+    const cero = new Set<string>((data ?? []).map((r: any) => r.codigo_producto));
+    const map: Record<string, boolean> = {};
+    for (const c of codigos) map[c] = cero.has(c);
+    return map;
   }
 
   async eliminar(codigo_producto: string, codigo_ingrediente: string) {
