@@ -538,7 +538,9 @@ const Importacion: React.FC = () => {
                 <div className="text-lg font-semibold">Importar Insumos</div>
               </CardTitle>
               <CardDescription className="text-xs">
-                CSV con <code>grupo,codigo,detalle,costo</code>. UPSERT (no borra).
+                CSV con <code>grupo,codigo,detalle,costo</code>. UPSERT por <code>(codigo, planta)</code>.
+                El mismo código puede convivir en Catamarca y Varela como insumos distintos con costos distintos.
+                Cada importación afecta solo a la planta seleccionada en el header.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1 space-y-3">
@@ -587,7 +589,9 @@ const Importacion: React.FC = () => {
                 <div className="text-lg font-semibold">Importar Productos</div>
               </CardTitle>
               <CardDescription className="text-xs">
-                CSV con <code>codigo_producto,descripcion_producto,sector_productivo</code>. UPSERT.
+                CSV con <code>codigo_producto,descripcion_producto,sector_productivo,lleva_flete,m3</code>.
+                UPSERT por <code>codigo_producto</code>. Los códigos son <strong>globales</strong>:
+                si un código ya está cargado en la otra planta, el import se rechaza con el listado de conflictos.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1 space-y-3">
@@ -744,9 +748,17 @@ const Importacion: React.FC = () => {
           <CardHeader>
             <CardTitle className="text-yellow-800 dark:text-yellow-200">⚠️ Importante</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-yellow-800 dark:text-yellow-200">
+          <CardContent className="text-sm text-yellow-800 dark:text-yellow-200 space-y-2">
             <p>
-              <strong>Recorda no modificar ni el orden ni los titulos de las columas, el reemplazo podria ser caotico.</strong>
+              <strong>Recordá no modificar ni el orden ni los títulos de las columnas, el reemplazo podría ser caótico.</strong>
+            </p>
+            <p>
+              Los <strong>productos</strong> tienen códigos globales: un mismo código no puede vivir en
+              dos plantas. El importador rechaza el CSV entero si alguno de los códigos ya está en la otra planta.
+            </p>
+            <p>
+              Los <strong>insumos / mano de obra / matriz energética</strong> son por planta: el mismo
+              código puede existir en ambas con costos distintos. La planta se toma del selector global del header.
             </p>
           </CardContent>
         </Card>

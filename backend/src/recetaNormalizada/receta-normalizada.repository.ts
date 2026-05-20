@@ -126,7 +126,7 @@ export class RecetaNormalizadaRepository {
   async crear(dto: CreateRecetaNormalizadaDto) {
     try {
       const supabase = await this.getSupabase();
-      const { codigo_producto, codigo_ingrediente, cantidad_ingrediente } = dto;
+      const { codigo_producto, codigo_ingrediente, cantidad_ingrediente, planta_esperada } = dto;
 
       if (!codigo_producto || !codigo_ingrediente || cantidad_ingrediente == null) {
         throw new HttpException(
@@ -162,6 +162,20 @@ export class RecetaNormalizadaRepository {
         .eq('codigo_producto', codigo_producto)
         .maybeSingle();
       const planta = (prodPlanta as any)?.planta ?? 'catamarca';
+
+      // Validación cross-planta: si el front nos dice qué planta espera (el
+      // selector global), bloqueamos cargar receta para un producto de otra
+      // planta. Productos pueden usarse como INGREDIENTE cross-planta, pero
+      // sus RECETAS solo viven en su planta de origen.
+      if (planta_esperada && planta_esperada !== planta) {
+        throw new HttpException(
+          `El producto ${codigo_producto} pertenece a la planta "${planta}". ` +
+          `No se puede cargar su receta desde la planta "${planta_esperada}". ` +
+          `Si lo querés usar como ingrediente, agregalo directamente en una receta de ${planta_esperada} ` +
+          `como codigo_ingrediente — pero para editar su receta tenés que cambiar el selector arriba a "${planta}".`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
 
       const { data, error } = await supabase.from('recetas_normalizada').insert([
         {

@@ -36,9 +36,12 @@ const TABLAS: TablaInfo[] = [
     color: 'bg-orange-50 border-orange-300 dark:bg-orange-950/30 dark:border-orange-800',
     exportable: true,
     importable: true,
-    resumen: 'Catálogo de productos finales (lo que sale a la venta).',
-    conflictoUpsert: 'codigo_producto',
+    resumen: 'Catálogo de productos finales (lo que sale a la venta). Códigos globales.',
+    conflictoUpsert: 'codigo_producto (global, no por planta)',
     notas: [
+      'Los códigos de producto son GLOBALES: el mismo código no puede vivir en ambas plantas.',
+      'Si intentás cargar un código que ya existe en la otra planta, el import se rechaza con la lista de conflictos antes de tocar la DB.',
+      'Cualquier receta de cualquier planta puede usar un producto como ingrediente, sin importar en qué planta está el producto.',
       'lleva_flete acepta: SI / NO / TRUE / FALSE / 1 / 0 (case-insensitive). Vacío = NO.',
       'm3 acepta decimales con coma o punto (ej: 0,000162 ó 0.000162). Precisión hasta 10 decimales.',
       'La planta NO va en el CSV — se toma del selector global del header al importar.',
@@ -61,17 +64,21 @@ const TABLAS: TablaInfo[] = [
     color: 'bg-green-50 border-green-300 dark:bg-green-950/30 dark:border-green-800',
     exportable: true,
     importable: true,
-    resumen: 'Catálogo de materiales comprados externamente, con su costo.',
-    conflictoUpsert: 'codigo',
+    resumen: 'Catálogo de materiales comprados externamente, con su costo. Por planta.',
+    conflictoUpsert: '(codigo, planta)',
     notas: [
+      'El catálogo es por planta: el mismo código puede convivir en Catamarca y Varela como insumos distintos con costos distintos.',
+      'La planta se toma del selector global del header al importar. NO incluir columna planta en el CSV.',
+      'Las recetas de cada planta usan únicamente el insumo de SU planta. Si una receta referencia un código que no existe en su planta, el costo queda en 0 / NULL.',
       'El costo acepta formato argentino: "1.234,56" → 1234.56. También "1234.56" o "1234,56".',
-      'No borra insumos existentes — solo agrega o actualiza por codigo.',
+      'No borra insumos existentes — solo agrega o actualiza por (codigo, planta).',
     ],
     columnas: [
       { nombre: 'grupo',   tipo: 'texto',   importable: 'requerido' },
-      { nombre: 'codigo',  tipo: 'texto',   importable: 'requerido', nota: 'PK — código único del insumo' },
+      { nombre: 'codigo',  tipo: 'texto',   importable: 'requerido', nota: 'Parte de la PK compuesta con planta' },
       { nombre: 'detalle', tipo: 'texto',   importable: 'requerido', nota: 'Descripción' },
       { nombre: 'costo',   tipo: 'decimal', importable: 'opcional',  nota: 'Si está vacío queda null' },
+      { nombre: 'planta',  tipo: 'texto',   importable: 'auto',      nota: 'Se asigna desde el selector global del header' },
     ],
   },
   {
@@ -81,9 +88,11 @@ const TABLAS: TablaInfo[] = [
     color: 'bg-orange-50 border-orange-300 dark:bg-orange-950/30 dark:border-orange-800',
     exportable: true,
     importable: true,
-    resumen: 'Tiempos estándar, salarios y consumo energético por operación de mano de obra.',
+    resumen: 'Tiempos estándar, salarios y consumo energético por operación de mano de obra. Por planta.',
     conflictoUpsert: '(sector_productivo, codigo_mano_obra, planta)',
     notas: [
+      'Por planta: las recetas de cada planta solo usan códigos de MO de SU planta. Si un código no existe en la planta de la receta, el costo queda en 0/NULL.',
+      'El mismo código puede convivir en Catamarca y Varela con valores distintos.',
       'std_produccion es editable y cuando se modifica acá, se sincroniza automáticamente a matriz_energia.',
       'costo_mano_obra y cantidad_personal_estimado son columnas GENERATED — calculadas por la DB, NO se envían.',
     ],
@@ -109,9 +118,11 @@ const TABLAS: TablaInfo[] = [
     color: 'bg-yellow-50 border-yellow-300 dark:bg-yellow-950/30 dark:border-yellow-800',
     exportable: true,
     importable: true,
-    resumen: 'Consumo y costo energético por operación. Linkea con matriz_mano por (sector, codigo_mano_obra).',
+    resumen: 'Consumo y costo energético por operación. Linkea con matriz_mano por (sector, codigo_mano_obra). Por planta.',
     conflictoUpsert: '(codigo_energia, planta)',
     notas: [
+      'Por planta: las recetas de cada planta solo usan códigos de ME de SU planta.',
+      'El mismo código puede convivir en Catamarca y Varela con valores distintos.',
       'std_produccion es opcional al importar: si no se manda, la DB lo autocompleta desde matriz_mano por el trigger.',
       'total_pesos_std y costo_energia_unidad son columnas GENERATED — NO se envían.',
     ],
@@ -336,6 +347,18 @@ const ManualCarga: React.FC = () => {
             <p>
               <strong>Planta:</strong> nunca pongas la columna <code>planta</code> en el CSV. Cambiá el
               selector arriba a la derecha (Catamarca / Varela) <em>antes</em> de importar.
+            </p>
+            <p>
+              <strong>Productos son globales, insumos / MO / ME son por planta:</strong> un código de
+              producto solo puede vivir en una planta; el sistema rechaza el import si el código
+              choca con la otra. Insumos, MO y ME en cambio se cargan por planta y el mismo código
+              puede convivir con valores distintos. Cada receta usa el insumo/MO/ME de SU planta y los
+              productos los puede usar como ingredientes sin importar dónde estén dados de alta.
+            </p>
+            <p>
+              <strong>Re-importar entre plantas:</strong> si exportás insumos de Catamarca, cambiás el
+              selector a Varela e importás ese CSV, el sistema asigna las filas a Varela (la columna
+              <code>planta</code> del CSV se ignora). Es útil para clonar el catálogo de una planta a otra.
             </p>
             <p>
               <strong>Encoding:</strong> guardá los archivos como <code>UTF-8</code> para que se

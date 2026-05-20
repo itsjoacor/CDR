@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Save, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { usePlanta } from '../contexts/PlantaContext';
 import Cookies from 'js-cookie';
 
 interface Ingredient {
@@ -34,6 +35,7 @@ const CargarReceta: React.FC = () => {
 
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { plantaParaEscritura, plantaLabel } = usePlanta();
 
   const [codigoProducto, setCodigoProducto] = useState('');
   const [descripcionProducto, setDescripcionProducto] = useState('');
@@ -52,6 +54,9 @@ const CargarReceta: React.FC = () => {
     cantidad_ingrediente: 0
   });
   const [productoValido, setProductoValido] = useState(false);
+  // Si el producto existe pero pertenece a OTRA planta, guardamos el nombre
+  // de esa planta para mostrar un error claro y bloquear el flujo.
+  const [productoEnOtraPlanta, setProductoEnOtraPlanta] = useState<string | null>(null);
   const [ingredienteValido, setIngredienteValido] = useState(false);
 
 
@@ -129,6 +134,7 @@ const CargarReceta: React.FC = () => {
       setDescripcionProducto('');
       setSectorProductivo('');
       setProductoValido(false);
+      setProductoEnOtraPlanta(null);
       return;
     }
 
@@ -142,16 +148,27 @@ const CargarReceta: React.FC = () => {
         return res.json();
       })
       .then((data) => {
+        // Validar planta antes de marcar el producto como válido.
+        // Las recetas solo pueden crearse en la planta donde vive el producto.
+        if (plantaParaEscritura && data.planta && data.planta !== plantaParaEscritura) {
+          setProductoEnOtraPlanta(data.planta);
+          setDescripcionProducto('');
+          setSectorProductivo('');
+          setProductoValido(false);
+          return;
+        }
+        setProductoEnOtraPlanta(null);
         setDescripcionProducto(data.descripcion_producto || '');
         setSectorProductivo(data.sector_productivo || '');
         setProductoValido(true);
       })
       .catch(() => {
+        setProductoEnOtraPlanta(null);
         setDescripcionProducto('No encontrado');
         setSectorProductivo('No encontrado');
         setProductoValido(false);
       });
-  }, [codigoProducto, token]);
+  }, [codigoProducto, token, plantaParaEscritura]);
 
   // FETCH INFO INGREDIENTE
   useEffect(() => {
@@ -284,6 +301,15 @@ const CargarReceta: React.FC = () => {
       return;
     }
 
+    if (!plantaParaEscritura) {
+      toast({
+        title: "Planta no definida",
+        description: 'Estás en "Ambas Plantas". Cambiá el selector arriba a Catamarca o Varela antes de cargar la receta.',
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const loadingToast = toast({
         title: "Guardando componente...",
@@ -305,7 +331,8 @@ const CargarReceta: React.FC = () => {
               body: JSON.stringify({
                 codigo_producto: codigoProductoUpper,
                 codigo_ingrediente: codigoIngrediente,
-                cantidad_ingrediente: ingrediente.cantidad_ingrediente
+                cantidad_ingrediente: ingrediente.cantidad_ingrediente,
+                planta_esperada: plantaParaEscritura,
               }),
             });
 
@@ -433,8 +460,17 @@ const CargarReceta: React.FC = () => {
                     </div>
                   )}
                 </div>
-                {!productoValido && codigoProducto && (
+                {!productoValido && codigoProducto && !productoEnOtraPlanta && (
                   <p className="text-xs text-red-500">Producto no encontrado</p>
+                )}
+                {productoEnOtraPlanta && (
+                  <div className="text-xs text-red-600 bg-red-50 border border-red-300 rounded p-2 mt-1 dark:bg-red-950/40 dark:border-red-700 dark:text-red-200">
+                    Este producto pertenece a la planta <strong>{productoEnOtraPlanta}</strong>.
+                    No podés cargar su receta desde <strong>{plantaLabel}</strong>.
+                    Si querés editar su receta, cambiá el selector arriba a {productoEnOtraPlanta}.
+                    Si querés usarlo como ingrediente de un producto de {plantaLabel}, agregalo en
+                    el campo "Código Ingrediente" de la receta de ese producto.
+                  </div>
                 )}
               </div>
               <div className="space-y-2">
