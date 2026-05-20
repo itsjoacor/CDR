@@ -113,17 +113,19 @@ const Exportacion: React.FC = () => {
         },
     ];
 
-    // Normalize table names for backend
+    // Normalize table names for backend (case-insensitive y tolerante a tildes)
     const normalizarNombreTabla = (nombreVisual: string) => {
-        switch (nombreVisual) {
-            case 'Productos': return 'productos';
-            case 'Insumos Totales': return 'insumos';
-            case 'Insumos Recetas': return 'insumosutilizados';
-            case 'Mano de Obra': return 'matriz_mano';
-            case 'Mano de Energia': return 'matriz_energia';
-            case 'CDR': return 'resultados_cdr';
-            case 'Receta': return 'recetas_normalizada';
-            default: return nombreVisual.toLowerCase();
+        // Saca tildes y pasa a lower para que matchee con o sin acento
+        const key = nombreVisual.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+        switch (key) {
+            case 'productos':         return 'productos';
+            case 'insumos totales':   return 'insumos';
+            case 'insumos recetas':   return 'insumosutilizados';
+            case 'mano de obra':      return 'matriz_mano';
+            case 'mano de energia':   return 'matriz_energia';
+            case 'cdr':               return 'resultados_cdr';
+            case 'receta':            return 'recetas_normalizada';
+            default:                  return key.replace(/\s+/g, '_');
         }
     };
 

@@ -66,6 +66,14 @@ export class ExportService {
       return this.generateCSV(data);
     }
 
+    // insumosutilizados NO es una tabla — es la derivacion "insumos referenciados
+    // por al menos una receta". Lo armamos a mano juntando recetas + insumos.
+    if (tableName === 'insumosutilizados') {
+      const data = await this.buildInsumosUtilizadosExport(supabase, planta);
+      if (format === 'xlsx') return this.generateExcel(data, 'insumosutilizados');
+      return this.generateCSV(data);
+    }
+
     let query = supabase.from(tableName).select('*');
     query = aplicarFiltroPlanta(query, planta ?? null);
     const { data, error } = await query;
@@ -75,6 +83,46 @@ export class ExportService {
 
     if (format === 'xlsx') return this.generateExcel(finalData, tableName);
     return this.generateCSV(finalData);
+  }
+
+  /**
+   * "Insumos utilizados" = insumos cuyo codigo aparece en al menos una receta.
+   * Si planta está definida, se filtra por planta tanto en la receta como en
+   * el insumo (un mismo codigo puede tener costo distinto en cada planta).
+   */
+  private async buildInsumosUtilizadosExport(
+    supabase: any,
+    planta?: 'catamarca' | 'varela' | null,
+  ): Promise<any[]> {
+    // 1) Códigos de ingrediente distintos en recetas (con filtro de planta si aplica)
+    let recetasQ = supabase
+      .from('recetas_normalizada')
+      .select('codigo_ingrediente, planta');
+    recetasQ = aplicarFiltroPlanta(recetasQ, planta ?? null);
+    const { data: recetas, error: errR } = await recetasQ;
+    if (errR) throw new Error(`Supabase error (recetas): ${errR.message}`);
+
+    if (!recetas || recetas.length === 0) return [];
+
+    // (codigo, planta) únicos según las recetas
+    const claves = new Set<string>();
+    for (const r of recetas as any[]) {
+      claves.add(`${r.codigo_ingrediente}__${r.planta}`);
+    }
+
+    // 2) Insumos: buscamos solo los que matchean por (codigo, planta)
+    const codigos = Array.from(new Set((recetas as any[]).map(r => r.codigo_ingrediente)));
+    let insQ = supabase.from('insumos').select('*').in('codigo', codigos);
+    insQ = aplicarFiltroPlanta(insQ, planta ?? null);
+    const { data: insumos, error: errI } = await insQ;
+    if (errI) throw new Error(`Supabase error (insumos): ${errI.message}`);
+
+    // 3) Filtrar solo insumos cuya (codigo, planta) realmente aparece en recetas
+    const utilizados = (insumos ?? []).filter((i: any) =>
+      claves.has(`${i.codigo}__${i.planta}`),
+    );
+
+    return utilizados;
   }
 
   private async fetchAllRowsRecetas(supabase: any, planta?: 'catamarca' | 'varela' | null): Promise<any[]> {
@@ -162,7 +210,8 @@ export class ExportService {
 
     const results = await Promise.all(
       tables.map(async (table) => {
-        if (table === 'recetas_normalizada') return this.buildRecetasExport(supabase, planta);
+        if (table === 'recetas_normalizada')   return this.buildRecetasExport(supabase, planta);
+        if (table === 'insumosutilizados')     return this.buildInsumosUtilizadosExport(supabase, planta);
         let query = supabase.from(table).select('*');
         query = aplicarFiltroPlanta(query, planta ?? null);
         const r = await query;
