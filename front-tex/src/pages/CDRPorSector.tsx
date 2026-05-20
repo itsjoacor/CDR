@@ -11,14 +11,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 interface ResultadoCDR {
   sector_productivo: string;
+  planta?: 'catamarca' | 'varela';
   base_cdr: number;
   base_cdr_final: number | null;
 }
 
 interface SectorMantencion {
   nombre: string;
+  planta?: 'catamarca' | 'varela';
   porcentaje_mantencion: number | null;
 }
+
+const PLANTA_BADGE: Record<string, string> = {
+  catamarca: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700',
+  varela:    'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:border-sky-700',
+};
 
 const CDRPorSector: React.FC = () => {
   const token = Cookies.get('token') || '';
@@ -28,7 +35,7 @@ const CDRPorSector: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [agrupados, setAgrupados] = useState<
-    { sector: string; totalCDR: number; porcentajeMantencion: number; totalCDRFinal: number }[]
+    { sector: string; planta: string; totalCDR: number; porcentajeMantencion: number; totalCDRFinal: number }[]
   >([]);
 
   const fetchData = async () => {
@@ -48,24 +55,33 @@ const CDRPorSector: React.FC = () => {
         resSectores.json(),
       ]);
 
-      // Agrupar por sector y sumar base_cdr (crudo) y base_cdr_final (con mantención)
-      const mapa = new Map<string, { total: number; totalFinal: number }>();
+      // Agrupar por (sector, planta) — sectores tienen mantención per-planta y
+      // los productos viven por planta. En modo "Ambas Plantas" cada combinación
+      // sale como fila separada.
+      const mapa = new Map<string, { sector: string; planta: string; total: number; totalFinal: number }>();
       dataCDR.forEach((item) => {
-        const actual = mapa.get(item.sector_productivo) ?? { total: 0, totalFinal: 0 };
+        const planta = item.planta ?? 'catamarca';
+        const key = `${item.sector_productivo}__${planta}`;
+        const actual = mapa.get(key) ?? { sector: item.sector_productivo, planta, total: 0, totalFinal: 0 };
         const finalVal = item.base_cdr_final ?? item.base_cdr;
-        mapa.set(item.sector_productivo, {
+        mapa.set(key, {
+          sector: item.sector_productivo,
+          planta,
           total: actual.total + Number(item.base_cdr),
           totalFinal: actual.totalFinal + Number(finalVal),
         });
       });
 
-      // Construir array con porcentajes
-      const resultado = Array.from(mapa.entries()).map(([sector, sums]) => {
-        const sectorInfo = dataSectores.find((s) => s.nombre === sector);
+      // Construir array con porcentajes (la mantención también es per-planta)
+      const resultado = Array.from(mapa.values()).map(({ sector, planta, total, totalFinal }) => {
+        const sectorInfo = dataSectores.find((s) =>
+          s.nombre === sector && (s.planta ?? 'catamarca') === planta,
+        ) ?? dataSectores.find((s) => s.nombre === sector); // fallback
         return {
           sector,
-          totalCDR: sums.total,
-          totalCDRFinal: sums.totalFinal,
+          planta,
+          totalCDR: total,
+          totalCDRFinal: totalFinal,
           porcentajeMantencion: sectorInfo?.porcentaje_mantencion ?? 0,
         };
       });
@@ -127,6 +143,7 @@ const CDRPorSector: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Sector Productivo</TableHead>
+                  <TableHead>Planta</TableHead>
                   <TableHead className="text-right">Total CDR</TableHead>
                   <TableHead className="text-right">% Mantención</TableHead>
                   <TableHead className="text-right">Total CDR + Mantención</TableHead>
@@ -134,8 +151,13 @@ const CDRPorSector: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {agrupados.map((s) => (
-                  <TableRow key={s.sector}>
+                  <TableRow key={`${s.sector}__${s.planta}`}>
                     <TableCell className="font-medium">{s.sector}</TableCell>
+                    <TableCell>
+                      <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded border ${PLANTA_BADGE[s.planta]}`}>
+                        {s.planta}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(s.totalCDR)}
                     </TableCell>

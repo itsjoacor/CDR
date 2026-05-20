@@ -16,11 +16,17 @@ interface ResultadoCDR {
   codigo_producto: string;
   sector_productivo: string;
   descripcion_producto: string;
+  planta?: 'catamarca' | 'varela';
   base_cdr: number;
   base_cdr_final?: number | null;
   monto_flete?: number | null;
   valor_cdr_final?: number | null;
 }
+
+const PLANTA_BADGE: Record<string, string> = {
+  catamarca: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700',
+  varela:    'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-900/40 dark:text-sky-200 dark:border-sky-700',
+};
 
 const ResultadosCDR: React.FC = () => {
   const token = Cookies.get('token') || '';
@@ -273,6 +279,7 @@ const ResultadosCDR: React.FC = () => {
                   <TableHead>Código Producto</TableHead>
                   <TableHead>Sector Productivo</TableHead>
                   <TableHead>Descripción</TableHead>
+                  <TableHead>Planta</TableHead>
                   <TableHead className="text-right" title="CDR + mantención + (valor_flete × m³ si aplica)">CDR Total</TableHead>
                   <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
@@ -292,6 +299,11 @@ const ResultadosCDR: React.FC = () => {
                       <TableCell>{item.codigo_producto}</TableCell>
                       <TableCell>{item.sector_productivo}</TableCell>
                       <TableCell>{item.descripcion_producto}</TableCell>
+                      <TableCell>
+                        <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded border ${PLANTA_BADGE[item.planta ?? 'catamarca']}`}>
+                          {item.planta ?? 'catamarca'}
+                        </span>
+                      </TableCell>
                       <TableCell
                         className="text-right font-semibold"
                         title={
