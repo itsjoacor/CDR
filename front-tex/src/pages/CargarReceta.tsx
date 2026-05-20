@@ -25,10 +25,10 @@ interface SearchOption {
 }
 
 const TIPO_COLORS: Record<string, string> = {
-  'Insumo': 'bg-purple-100 text-purple-700',
-  'Producto': 'bg-blue-100 text-blue-700',
-  'Mano Obra': 'bg-orange-100 text-orange-700',
-  'Energía': 'bg-yellow-100 text-yellow-700',
+  'Insumo':    'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200',
+  'Producto':  'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200',
+  'Mano Obra': 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-200',
+  'Energía':   'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-200',
 };
 
 const CargarReceta: React.FC = () => {
@@ -446,7 +446,7 @@ const CargarReceta: React.FC = () => {
                     maxLength={15}
                   />
                   {showProdSugg && prodSuggestions.length > 0 && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-auto">
+                    <div className="absolute z-20 mt-1 w-full bg-white dark:bg-card border rounded-md shadow-lg max-h-48 overflow-auto">
                       {prodSuggestions.map((p) => (
                         <div
                           key={p.codigo}
@@ -475,15 +475,15 @@ const CargarReceta: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label>Descripción</Label>
-                <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
-                  <span className={`text-sm ${descripcionProducto === 'No encontrado' ? 'text-red-500' : 'text-gray-700'
+                <div className="p-2 bg-white dark:bg-card rounded border min-h-[40px] flex items-center">
+                  <span className={`text-sm ${descripcionProducto === 'No encontrado' ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'
                     }`}>
                     {descripcionProducto}
                   </span>
                 </div>
                 <Label className="mt-2">Sector Productivo</Label>
-                <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
-                  <span className={`text-sm ${sectorProductivo === 'No encontrado' ? 'text-red-500' : 'text-gray-700'
+                <div className="p-2 bg-white dark:bg-card rounded border min-h-[40px] flex items-center">
+                  <span className={`text-sm ${sectorProductivo === 'No encontrado' ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'
                     }`}>
                     {sectorProductivo}
                   </span>
@@ -493,9 +493,9 @@ const CargarReceta: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-blue-800">
+            <CardTitle className="flex items-center space-x-2 text-blue-800 dark:text-blue-200">
               <Plus className="h-5 w-5" />
               <span>Agregar Componente</span>
             </CardTitle>
@@ -518,7 +518,7 @@ const CargarReceta: React.FC = () => {
                     className="uppercase border-blue-300"
                   />
                   {showIngSugg && ingSuggestions.length > 0 && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                    <div className="absolute z-20 mt-1 w-full bg-white dark:bg-card border rounded-md shadow-lg max-h-60 overflow-auto">
                       {ingSuggestions.map((i) => (
                         <div
                           key={`${i.tipo}-${i.codigo}`}
@@ -538,7 +538,7 @@ const CargarReceta: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-blue-600">Puede ser insumo, producto, mano obra o matriz energética</p>
+                <p className="text-xs text-blue-600 dark:text-blue-300">Puede ser insumo, producto, mano obra o matriz energética</p>
 
                 {!ingredienteValido && newIngredient.codigo_ingrediente && descripcionIngrediente !== 'Buscando...' && (
                   <p className="text-xs text-red-500">Ingrediente no encontrado</p>
@@ -546,10 +546,10 @@ const CargarReceta: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label>Descripción</Label>
-                <div className="p-2 bg-white rounded border min-h-[40px] flex items-center">
+                <div className="p-2 bg-white dark:bg-card rounded border min-h-[40px] flex items-center">
                   <span className={`text-sm ${descripcionIngrediente === 'Ingrediente no encontrado' ? 'text-red-500' :
                     descripcionIngrediente === 'Buscando...' ? 'text-blue-500 italic' :
-                      'text-gray-700'
+                      'text-gray-700 dark:text-gray-200'
                     }`}>
                     {descripcionIngrediente || ' '}
                   </span>

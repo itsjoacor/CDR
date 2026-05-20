@@ -31,6 +31,14 @@ export const PlantaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const setPlanta = (p: PlantaView) => {
     setPlantaState(p);
     try { localStorage.setItem(STORAGE_KEY, p); } catch { /* ignore */ }
+    // Forzar refresh full de la pagina actual: garantiza que toda la data
+    // pendiente (caches en memoria, estados locales de paginas) se vuelva a
+    // hidratar bajo la nueva planta. Sin esto a veces hay UI residual.
+    if (typeof window !== 'undefined') {
+      // Pequeño defer para que el localStorage.setItem alcance a guardarse
+      // antes de que el reload mate la pagina.
+      setTimeout(() => window.location.reload(), 50);
+    }
   };
 
   const plantaLabel = planta === 'all' ? 'Ambas Plantas' : planta === 'catamarca' ? 'Catamarca' : 'Varela';
