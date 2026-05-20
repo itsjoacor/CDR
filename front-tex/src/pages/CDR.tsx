@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlanta } from '../contexts/PlantaContext';
 import Layout from '../components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +25,7 @@ interface ResultadoCDR {
 const ResultadosCDR: React.FC = () => {
   const token = Cookies.get('token') || '';
   const { user } = useAuth();
+  const { plantaParam } = usePlanta();
   const { toast } = useToast();
 
   const [resultadosCDR, setResultadosCDR] = useState<ResultadoCDR[]>([]);
@@ -45,7 +47,7 @@ const ResultadosCDR: React.FC = () => {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr?planta=${plantaParam}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error(`Error: ${response.status}`);
@@ -92,7 +94,7 @@ const ResultadosCDR: React.FC = () => {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [plantaParam]);
 
   /** ===== Derivados: filtro por sector + búsqueda y conteos ===== */
   const busquedaNorm = busqueda.trim().toLowerCase();

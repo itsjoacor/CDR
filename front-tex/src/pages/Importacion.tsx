@@ -510,6 +510,29 @@ const Importacion: React.FC = () => {
     }
   };
 
+  // Bloqueo total cuando esta en "Ambas Plantas": importar requiere planta
+  // especifica porque cada fila se le asigna esa planta. Sin contexto claro,
+  // no podemos saber a donde mandar los datos.
+  if (!plantaParaEscritura) {
+    return (
+      <Layout title="Importación de Datos">
+        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 max-w-3xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-200 text-xl">
+              <AlertCircle className="h-6 w-6" />
+              No se puede importar en vista "Ambas Plantas"
+            </CardTitle>
+            <CardDescription className="text-amber-800 dark:text-amber-200/80">
+              La importación necesita saber a qué planta van los datos.
+              Cambiá el selector arriba a la derecha a <strong>Catamarca</strong> o <strong>Varela</strong>
+              y volvé a entrar a esta página.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </Layout>
+    );
+  }
+
   return (
     <Layout title="Importación de Datos">
       <div className="space-y-6">

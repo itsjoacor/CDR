@@ -1,5 +1,6 @@
 // src/pages/CDRPorSector.tsx
 import React, { useState, useEffect } from 'react';
+import { usePlanta } from '../contexts/PlantaContext';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +22,7 @@ interface SectorMantencion {
 
 const CDRPorSector: React.FC = () => {
   const token = Cookies.get('token') || '';
+  const { plantaParam } = usePlanta();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +36,8 @@ const CDRPorSector: React.FC = () => {
       setIsLoading(true);
 
       const [resCDR, resSectores] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos/mantencion`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr?planta=${plantaParam}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos/mantencion?planta=${plantaParam}`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       if (!resCDR.ok) throw new Error(`Error resultados: ${resCDR.status}`);
@@ -84,7 +86,8 @@ const CDRPorSector: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plantaParam]);
 
   const handleRefresh = () => {
     fetchData();
