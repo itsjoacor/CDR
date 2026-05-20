@@ -122,17 +122,24 @@ export class PlantasService {
       };
     });
 
-    const BATCH = 200;
+    // Cada UPDATE sigue siendo individual (porque cada producto tiene un
+    // monto_flete distinto), pero los corremos EN PARALELO por chunks. Antes
+    // era serial dentro del chunk (un await por fila) → ahora todos a la vez.
+    // El trigger downstream de `resultados_cdr` se dispara igual por cada
+    // fila, manteniendo el cascade que recalcula valor_cdr_final.
+    const BATCH = 50;
     let actualizados = 0;
     for (let i = 0; i < updates.length; i += BATCH) {
       const slice = updates.slice(i, i + BATCH);
-      for (const u of slice) {
-        const { error } = await supabase
-          .from('resultados_cdr')
-          .update({ monto_flete: u.monto_flete })
-          .eq('codigo_producto', u.codigo_producto);
-        if (!error) actualizados++;
-      }
+      const results = await Promise.all(
+        slice.map(u =>
+          supabase
+            .from('resultados_cdr')
+            .update({ monto_flete: u.monto_flete })
+            .eq('codigo_producto', u.codigo_producto),
+        ),
+      );
+      actualizados += results.filter(r => !r.error).length;
     }
 
     return { actualizados };

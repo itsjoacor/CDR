@@ -17,7 +17,13 @@ export class ResultadosCdrRepository {
 
   async findAll(planta?: 'catamarca' | 'varela' | null): Promise<ResultadosCdr[]> {
     const supabase = await this.getSupabase();
-    let query = supabase.from(this.table).select('*');
+    // Solo las columnas que el modelo y la UI usan, no `select('*')`. Recorta
+    // ~60% del payload (eran ~20 columnas; el front usa 8).
+    let query = supabase
+      .from(this.table)
+      .select(
+        'codigo_producto, sector_productivo, descripcion_producto, planta, base_cdr, base_cdr_final, monto_flete, valor_cdr_final',
+      );
     query = aplicarFiltroPlanta(query, planta ?? null);
     const { data, error } = await query;
 

@@ -123,14 +123,36 @@ export class ProductoRepository {
     const productos = productosResult.data ?? [];
     const zeroCostSet = new Set((zeroCostResult.data ?? []).map((r: any) => r.codigo_producto));
 
-    // Round 2 paralelo: CDR cero para todos los productos
-    const cdrResults = await Promise.all(
-      productos.map(async (p: any) => {
-        const { data, error } = await supabase.rpc('tiene_valor_cdr_cero', { p_codigo_producto: p.codigo_producto });
-        return { codigo: p.codigo_producto, value: error ? false : (data || false) };
-      })
-    );
-    const cdrMap = Object.fromEntries(cdrResults.map(r => [r.codigo, r.value]));
+    // Round 2: CDR cero para todos los productos — UN solo RPC batch en vez de
+    // 600 llamadas en paralelo (la fn `batch_tiene_valor_cdr_cero` de la
+    // migration 013 envuelve a `tiene_valor_cdr_cero` y la corre por cada
+    // codigo en una sola query intra-DB; la lógica de "qué es CDR cero" no
+    // cambia).
+    const cdrMap: Record<string, boolean> = {};
+    const codigos = productos.map((p: any) => p.codigo_producto);
+    if (codigos.length > 0) {
+      const { data: batchData, error: batchErr } = await supabase.rpc(
+        'batch_tiene_valor_cdr_cero',
+        { p_codigos: codigos },
+      );
+      if (batchErr) {
+        // Fallback compatible si la migration 013 todavía no se aplicó:
+        // hacemos el round 2 igual que antes para no romper la respuesta.
+        const cdrResults = await Promise.all(
+          productos.map(async (p: any) => {
+            const { data, error } = await supabase.rpc('tiene_valor_cdr_cero', {
+              p_codigo_producto: p.codigo_producto,
+            });
+            return [p.codigo_producto, error ? false : !!data] as const;
+          }),
+        );
+        for (const [c, v] of cdrResults) cdrMap[c] = v;
+      } else {
+        for (const row of (batchData ?? []) as any[]) {
+          cdrMap[row.codigo_producto] = !!row.tiene_cdr_cero;
+        }
+      }
+    }
 
     return productos.map((item: any) => ({
       codigo_producto:      item.codigo_producto,

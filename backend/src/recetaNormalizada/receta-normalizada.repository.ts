@@ -83,17 +83,37 @@ export class RecetaNormalizadaRepository {
   }
 
   async batchTieneCdrCero(codigos: string[]): Promise<Record<string, boolean>> {
+    if (!codigos || codigos.length === 0) return {};
     const supabase = await this.getSupabase();
 
+    // Una sola RPC batch (migration 013) que evalua N códigos intra-DB en vez
+    // de N round-trips. Conserva exactamente la lógica original de
+    // `tiene_valor_cdr_cero` (la nueva RPC solo es un wrapper de unnest).
+    const { data: batchData, error: batchErr } = await supabase.rpc(
+      'batch_tiene_valor_cdr_cero',
+      { p_codigos: codigos },
+    );
+
+    if (!batchErr && batchData) {
+      const map: Record<string, boolean> = {};
+      for (const row of batchData as any[]) {
+        map[row.codigo_producto] = !!row.tiene_cdr_cero;
+      }
+      // Asegurar que TODOS los códigos pedidos tengan entrada (default false)
+      for (const c of codigos) if (!(c in map)) map[c] = false;
+      return map;
+    }
+
+    // Fallback al patrón antiguo si la migration 013 no está aplicada en
+    // este entorno (no rompe el endpoint).
     const results = await Promise.all(
       codigos.map(async (codigo) => {
         const { data, error } = await supabase.rpc('tiene_valor_cdr_cero', {
           p_codigo_producto: codigo,
         });
         return { codigo, value: error ? false : (data || false) };
-      })
+      }),
     );
-
     return Object.fromEntries(results.map(r => [r.codigo, r.value]));
   }
 
