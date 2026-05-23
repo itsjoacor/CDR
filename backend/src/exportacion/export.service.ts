@@ -89,40 +89,62 @@ export class ExportService {
    * "Insumos utilizados" = insumos cuyo codigo aparece en al menos una receta.
    * Si planta está definida, se filtra por planta tanto en la receta como en
    * el insumo (un mismo codigo puede tener costo distinto en cada planta).
+   *
+   * IMPORTANTE: paginamos el fetch de recetas porque Supabase devuelve hasta
+   * 1000 filas por default; sin esto perderíamos los códigos de ingrediente
+   * que solo aparecen después de la fila 1000 (recetas_normalizada tiene ~5000).
    */
   private async buildInsumosUtilizadosExport(
     supabase: any,
     planta?: 'catamarca' | 'varela' | null,
   ): Promise<any[]> {
-    // 1) Códigos de ingrediente distintos en recetas (con filtro de planta si aplica)
-    let recetasQ = supabase
-      .from('recetas_normalizada')
-      .select('codigo_ingrediente, planta');
-    recetasQ = aplicarFiltroPlanta(recetasQ, planta ?? null);
-    const { data: recetas, error: errR } = await recetasQ;
-    if (errR) throw new Error(`Supabase error (recetas): ${errR.message}`);
+    // 1) Códigos de ingrediente distintos en recetas — paginado para que
+    //    superemos el límite default de Supabase.
+    const claves = new Set<string>();   // "codigo__planta" → para filtro fino
+    const codigos = new Set<string>();  // codigos únicos → para el .in() de insumos
 
-    if (!recetas || recetas.length === 0) return [];
+    const PAGE = 1000;
+    let from = 0;
+    // Loop hasta que la página venga vacía o más chica que el PAGE
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let recetasQ = supabase
+        .from('recetas_normalizada')
+        .select('codigo_ingrediente, planta')
+        .range(from, from + PAGE - 1);
+      recetasQ = aplicarFiltroPlanta(recetasQ, planta ?? null);
+      const { data: recetas, error: errR } = await recetasQ;
+      if (errR) throw new Error(`Supabase error (recetas): ${errR.message}`);
+      if (!recetas || recetas.length === 0) break;
 
-    // (codigo, planta) únicos según las recetas
-    const claves = new Set<string>();
-    for (const r of recetas as any[]) {
-      claves.add(`${r.codigo_ingrediente}__${r.planta}`);
+      for (const r of recetas as any[]) {
+        claves.add(`${r.codigo_ingrediente}__${r.planta}`);
+        codigos.add(r.codigo_ingrediente);
+      }
+
+      if (recetas.length < PAGE) break;
+      from += PAGE;
     }
 
-    // 2) Insumos: buscamos solo los que matchean por (codigo, planta)
-    const codigos = Array.from(new Set((recetas as any[]).map(r => r.codigo_ingrediente)));
-    let insQ = supabase.from('insumos').select('*').in('codigo', codigos);
+    if (codigos.size === 0) return [];
+
+    // 2) Insumos: buscamos solo los que matchean por (codigo, planta).
+    //    Si la lista de códigos fuera muy grande, podríamos chunkearla, pero
+    //    para 500-1000 códigos el .in() funciona perfecto.
+    let insQ = supabase
+      .from('insumos')
+      .select('*')
+      .in('codigo', Array.from(codigos));
     insQ = aplicarFiltroPlanta(insQ, planta ?? null);
     const { data: insumos, error: errI } = await insQ;
     if (errI) throw new Error(`Supabase error (insumos): ${errI.message}`);
 
-    // 3) Filtrar solo insumos cuya (codigo, planta) realmente aparece en recetas
-    const utilizados = (insumos ?? []).filter((i: any) =>
+    // 3) Filtrar solo insumos cuya (codigo, planta) realmente aparece en
+    //    recetas. Esto es lo que excluye casos donde el código existe como
+    //    insumo en una planta pero solo se usa como ingrediente en la otra.
+    return (insumos ?? []).filter((i: any) =>
       claves.has(`${i.codigo}__${i.planta}`),
     );
-
-    return utilizados;
   }
 
   private async fetchAllRowsRecetas(supabase: any, planta?: 'catamarca' | 'varela' | null): Promise<any[]> {
