@@ -67,6 +67,12 @@ const Importacion: React.FC = () => {
   const [uploadProgressProd, setUploadProgressProd] = useState(0);
   const [resultProd, setResultProd] = useState<ImportSummary | null>(null);
   const [errorMsgProd, setErrorMsgProd] = useState<string | null>(null);
+  // Modo de importación de productos:
+  //   'new'    → solo insertar códigos que NO existen aún en esta planta.
+  //              Si alguno ya existe, rechaza el CSV entero con la lista.
+  //   'upsert' → insertar nuevos + actualizar existentes (sector, lleva_flete, m3).
+  type ModeProd = 'new' | 'upsert';
+  const [modeProd, setModeProd] = useState<ModeProd>('upsert');
 
   // Mano de Obra
   const [selectedFileMano, setSelectedFileMano] = useState<File | null>(null);
@@ -230,7 +236,7 @@ const Importacion: React.FC = () => {
       if (!rows.length) throw new Error('No se encontraron filas válidas con columnas: codigo_producto, descripcion_producto, sector_productivo.');
       setUploadProgressProd(60);
 
-      // Pre-check: rechazar el import entero si algún código del CSV ya existe en la OTRA planta.
+      // Pre-check 1: rechazar si algún código del CSV ya existe en la OTRA planta.
       // Productos son globalmente únicos — el mismo código no puede vivir en ambas plantas.
       const codigos = rows.map((r) => r.codigo_producto);
       const { data: existentes, error: checkError } = await supabase
@@ -238,16 +244,31 @@ const Importacion: React.FC = () => {
         .select('codigo_producto, planta, descripcion_producto')
         .in('codigo_producto', codigos);
       if (checkError) throw new Error(`Error chequeando duplicados: ${checkError.message}`);
-      const conflictos = (existentes ?? []).filter((p: any) => p.planta !== plantaParaEscritura);
-      if (conflictos.length > 0) {
-        const muestra = conflictos
+
+      const cruzados = (existentes ?? []).filter((p: any) => p.planta !== plantaParaEscritura);
+      if (cruzados.length > 0) {
+        const muestra = cruzados
           .slice(0, 10)
           .map((c: any) => `  • ${c.codigo_producto} (en ${c.planta}): ${c.descripcion_producto}`)
           .join('\n');
-        const masTexto = conflictos.length > 10 ? `\n  ... y ${conflictos.length - 10} más.` : '';
+        const masTexto = cruzados.length > 10 ? `\n  ... y ${cruzados.length - 10} más.` : '';
         throw new Error(
-          `Hay ${conflictos.length} código(s) en el CSV que ya están cargados en la otra planta. ` +
+          `Hay ${cruzados.length} código(s) en el CSV que ya están cargados en la OTRA planta. ` +
           `Los códigos de producto son únicos a nivel global, no se puede crearlos también en ${plantaParaEscritura}.\n\nConflictos:\n${muestra}${masTexto}`
+        );
+      }
+
+      // Pre-check 2: si modo "Solo nuevos", rechazar si algún código ya existe en ESTA planta.
+      const yaEnEstaPlanta = (existentes ?? []).filter((p: any) => p.planta === plantaParaEscritura);
+      if (modeProd === 'new' && yaEnEstaPlanta.length > 0) {
+        const muestra = yaEnEstaPlanta
+          .slice(0, 10)
+          .map((c: any) => `  • ${c.codigo_producto}: ${c.descripcion_producto}`)
+          .join('\n');
+        const masTexto = yaEnEstaPlanta.length > 10 ? `\n  ... y ${yaEnEstaPlanta.length - 10} más.` : '';
+        throw new Error(
+          `Modo "Solo nuevos": el CSV trae ${yaEnEstaPlanta.length} código(s) que ya existen en ${plantaParaEscritura}. ` +
+          `Cambiá el modo a "Nuevos + Actualizar" si querés modificar esos productos, o sacalos del CSV.\n\nYa existentes:\n${muestra}${masTexto}`
         );
       }
 
@@ -260,14 +281,21 @@ const Importacion: React.FC = () => {
       if (upsertError) throw new Error(upsertError.message);
       setUploadProgressProd(100);
 
+      // Resumen claro según modo
+      const nuevos      = rows.length - yaEnEstaPlanta.length;
+      const actualizados = yaEnEstaPlanta.length;
+      const msg = modeProd === 'new'
+        ? `Insertados: ${nuevos} productos nuevos en ${plantaParaEscritura}.`
+        : `OK: ${nuevos} nuevos, ${actualizados} actualizados en ${plantaParaEscritura} (${rows.length} filas totales).`;
+
       const res: ImportSummary = {
         mode: 'upsert',
         total_rows: rows.length,
         inserted_or_updated: count ?? rows.length,
-        message: `UPSERT completado: ${count ?? rows.length} productos insertados/actualizados.`,
+        message: msg,
       };
       setResultProd(res);
-      toast({ title: 'Importación completada', description: res.message });
+      toast({ title: 'Importación completada', description: msg });
       setSelectedFileProd(null);
     } catch (err: any) {
       const msg = err?.message || 'Error importando CSV';
@@ -613,11 +641,42 @@ const Importacion: React.FC = () => {
               </CardTitle>
               <CardDescription className="text-xs">
                 CSV con <code>codigo_producto,descripcion_producto,sector_productivo,lleva_flete,m3</code>.
-                UPSERT por <code>codigo_producto</code>. Los códigos son <strong>globales</strong>:
-                si un código ya está cargado en la otra planta, el import se rechaza con el listado de conflictos.
+                Los códigos son <strong>globales</strong> entre plantas. El modo elige si solo se
+                agregan productos nuevos, o si también se actualizan los ya existentes en esta planta.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col flex-1 space-y-3">
+              {/* Selector de modo */}
+              <div className="space-y-1">
+                <div className="text-xs font-semibold text-orange-900 dark:text-orange-200">Modo</div>
+                <div className="flex items-center gap-1 border rounded-md p-1 bg-white dark:bg-card">
+                  {([
+                    { v: 'new' as ModeProd,    label: 'Solo nuevos',          desc: 'Inserta nuevos. Rechaza si algún código ya existe.' },
+                    { v: 'upsert' as ModeProd, label: 'Nuevos + Actualizar',  desc: 'Inserta nuevos y actualiza los existentes (sector, flete, m³).' },
+                  ]).map(opt => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => setModeProd(opt.v)}
+                      disabled={uploadingProd}
+                      title={opt.desc}
+                      className={`flex-1 text-xs px-2 py-1.5 rounded transition-colors ${
+                        modeProd === opt.v
+                          ? 'bg-orange-100 text-orange-900 font-medium border border-orange-300 dark:bg-orange-900/40 dark:text-orange-100 dark:border-orange-700'
+                          : 'text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {modeProd === 'new'
+                    ? 'Si el CSV trae códigos ya cargados en esta planta, el import se rechaza con la lista de los que chocan.'
+                    : 'Códigos ya existentes en esta planta se actualizan con los valores del CSV (sector, lleva_flete, m³).'}
+                </p>
+              </div>
+
               <Input
                 id="csv-upload-prod"
                 type="file"
@@ -626,7 +685,7 @@ const Importacion: React.FC = () => {
                 disabled={uploadingProd}
               />
               {selectedFileProd && (
-                <div className="text-xs text-orange-700 flex items-center gap-1 truncate">
+                <div className="text-xs text-orange-700 dark:text-orange-300 flex items-center gap-1 truncate">
                   <CheckCircle2 className="h-3 w-3 shrink-0" />
                   <span className="truncate">{selectedFileProd.name}</span>
                   <span className="text-muted-foreground shrink-0">({(selectedFileProd.size / 1024).toFixed(1)} KB)</span>
@@ -640,7 +699,7 @@ const Importacion: React.FC = () => {
                 className="w-full text-white bg-orange-600 hover:bg-orange-700"
               >
                 <Upload className="h-4 w-4 mr-2" />
-                Importar Productos
+                {modeProd === 'new' ? 'Importar (solo nuevos)' : 'Importar (nuevos + actualizar)'}
               </Button>
               {resultProd && !errorMsgProd && (
                 <p className="text-xs text-orange-700 bg-white rounded p-2 border border-orange-200">
