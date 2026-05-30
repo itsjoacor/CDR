@@ -234,7 +234,15 @@ const Producto: React.FC = () => {
 
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(`Error al eliminar: ${text}`);
+        // El backend devuelve el mensaje de la excepción DB (incluido el del
+        // trigger trig_prevent_delete_productos cuando hay referencias en
+        // recetas). Lo extraemos para mostrarlo al usuario.
+        let msg = text;
+        try {
+          const parsed = JSON.parse(text);
+          msg = parsed?.message || parsed?.error || text;
+        } catch { /* texto plano */ }
+        throw new Error(msg);
       }
 
       setProductos((prev) =>
@@ -247,8 +255,8 @@ const Producto: React.FC = () => {
     } catch (error) {
       console.error("Error al eliminar:", error);
       toast({
-        title: "Error",
-        description: "No se pudo eliminar el producto.",
+        title: "No se pudo eliminar",
+        description: error instanceof Error ? error.message : "Error desconocido",
         variant: "destructive",
       });
     }

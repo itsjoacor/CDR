@@ -182,7 +182,16 @@ const Insumos: React.FC = () => {
       );
 
       const text = await response.text();
-      if (!response.ok) throw new Error(`Error al eliminar: ${text}`);
+      if (!response.ok) {
+        // Propagar mensaje específico del backend (incluido el del trigger
+        // trig_prevent_delete_insumos cuando el insumo está en uso)
+        let msg = text;
+        try {
+          const parsed = JSON.parse(text);
+          msg = parsed?.message || parsed?.error || text;
+        } catch { /* texto plano */ }
+        throw new Error(msg);
+      }
 
       setInsumos((prev) => prev.filter((item) => item.codigo !== codigo));
 
@@ -193,8 +202,8 @@ const Insumos: React.FC = () => {
     } catch (error) {
       console.error("Error al eliminar insumo:", error);
       toast({
-        title: "Error",
-        description: "No se pudo eliminar el insumo. Por favor intenta nuevamente.",
+        title: "No se pudo eliminar",
+        description: error instanceof Error ? error.message : "Error desconocido",
         variant: "destructive",
       });
     }

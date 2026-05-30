@@ -166,8 +166,19 @@ const Receta: React.FC = () => {
       );
       if (!res.ok) {
         const body = await res.text();
+        let mensaje = body;
+        try {
+          const parsed = JSON.parse(body);
+          mensaje = parsed?.message || body;
+        } catch {}
+        throw new Error(mensaje);
+      }
+
+      const result = (await res.json().catch(() => ({}))) as { affected?: number };
+      const affected = result.affected ?? 0;
+      if (affected === 0) {
         throw new Error(
-          `Error al eliminar la receta completa (${producto.codigo_producto}): ${body}`
+          `No se eliminó ninguna fila para ${producto.codigo_producto}. Puede ser un problema de permisos (RLS) en recetas_normalizada.`
         );
       }
 
@@ -197,7 +208,7 @@ const Receta: React.FC = () => {
 
       toast({
         title: "Eliminado",
-        description: `Se eliminaron todas las filas de la receta ${producto.codigo_producto}.`,
+        description: `Se eliminaron ${affected} fila(s) de la receta ${producto.codigo_producto}.`,
       });
     } catch (err) {
       toast({
