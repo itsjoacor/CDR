@@ -129,6 +129,26 @@ export class RecetaNormalizadaRepository {
 
   async eliminarPorProducto(codigo_producto: string): Promise<number> {
     const supabase = await this.getSupabase();
+
+    const { count: countAntes, error: errCount } = await supabase
+      .from('recetas_normalizada')
+      .select('*', { count: 'exact', head: true })
+      .eq('codigo_producto', codigo_producto);
+
+    if (errCount) {
+      throw new HttpException(
+        'Error al contar receta antes de eliminar: ' + errCount.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    if (!countAntes || countAntes === 0) {
+      throw new HttpException(
+        `No se encontraron filas de receta para el producto ${codigo_producto}.`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
     const { data, error } = await supabase
       .from('recetas_normalizada')
       .delete()
@@ -138,7 +158,17 @@ export class RecetaNormalizadaRepository {
     if (error) {
       throw new HttpException('Error al eliminar receta completa: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-    return data?.length || 0;
+
+    const affected = data?.length || 0;
+
+    if (affected < countAntes) {
+      throw new HttpException(
+        `La eliminación afectó ${affected} de ${countAntes} filas. Revisá permisos (RLS) sobre recetas_normalizada — probablemente tu usuario no tiene permiso de DELETE para algunas filas.`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    return affected;
   }
 
   async crear(dto: CreateRecetaNormalizadaDto) {

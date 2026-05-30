@@ -66,21 +66,25 @@ export class RecetaNormalizadaController {
     return this.service.productosConCostoTotalCero(codigo);
   }
 
-  @Delete(':codigo_producto/:codigo_ingrediente')
-  eliminar(
-    @Param('codigo_producto') codigo_producto: string,
-    @Param('codigo_ingrediente') codigo_ingrediente: string,
-  ) {
-    return this.service.eliminar(codigo_producto, codigo_ingrediente);
-  }
-
-  /** NUEVO: DELETE por producto (eliminar receta completa) */
+  /** DELETE por producto (eliminar receta completa).
+   *  IMPORTANTE: debe declararse ANTES de la ruta genérica
+   *  `:codigo_producto/:codigo_ingrediente`, sino NestJS matchea esa primero
+   *  con codigo_producto="por-producto" y codigo_ingrediente=<el real>.
+   */
   @Delete('por-producto/:codigo_producto')
   async eliminarPorProducto(@Param('codigo_producto') codigo_producto: string) {
     if (!codigo_producto) {
       throw new BadRequestException('codigo_producto es requerido');
     }
     return this.service.eliminarRecetaCompleta(codigo_producto);
+  }
+
+  @Delete(':codigo_producto/:codigo_ingrediente')
+  eliminar(
+    @Param('codigo_producto') codigo_producto: string,
+    @Param('codigo_ingrediente') codigo_ingrediente: string,
+  ) {
+    return this.service.eliminar(codigo_producto, codigo_ingrediente);
   }
 
   @Put(':codigo_producto/:codigo_ingrediente')
