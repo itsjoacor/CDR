@@ -1,5 +1,5 @@
 // src/autocomplete/autocomplete.controller.ts
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { AutocompleteService } from './autocomplete.service';
 
 @Controller('api/autocomplete')
@@ -12,7 +12,10 @@ export class AutocompleteController {
   }
 
   @Get('ingrediente/:codigo')
-  getIngrediente(@Param('codigo') codigo: string) {
-    return this.autocompleteService.autocompleteIngrediente(codigo);
+  getIngrediente(
+    @Param('codigo') codigo: string,
+    @Query('planta') planta?: string,
+  ) {
+    return this.autocompleteService.autocompleteIngrediente(codigo, planta);
   }
 }

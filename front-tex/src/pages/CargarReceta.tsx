@@ -79,11 +79,14 @@ const CargarReceta: React.FC = () => {
     };
 
     const load = async () => {
+      // Pedimos insumos / MO / energía ya filtrados por planta al backend.
+      // Productos siguen sin filtro (son globales como ingrediente).
+      const plantaQS = plantaParaEscritura ? `?planta=${plantaParaEscritura}` : '';
       const [prods, insumos, manos, energias] = await Promise.all([
         safeFetch(`${base}/productos`),
-        safeFetch(`${base}/insumos`),
-        safeFetch(`${base}/matriz-mano`),
-        safeFetch(`${base}/matriz-energia`),
+        safeFetch(`${base}/insumos${plantaQS}`),
+        safeFetch(`${base}/matriz-mano${plantaQS}`),
+        safeFetch(`${base}/matriz-energia${plantaQS}`),
       ]);
 
       setAllProductos(
@@ -94,23 +97,37 @@ const CargarReceta: React.FC = () => {
         }))
       );
 
+      // Filtro por planta: insumos / MO / energía son por-planta y solo se
+      // pueden usar en recetas de la misma planta. Productos son globales,
+      // así que no se filtran.
+      const enPlanta = (r: any) =>
+        !plantaParaEscritura || r.planta === plantaParaEscritura;
+
+      const insumosFiltrados   = insumos.filter(enPlanta);
+      const manosFiltradas     = manos.filter(enPlanta);
+      const energiasFiltradas  = energias.filter(enPlanta);
+
       const ing: SearchOption[] = [];
-      for (const r of insumos)  ing.push({ codigo: r.codigo, descripcion: r.detalle ?? '', tipo: 'Insumo' });
-      for (const r of prods)    ing.push({ codigo: r.codigo_producto, descripcion: r.descripcion_producto ?? '', tipo: 'Producto' });
-      for (const r of manos)    ing.push({ codigo: r.codigo_mano_obra, descripcion: r.descripcion ?? '', tipo: 'Mano Obra' });
-      for (const r of energias) ing.push({ codigo: r.codigo_energia, descripcion: r.descripcion ?? '', tipo: 'Energía' });
+      for (const r of insumosFiltrados)  ing.push({ codigo: r.codigo, descripcion: r.detalle ?? '', tipo: 'Insumo' });
+      for (const r of prods)             ing.push({ codigo: r.codigo_producto, descripcion: r.descripcion_producto ?? '', tipo: 'Producto' });
+      for (const r of manosFiltradas)    ing.push({ codigo: r.codigo_mano_obra, descripcion: r.descripcion ?? '', tipo: 'Mano Obra' });
+      for (const r of energiasFiltradas) ing.push({ codigo: r.codigo_energia, descripcion: r.descripcion ?? '', tipo: 'Energía' });
 
       console.log('[CargarReceta] Catálogos cargados:', {
         productos: prods.length,
-        insumos: insumos.length,
-        mano_obra: manos.length,
-        energia: energias.length,
+        insumos_total: insumos.length,
+        insumos_planta: insumosFiltrados.length,
+        mo_total: manos.length,
+        mo_planta: manosFiltradas.length,
+        energia_total: energias.length,
+        energia_planta: energiasFiltradas.length,
+        planta: plantaParaEscritura,
         total: ing.length,
       });
       setAllIngredientes(ing);
     };
     load();
-  }, [token]);
+  }, [token, plantaParaEscritura]);
 
   // Filtro local de sugerencias
   const prodSuggestions = codigoProducto.length > 0
@@ -183,7 +200,8 @@ const CargarReceta: React.FC = () => {
     setDescripcionIngrediente('Buscando...');
 
     const timer = setTimeout(() => {
-      fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${codigo}`, {
+      const plantaQS = plantaParaEscritura ? `?planta=${plantaParaEscritura}` : '';
+      fetch(`${import.meta.env.VITE_API_URL}/api/autocomplete/ingrediente/${codigo}${plantaQS}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -193,6 +211,12 @@ const CargarReceta: React.FC = () => {
           return res.json();
         })
         .then((data) => {
+          // Si el backend detectó cross-planta, viene `error` con mensaje claro.
+          if (data?.error) {
+            setDescripcionIngrediente(data.error);
+            setIngredienteValido(false);
+            return;
+          }
           if (data && data.descripcion) {
             setDescripcionIngrediente(data.descripcion.trim());
             setIngredienteValido(true);
@@ -207,7 +231,7 @@ const CargarReceta: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [newIngredient.codigo_ingrediente, token]);
+  }, [newIngredient.codigo_ingrediente, token, plantaParaEscritura]);
 
 
   const addIngredient = () => {

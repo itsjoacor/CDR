@@ -33,6 +33,18 @@ export class MatrizManoRepository {
     return data as MatrizMano | null;
   }
 
+  /** Devuelve TODAS las filas con ese código (puede haber 2 si está en
+   *  ambas plantas). Usado por autocomplete para detectar cross-planta. */
+  async obtenerTodasPorCodigo(codigo: string): Promise<MatrizMano[]> {
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
+      .from('matriz_mano')
+      .select('*')
+      .eq('codigo_mano_obra', codigo);
+    if (error) throw new Error(error.message);
+    return (data || []) as MatrizMano[];
+  }
+
   async crear(data: MatrizMano): Promise<MatrizMano> {
     const supabase = await this.getSupabase();
     const { data: insertedData, error } = await supabase

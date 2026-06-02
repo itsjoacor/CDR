@@ -33,6 +33,18 @@ export class MatrizEnergiaRepository {
     return data as MatrizEnergia | null;
   }
 
+  /** Devuelve TODAS las filas con ese código (puede haber 2 si está en
+   *  ambas plantas). Usado por autocomplete para detectar cross-planta. */
+  async obtenerTodasPorCodigo(codigo: string): Promise<MatrizEnergia[]> {
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
+      .from('matriz_energia')
+      .select('*')
+      .eq('codigo_energia', codigo);
+    if (error) throw new Error(error.message);
+    return (data || []) as MatrizEnergia[];
+  }
+
   async crear(data: MatrizEnergia): Promise<MatrizEnergia> {
     try {
       const supabase = await this.getSupabase();
