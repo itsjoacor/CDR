@@ -8,4 +8,5 @@ export interface MatrizEnergia {
   std_produccion?: number | null;
   total_pesos_std?: number;
   costo_energia_unidad?: number;
+  planta?: 'catamarca' | 'varela';
 }

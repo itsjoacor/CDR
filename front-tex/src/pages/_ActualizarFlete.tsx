@@ -46,6 +46,12 @@ const ActualizarFlete: React.FC = () => {
   const [nuevoValor, setNuevoValor] = useState<string>('0');
   const [conteoProductosFlete, setConteoProductosFlete] = useState<{ total: number; conFlete: number; conFleteYM3: number } | null>(null);
 
+  // Estado paralelo para flete de INSUMOS
+  const [actualValorInsumo, setActualValorInsumo] = useState<number>(0);
+  const [nuevoValorInsumo, setNuevoValorInsumo] = useState<string>('0');
+  const [savingInsumo, setSavingInsumo] = useState(false);
+  const [conteoInsumosFlete, setConteoInsumosFlete] = useState<{ total: number; conFlete: number; conFleteYM3: number } | null>(null);
+
   const planta: Planta | null = plantaParaEscritura;
   const titulo = planta === 'catamarca' ? 'Catamarca' : planta === 'varela' ? 'Varela' : '';
   const c = planta ? COLORS[planta] : null;
@@ -62,9 +68,12 @@ const ActualizarFlete: React.FC = () => {
         if (!res.ok) throw new Error('No se pudo cargar el flete actual');
         const data = await res.json();
         const v = Number(data?.valor_flete ?? 0);
+        const vi = Number(data?.valor_flete_insumo ?? 0);
         if (cancelado) return;
         setActualValor(v);
         setNuevoValor(String(v));
+        setActualValorInsumo(vi);
+        setNuevoValorInsumo(String(vi));
       } catch (err: any) {
         if (!cancelado) toast({ title: 'Error', description: err.message, variant: 'destructive' });
       } finally {
@@ -73,6 +82,28 @@ const ActualizarFlete: React.FC = () => {
     })();
     return () => { cancelado = true; };
   }, [planta, token]);
+
+  // Conteo de insumos con lleva_flete + m³ > 0
+  useEffect(() => {
+    if (!planta) return;
+    let cancelado = false;
+    (async () => {
+      try {
+        const r = await fetch(`${import.meta.env.VITE_API_URL}/insumos?planta=${planta}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!r.ok) return;
+        const insumos = await r.json();
+        if (cancelado) return;
+        setConteoInsumosFlete({
+          total: insumos.length,
+          conFlete: insumos.filter((i: any) => i.lleva_flete === true).length,
+          conFleteYM3: insumos.filter((i: any) => i.lleva_flete === true && Number(i.m3 ?? 0) > 0).length,
+        });
+      } catch { /* silencioso */ }
+    })();
+    return () => { cancelado = true; };
+  }, [planta, actualValorInsumo, token]);
 
   useEffect(() => {
     if (!planta) return;
@@ -114,6 +145,42 @@ const ActualizarFlete: React.FC = () => {
       </Layout>
     );
   }
+
+  const guardarInsumo = async () => {
+    if (!planta) return;
+    const nuevo = Number(nuevoValorInsumo);
+    if (!Number.isFinite(nuevo) || nuevo < 0) {
+      toast({ title: 'Valor inválido', description: 'El valor de flete debe ser un número ≥ 0.', variant: 'destructive' });
+      return;
+    }
+    if (nuevo === actualValorInsumo) {
+      toast({ title: 'Sin cambios', description: 'El valor es el mismo que el actual.' });
+      return;
+    }
+    setSavingInsumo(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/plantas/${planta}/flete-insumo`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ valor_flete_insumo: nuevo }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.message ?? 'Error guardando flete de insumos');
+      }
+      const data = await res.json();
+      setActualValorInsumo(Number(data.valor_flete_insumo));
+      setNuevoValorInsumo(String(data.valor_flete_insumo));
+      toast({
+        title: '✅ Flete de insumos actualizado',
+        description: `${titulo}: nuevo valor = $${formatARS(Number(data.valor_flete_insumo))} por m³. El recálculo de las recetas dependientes lo dispara el trigger DB automáticamente.`,
+      });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setSavingInsumo(false);
+    }
+  };
 
   const recargar = async () => {
     setLoading(true);
@@ -286,6 +353,91 @@ const ActualizarFlete: React.FC = () => {
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Guardando y recalculando...</>
                     ) : (
                       <><Save className="h-4 w-4 mr-2" /> Guardar y recalcular</>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ─────────────  Flete INSUMOS  ───────────── */}
+        <Card className={`${c.bg} ${c.border} border-2`}>
+          <CardHeader>
+            <CardTitle className={`flex items-center gap-2 ${c.text}`}>
+              <Truck className="h-5 w-5" />
+              Valor de flete por m³ — Insumos {titulo}
+            </CardTitle>
+            <CardDescription>
+              Monto que se cobra por cada m³ de un <strong>insumo</strong> que tenga <strong>"Aplica flete"</strong> activo y <strong>m³ &gt; 0</strong>.
+              Independiente del flete de productos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loading ? (
+              <div className="flex items-center gap-2 text-muted-foreground py-6 justify-center">
+                <Loader2 className="h-5 w-5 animate-spin" /> Cargando...
+              </div>
+            ) : (
+              <>
+                {conteoInsumosFlete && (
+                  <Badge variant="outline" className={
+                    conteoInsumosFlete.conFleteYM3 > 0
+                      ? 'bg-green-50 text-green-700 border-green-300'
+                      : 'bg-orange-50 text-orange-700 border-orange-300'
+                  }>
+                    {conteoInsumosFlete.conFleteYM3 > 0
+                      ? `🧪 ${conteoInsumosFlete.conFleteYM3} de ${conteoInsumosFlete.total} insumos pagan flete (con "Aplica flete" + m³ > 0)`
+                      : `⚠ Ninguno de los ${conteoInsumosFlete.total} insumos paga flete (necesitan "Aplica flete" + m³ > 0)`}
+                  </Badge>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-white border rounded-md">
+                    <Label className="text-xs text-muted-foreground">Valor actual</Label>
+                    <div className={`text-3xl font-bold ${c.text} mt-1 flex items-baseline gap-1`}>
+                      <DollarSign className="h-5 w-5" />
+                      {formatARS(actualValorInsumo)}
+                      <span className="text-sm font-normal text-muted-foreground">/m³</span>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white border rounded-md">
+                    <Label htmlFor="nuevo-valor-insumo" className="text-xs text-muted-foreground">Nuevo valor ($ por m³)</Label>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <DollarSign className="h-5 w-5 text-muted-foreground" />
+                      <Input
+                        id="nuevo-valor-insumo"
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={nuevoValorInsumo}
+                        onChange={(e) => setNuevoValorInsumo(e.target.value)}
+                        className="text-3xl font-bold border-0 p-0 h-auto flex-1"
+                      />
+                      <span className="text-sm font-normal text-muted-foreground">/m³</span>
+                    </div>
+                  </div>
+                </div>
+
+                {Number(nuevoValorInsumo) !== actualValorInsumo && Number.isFinite(Number(nuevoValorInsumo)) && (
+                  <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-300 rounded-md text-sm text-yellow-800">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <div>
+                      Al guardar se va a recalcular el costo de los <strong>insumos con flete</strong> de {titulo} y, por cascade, todas las recetas que los usan.
+                      El nuevo costo de un insumo será <code>costo + ${formatARS(Number(nuevoValorInsumo) || 0)} × m³</code>.
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button
+                    onClick={guardarInsumo}
+                    disabled={savingInsumo || loading || Number(nuevoValorInsumo) === actualValorInsumo}
+                    className={`${c.button} text-white`}
+                  >
+                    {savingInsumo ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Guardando...</>
+                    ) : (
+                      <><Save className="h-4 w-4 mr-2" /> Guardar flete insumos</>
                     )}
                   </Button>
                 </div>

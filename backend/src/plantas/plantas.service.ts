@@ -8,6 +8,7 @@ export const PLANTAS_VALIDAS: PlantaNombre[] = ['catamarca', 'varela'];
 export interface Planta {
   nombre: PlantaNombre;
   valor_flete: number;
+  valor_flete_insumo?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -179,5 +180,31 @@ export class PlantasService {
       .from('resultados_cdr')
       .update({ monto_flete })
       .eq('codigo_producto', codigo_producto);
+  }
+
+  /**
+   * Actualiza el valor de flete de insumos para una planta.
+   * El trigger DB `trig_recalc_por_flete_insumo_planta` dispara el
+   * recálculo de todas las recetas dependientes — acá solo persistimos.
+   */
+  async actualizarFleteInsumo(nombre: PlantaNombre, valor_flete_insumo: number) {
+    if (!PLANTAS_VALIDAS.includes(nombre)) {
+      throw new BadRequestException(`Planta inválida: ${nombre}`);
+    }
+    if (!Number.isFinite(valor_flete_insumo) || valor_flete_insumo < 0) {
+      throw new BadRequestException('valor_flete_insumo debe ser un número ≥ 0');
+    }
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
+      .from('plantas')
+      .update({
+        valor_flete_insumo,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('nombre', nombre)
+      .select()
+      .single();
+    if (error) throw new Error(`Error actualizando flete de insumos: ${error.message}`);
+    return data;
   }
 }

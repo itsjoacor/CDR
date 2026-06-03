@@ -46,6 +46,8 @@ export class InsumoRepository {
           detalle: insumo.detalle,
           costo: insumo.costo,
           planta: insumo.planta ?? 'catamarca',
+          m3:          (insumo as any).m3 ?? 0,
+          lleva_flete: (insumo as any).lleva_flete ?? false,
           updated_at: new Date().toISOString(),
         }
       ])

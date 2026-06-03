@@ -67,4 +67,29 @@ export class PlantasController {
       throw new HttpException(err?.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  /**
+   * PUT /plantas/:nombre/flete-insumo — actualizar valor_flete_insumo ($ por m³)
+   * Body: { valor_flete_insumo: number }
+   * El recálculo de recetas dependientes lo dispara el trigger DB; acá solo
+   * persistimos el nuevo valor.
+   */
+  @Put(':nombre/flete-insumo')
+  async actualizarFleteInsumo(
+    @Param('nombre') nombre: string,
+    @Body() body: { valor_flete_insumo: number },
+  ) {
+    if (body?.valor_flete_insumo === undefined || body?.valor_flete_insumo === null) {
+      throw new BadRequestException('Falta valor_flete_insumo en el body');
+    }
+    try {
+      return await this.plantasService.actualizarFleteInsumo(
+        nombre as PlantaNombre,
+        Number(body.valor_flete_insumo),
+      );
+    } catch (err: any) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(err?.message, HttpStatus.BAD_REQUEST);
+    }
+  }
 }

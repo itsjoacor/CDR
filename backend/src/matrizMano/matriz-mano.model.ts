@@ -10,4 +10,5 @@ export interface MatrizMano {
   producto_calculado_std?: string | null;
   costo_mano_obra?: number; // generado
   cantidad_personal_estimado?: number; // generado
+  planta?: 'catamarca' | 'varela';
 }

@@ -42,6 +42,8 @@ interface Insumo {
   detalle: string;
   costo: number;
   planta: 'catamarca' | 'varela';
+  m3?: number | null;
+  lleva_flete?: boolean | null;
   updated_at?: string | null;
   estado?: "disponible" | "agotado" | "descontinuado";
   stock?: number;
@@ -62,22 +64,34 @@ const Insumos: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Insumo>>({});
+  const [valorFleteInsumo, setValorFleteInsumo] = useState<number>(0); // de la planta actual
   const canEdit = user?.role === "admin";
 
   useEffect(() => {
     const fetchInsumos = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/insumos?planta=${plantaParam}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        if (!res.ok) throw new Error("Error al obtener insumos");
-        const data = await res.json();
+        const [resIns, resPlanta] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/insumos?planta=${plantaParam}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          // Solo si hay planta concreta (no "ambas") traemos el valor de flete
+          plantaParam === 'catamarca' || plantaParam === 'varela'
+            ? fetch(`${import.meta.env.VITE_API_URL}/plantas/${plantaParam}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+            : Promise.resolve(null as any),
+        ]);
+        if (!resIns.ok) throw new Error("Error al obtener insumos");
+        const data = await resIns.json();
         setInsumos(data);
+
+        if (resPlanta && resPlanta.ok) {
+          const p = await resPlanta.json();
+          setValorFleteInsumo(Number(p?.valor_flete_insumo ?? 0));
+        } else {
+          setValorFleteInsumo(0);
+        }
       } catch (err) {
         toast({
           title: "Error",
@@ -132,6 +146,8 @@ const Insumos: React.FC = () => {
             detalle: editForm.detalle,
             grupo: editForm.grupo,
             costo: editForm.costo,
+            m3: editForm.m3 ?? 0,
+            lleva_flete: !!editForm.lleva_flete,
           }),
         }
       );
@@ -288,12 +304,20 @@ const Insumos: React.FC = () => {
                     <TableHead>Código/Nombre</TableHead>
                     <TableHead>Grupo</TableHead>
                     <TableHead>Costo</TableHead>
+                    <TableHead className="text-right">M³</TableHead>
+                    <TableHead className="text-center">Lleva flete</TableHead>
+                    <TableHead className="text-right">Costo final</TableHead>
                     <TableHead>Actualización</TableHead>
                     {canEdit && <TableHead>Acciones</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredInsumos.map((insumo) => (
+                  {filteredInsumos.map((insumo) => {
+                    const m3 = Number(insumo.m3 ?? 0);
+                    const lleva = !!insumo.lleva_flete;
+                    const flete = lleva ? m3 * valorFleteInsumo : 0;
+                    const costoFinal = Number(insumo.costo) + flete;
+                    return (
                     <React.Fragment key={insumo.codigo}>
                       <TableRow>
                         <TableCell>
@@ -307,6 +331,18 @@ const Insumos: React.FC = () => {
                           <div className="font-mono font-semibold text-green-600">
                             ${insumo.costo.toLocaleString("es-CO")}
                           </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {m3 > 0 ? m3.toLocaleString('es-AR', { maximumFractionDigits: 6 }) : '-'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {lleva
+                            ? <Badge className="bg-green-100 text-green-700 border-green-300">Sí</Badge>
+                            : <Badge variant="outline" className="text-muted-foreground">No</Badge>}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm font-semibold">
+                          ${costoFinal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {flete > 0 && <span className="ml-1 text-xs text-amber-700" title={`Incluye flete: $${flete.toFixed(2)}`}>🚚</span>}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {insumo.updated_at
@@ -347,7 +383,7 @@ const Insumos: React.FC = () => {
 
                       {editingId === insumo.codigo && (
                         <TableRow className="bg-muted/30">
-                          <TableCell colSpan={canEdit ? 5 : 4}>
+                          <TableCell colSpan={canEdit ? 8 : 7}>
                             <Card className="w-full">
                               <CardHeader>
                                 <CardTitle className="text-lg">Editando: {insumo.detalle}</CardTitle>
@@ -382,6 +418,30 @@ const Insumos: React.FC = () => {
                                       placeholder="Costo"
                                     />
                                   </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="m3">M³ por unidad</Label>
+                                    <Input
+                                      id="m3"
+                                      type="number"
+                                      step="0.000001"
+                                      min={0}
+                                      value={editForm.m3 ?? ''}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, m3: Number(e.target.value) }))}
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="lleva_flete">¿Lleva flete?</Label>
+                                    <select
+                                      id="lleva_flete"
+                                      className="w-full h-10 border rounded-md px-2 bg-background"
+                                      value={editForm.lleva_flete ? 'si' : 'no'}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, lleva_flete: e.target.value === 'si' }))}
+                                    >
+                                      <option value="no">No</option>
+                                      <option value="si">Sí</option>
+                                    </select>
+                                  </div>
                                 </div>
                                 <div className="flex justify-end mt-4 space-x-2">
                                   <Button variant="outline" size="sm" onClick={handleSave}><Save className="h-4 w-4 mr-1" /> Guardar</Button>
@@ -393,7 +453,8 @@ const Insumos: React.FC = () => {
                         </TableRow>
                       )}
                     </React.Fragment>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

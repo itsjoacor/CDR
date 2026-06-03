@@ -45,19 +45,36 @@ export class ImportacionService {
       try {
         await client.query('BEGIN');
 
+        // Detectar columnas opcionales presentes en el CSV
+        const hasM3          = 'm3'          in rows[0];
+        const hasLlevaFlete  = 'lleva_flete' in rows[0];
+
         await client.query(`
           CREATE TEMP TABLE temp_insumos_import (
-            codigo text,
-            costo  numeric
+            codigo      text,
+            costo       numeric,
+            m3          numeric,
+            lleva_flete boolean
           ) ON COMMIT DROP;
         `);
 
         const codigos: string[] = [];
         const costos: number[] = [];
+        const m3s: (number | null)[] = [];
+        const lleva: (boolean | null)[] = [];
         for (const r of rows) {
           if (!r.codigo || typeof r.costo !== 'number') continue;
           codigos.push(r.codigo.trim());
           costos.push(r.costo);
+          m3s.push(hasM3 && (r as any).m3 != null ? Number((r as any).m3) : null);
+          // Acepta true/false, "true"/"false", "si"/"no", 1/0
+          const lf = (r as any).lleva_flete;
+          if (!hasLlevaFlete || lf == null || lf === '') {
+            lleva.push(null);
+          } else {
+            const s = String(lf).toLowerCase().trim();
+            lleva.push(s === 'true' || s === 'si' || s === 'sí' || s === '1' || s === 'yes');
+          }
         }
 
         if (codigos.length === 0) {
@@ -66,17 +83,19 @@ export class ImportacionService {
 
         await client.query(
           `
-          INSERT INTO temp_insumos_import (codigo, costo)
-          SELECT * FROM UNNEST ($1::text[], $2::numeric[]);
+          INSERT INTO temp_insumos_import (codigo, costo, m3, lleva_flete)
+          SELECT * FROM UNNEST ($1::text[], $2::numeric[], $3::numeric[], $4::boolean[]);
         `,
-          [codigos, costos]
+          [codigos, costos, m3s, lleva]
         );
 
-        // Solo actualiza insumos de la planta indicada (no toca insumos de otras plantas)
+        // Update: siempre actualiza costo. m3 y lleva_flete solo si vinieron.
         const updateResult = await client.query(
           `
           UPDATE insumos i
-          SET costo = t.costo
+          SET costo       = t.costo,
+              m3          = COALESCE(t.m3,          i.m3),
+              lleva_flete = COALESCE(t.lleva_flete, i.lleva_flete)
           FROM temp_insumos_import t
           WHERE i.codigo = t.codigo AND i.planta = $1;
         `,

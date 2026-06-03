@@ -28,8 +28,8 @@ export class ExportService {
    */
   private readonly TEMPLATE_HEADERS: Record<string, string[]> = {
     productos:           ['codigo_producto', 'descripcion_producto', 'sector_productivo', 'lleva_flete', 'm3'],
-    insumos:             ['grupo', 'codigo', 'detalle', 'costo'],
-    insumosutilizados:   ['grupo', 'codigo', 'detalle', 'costo'],
+    insumos:             ['grupo', 'codigo', 'detalle', 'costo', 'lleva_flete', 'm3'],
+    insumosutilizados:   ['grupo', 'codigo', 'detalle', 'costo', 'lleva_flete', 'm3'],
     matriz_mano:         ['sector_productivo', 'codigo_mano_obra', 'descripcion', 'consumo_kw_std', 'std_produccion', 'horas_hombre_std', 'valor_hora_hombre', 'horas_por_turno'],
     matriz_energia:      ['sector_productivo', 'codigo_mano_obra', 'codigo_energia', 'descripcion', 'consumo_kw_std', 'valor_kw', 'std_produccion'],
     recetas_normalizada: ['codigo_producto', 'codigo_ingrediente', 'cantidad_ingrediente'],

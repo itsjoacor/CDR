@@ -21,6 +21,8 @@ const CargarInsumo: React.FC = () => {
     const [codigo, setCodigo] = useState('');
     const [detalle, setDetalle] = useState('');
     const [costo, setCosto] = useState<number>(0);
+    const [m3, setM3] = useState<number>(0);
+    const [llevaFlete, setLlevaFlete] = useState<boolean>(false);
     const [planta, setPlanta] = useState<'catamarca' | 'varela'>(plantaParaEscritura ?? 'catamarca');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -34,6 +36,8 @@ const CargarInsumo: React.FC = () => {
         setCodigo('');
         setDetalle('');
         setCosto(0);
+        setM3(0);
+        setLlevaFlete(false);
     };
 
     const handleSave = async () => {
@@ -53,6 +57,8 @@ const CargarInsumo: React.FC = () => {
                     codigo: codigo.trim().toUpperCase(),
                     detalle: detalle.trim(),
                     costo: costo,
+                    m3: m3,
+                    lleva_flete: llevaFlete,
                     planta,
                 }),
             });
@@ -212,6 +218,43 @@ const CargarInsumo: React.FC = () => {
                                 </div>
                                 <p className="text-xs text-muted-foreground">
                                     Costo unitario del insumo en pesos colombianos
+                                </p>
+                            </div>
+
+                            {/* M³ por unidad */}
+                            <div className="space-y-2">
+                                <Label htmlFor="m3">M³ por unidad</Label>
+                                <Input
+                                    id="m3"
+                                    type="number"
+                                    step="0.000001"
+                                    min={0}
+                                    value={m3 === 0 ? "" : m3}
+                                    onChange={(e) => setM3(Number(e.target.value))}
+                                    placeholder="0"
+                                    className="max-w-60"
+                                    disabled={isLoading}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Volumen del insumo. Si es 0 o si "Lleva flete" está apagado, no se calcula flete.
+                                </p>
+                            </div>
+
+                            {/* Lleva flete */}
+                            <div className="space-y-2">
+                                <Label htmlFor="lleva_flete">¿Aplica flete?</Label>
+                                <select
+                                    id="lleva_flete"
+                                    className="w-full max-w-60 h-10 border rounded-md px-2 bg-background"
+                                    value={llevaFlete ? 'si' : 'no'}
+                                    onChange={(e) => setLlevaFlete(e.target.value === 'si')}
+                                    disabled={isLoading}
+                                >
+                                    <option value="no">No</option>
+                                    <option value="si">Sí</option>
+                                </select>
+                                <p className="text-xs text-muted-foreground">
+                                    Si está en Sí, el costo final del insumo será <code>costo + m³ × valor_flete_insumo</code> de la planta.
                                 </p>
                             </div>
                         </div>
