@@ -65,6 +65,14 @@ const Producto: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [productos, setProductos] = useState<ProductoItem[]>([]);
+
+  type CdrInfo = {
+    base_cdr: number;
+    base_cdr_final: number | null;
+    monto_flete: number | null;
+    valor_cdr_final: number | null;
+  };
+  const [cdrInfoMap, setCdrInfoMap] = useState<Record<string, CdrInfo>>({});
   const [sectores, setSectores] = useState<string[]>([]);
   const [productosLista, setProductosLista] = useState<ProductoItem[]>([]);
   const [productoSeleccionado, setProductoSeleccionado] = useState<string | null>(null);
@@ -86,15 +94,30 @@ const Producto: React.FC = () => {
     const fetchAll = async () => {
       setLoading(true);
       try {
-        const [resProd, resSectores] = await Promise.all([
+        const [resProd, resSectores, resCdr] = await Promise.all([
           fetch(`${import.meta.env.VITE_API_URL}/productos?planta=${plantaParam}`, { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`${import.meta.env.VITE_API_URL}/sectores-productivos?planta=${plantaParam}`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr?planta=${plantaParam}`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
 
         if (!resProd.ok) throw new Error("Error al cargar productos");
         if (!resSectores.ok) throw new Error("Error al cargar sectores");
 
         const [dataProd, dataSectores] = await Promise.all([resProd.json(), resSectores.json()]);
+
+        if (resCdr.ok) {
+          const cdrRows: any[] = await resCdr.json();
+          const m: Record<string, CdrInfo> = {};
+          for (const r of cdrRows) {
+            m[r.codigo_producto] = {
+              base_cdr:        Number(r.base_cdr ?? 0),
+              base_cdr_final:  r.base_cdr_final  != null ? Number(r.base_cdr_final)  : null,
+              monto_flete:     r.monto_flete     != null ? Number(r.monto_flete)     : null,
+              valor_cdr_final: r.valor_cdr_final != null ? Number(r.valor_cdr_final) : null,
+            };
+          }
+          setCdrInfoMap(m);
+        }
 
         const productosData = dataProd.map((item: any) => ({
           codigo_producto: item.codigo_producto,
@@ -478,12 +501,27 @@ const Producto: React.FC = () => {
                     <TableHead>Código/Descripción</TableHead>
                     <TableHead>Sector</TableHead>
                     <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">CDR simple</TableHead>
+                    <TableHead className="text-right">Mantención</TableHead>
+                    <TableHead className="text-right">Flete</TableHead>
+                    <TableHead className="text-right">CDR final</TableHead>
                     <TableHead>Creación</TableHead>
                     {canEdit && <TableHead>Acciones</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProductos.map((producto) => (
+                  {filteredProductos.map((producto) => {
+                    const info = cdrInfoMap[producto.codigo_producto];
+                    const baseCdr = info?.base_cdr ?? null;
+                    const finalSinFlete = info?.base_cdr_final ?? baseCdr;
+                    const mantencion = finalSinFlete != null && baseCdr != null
+                      ? finalSinFlete - baseCdr
+                      : null;
+                    const flete = info?.monto_flete ?? null;
+                    const cdrFinal = info?.valor_cdr_final ?? finalSinFlete;
+                    const fmt = (n: number | null) =>
+                      n == null ? '-' : n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    return (
                     <React.Fragment key={producto.codigo_producto}>
                       <TableRow>
                         <TableCell>
@@ -504,6 +542,12 @@ const Producto: React.FC = () => {
                             {producto.estado}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-right font-mono text-sm">{fmt(baseCdr)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{fmt(mantencion)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {flete != null && flete > 0 ? fmt(flete) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm font-semibold">{fmt(cdrFinal)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {producto.updated_at}
                         </TableCell>
@@ -555,7 +599,7 @@ const Producto: React.FC = () => {
 
                       {editingId === producto.codigo_producto && (
                         <TableRow className="bg-muted/30">
-                          <TableCell colSpan={canEdit ? 5 : 4}>
+                          <TableCell colSpan={canEdit ? 9 : 8}>
                             <Card className="w-full">
                               <CardHeader>
                                 <CardTitle className="text-lg">Editando: {producto.descripcion_producto}</CardTitle>
@@ -663,7 +707,8 @@ const Producto: React.FC = () => {
                         </TableRow>
                       )}
                     </React.Fragment>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

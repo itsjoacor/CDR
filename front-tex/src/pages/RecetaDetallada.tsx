@@ -63,6 +63,15 @@ const RecetaDetallada: React.FC = () => {
   const [editMap, setEditMap] = useState<Record<string, EditState>>({});
   const [nombres, setNombres] = useState<Record<string, string>>({}); // descripciones de códigos
 
+  // Mapa de CDR breakdown por código (solo aplica si el ingrediente es producto)
+  type CdrInfo = {
+    base_cdr: number;
+    base_cdr_final: number | null;
+    monto_flete: number | null;
+    valor_cdr_final: number | null;
+  };
+  const [cdrInfoMap, setCdrInfoMap] = useState<Record<string, CdrInfo>>({});
+
   const canEdit = user?.role === "admin";
 
   const keyFor = (r: Receta) =>
@@ -134,6 +143,28 @@ const RecetaDetallada: React.FC = () => {
       );
       const nombresMap = await resolverNombres(codigos);
       setNombres(nombresMap);
+
+      // 4) Traer CDR de productos para mostrar breakdown cuando el ingrediente
+      //    sea a su vez un producto. Trae todo y filtramos local.
+      try {
+        const resCdr = await fetch(
+          `${import.meta.env.VITE_API_URL}/resultados-cdr`,
+          { headers: { Authorization: `Bearer ${token || ""}` } },
+        );
+        if (resCdr.ok) {
+          const rows: any[] = await resCdr.json();
+          const m: Record<string, CdrInfo> = {};
+          for (const r of rows) {
+            m[r.codigo_producto] = {
+              base_cdr:        Number(r.base_cdr ?? 0),
+              base_cdr_final:  r.base_cdr_final  != null ? Number(r.base_cdr_final)  : null,
+              monto_flete:     r.monto_flete     != null ? Number(r.monto_flete)     : null,
+              valor_cdr_final: r.valor_cdr_final != null ? Number(r.valor_cdr_final) : null,
+            };
+          }
+          setCdrInfoMap(m);
+        }
+      } catch { /* opcional */ }
     } catch (err) {
       toast({
         title: "Error",
@@ -320,6 +351,10 @@ const RecetaDetallada: React.FC = () => {
                     <TableHead>Costo Ing.</TableHead>
                     <TableHead>Costo Total</TableHead>
                     <TableHead>Valor CDR</TableHead>
+                    <TableHead className="text-right">CDR simple (ing)</TableHead>
+                    <TableHead className="text-right">Mantención (ing)</TableHead>
+                    <TableHead className="text-right">Flete (ing)</TableHead>
+                    <TableHead className="text-right">CDR final (ing)</TableHead>
                     <TableHead>Actualización</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
@@ -377,6 +412,60 @@ const RecetaDetallada: React.FC = () => {
                         <TableCell>{r.costo_ingrediente ?? "-"}</TableCell>
                         <TableCell>{r.costo_total ?? "-"}</TableCell>
                         <TableCell>{r.valor_cdr ?? "-"}</TableCell>
+
+                        {/* Breakdown por ingrediente — contribución al CDR del producto.
+                            - Si el ingrediente es a su vez un producto (sub-receta):
+                              CDR simple = cantidad × producto.base_cdr (lo que el trigger toma hoy)
+                              Mantención = cantidad × (base_cdr_final - base_cdr) del producto
+                              Flete      = cantidad × producto.monto_flete
+                              CDR final  = suma de los 3 (lo que SERÍA si el trigger usara valor_cdr_final)
+                            - Si el ingrediente es insumo/MO/energía (cost unitario plano):
+                              CDR simple = valor_cdr (ya computado)
+                              Mantención = 0, Flete = 0
+                              CDR final  = valor_cdr (no aporta extra a la receta) */}
+                        {(() => {
+                          const cantidad = Number(r.cantidad_ingrediente ?? 0);
+                          const valorCdr = Number(r.valor_cdr ?? 0);
+                          const info = cdrInfoMap[r.codigo_ingrediente];
+                          const fmt = (n: number | null | undefined) =>
+                            n == null || Number.isNaN(Number(n))
+                              ? '-'
+                              : Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+
+                          if (!info) {
+                            // Insumo / MO / energía: solo CDR simple = valor_cdr, sin mantención ni flete
+                            return (
+                              <>
+                                <TableCell className="text-right font-mono text-xs">{fmt(valorCdr)}</TableCell>
+                                <TableCell className="text-right font-mono text-xs text-muted-foreground">0,00</TableCell>
+                                <TableCell className="text-right font-mono text-xs text-muted-foreground">0,00</TableCell>
+                                <TableCell className="text-right font-mono text-xs font-semibold">{fmt(valorCdr)}</TableCell>
+                              </>
+                            );
+                          }
+
+                          // Sub-receta (ingrediente que es producto): cantidad × breakdown del producto
+                          const baseCdr      = info.base_cdr ?? 0;
+                          const finalSinFlete = info.base_cdr_final ?? baseCdr;
+                          const mantencionUnit = finalSinFlete - baseCdr;
+                          const fleteUnit     = info.monto_flete ?? 0;
+                          const cdrSimple    = cantidad * baseCdr;
+                          const mantencion   = cantidad * mantencionUnit;
+                          const flete        = cantidad * fleteUnit;
+                          const cdrFinal     = cdrSimple + mantencion + flete;
+
+                          return (
+                            <>
+                              <TableCell className="text-right font-mono text-xs">{fmt(cdrSimple)}</TableCell>
+                              <TableCell className="text-right font-mono text-xs">{fmt(mantencion)}</TableCell>
+                              <TableCell className="text-right font-mono text-xs">
+                                {flete > 0 ? fmt(flete) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-xs font-semibold">{fmt(cdrFinal)}</TableCell>
+                            </>
+                          );
+                        })()}
+
                         <TableCell>
                           {r.ultima_actualizacion
                             ? new Date(r.ultima_actualizacion).toLocaleString()

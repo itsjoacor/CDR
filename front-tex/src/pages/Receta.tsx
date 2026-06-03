@@ -47,6 +47,14 @@ type Producto = {
 type ZeroCostMap = Record<string, boolean>;
 type CdrCeroMap = Record<string, boolean>;
 
+type CdrInfo = {
+  base_cdr: number;
+  base_cdr_final: number | null;
+  monto_flete: number | null;
+  valor_cdr_final: number | null;
+};
+type CdrInfoMap = Record<string, CdrInfo>;
+
 const Receta: React.FC = () => {
   const token = Cookies.get("token");
   const { user } = useAuth();
@@ -57,6 +65,7 @@ const Receta: React.FC = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [zeroCostMap, setZeroCostMap] = useState<ZeroCostMap>({});
   const [cdrCeroMap, setCdrCeroMap] = useState<CdrCeroMap>({});
+  const [cdrInfoMap, setCdrInfoMap] = useState<CdrInfoMap>({});
   const [sectores, setSectores] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -102,11 +111,16 @@ const Receta: React.FC = () => {
       try {
         setLoading(true);
 
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/productos/con-estado?planta=${plantaParam}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Error al obtener productos");
-        const data = await res.json();
+        const [resProd, resCdr] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/productos/con-estado?planta=${plantaParam}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${import.meta.env.VITE_API_URL}/resultados-cdr?planta=${plantaParam}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        if (!resProd.ok) throw new Error("Error al obtener productos");
+        const data = await resProd.json();
 
         setProductos(data);
         setSectores([...new Set<string>(data.map((p: any) => p.sector_productivo))]);
@@ -119,6 +133,20 @@ const Receta: React.FC = () => {
         });
         setZeroCostMap(zeroMap);
         setCdrCeroMap(cdrMap);
+
+        if (resCdr.ok) {
+          const cdrRows: any[] = await resCdr.json();
+          const infoMap: CdrInfoMap = {};
+          for (const r of cdrRows) {
+            infoMap[r.codigo_producto] = {
+              base_cdr:        Number(r.base_cdr ?? 0),
+              base_cdr_final:  r.base_cdr_final  != null ? Number(r.base_cdr_final)  : null,
+              monto_flete:     r.monto_flete     != null ? Number(r.monto_flete)     : null,
+              valor_cdr_final: r.valor_cdr_final != null ? Number(r.valor_cdr_final) : null,
+            };
+          }
+          setCdrInfoMap(infoMap);
+        }
 
       } catch (err) {
         toast({
@@ -335,6 +363,10 @@ const Receta: React.FC = () => {
                       <TableHead>Descripción</TableHead>
                       <TableHead>Sector</TableHead>
                       <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">CDR simple</TableHead>
+                      <TableHead className="text-right">Mantención</TableHead>
+                      <TableHead className="text-right">Flete</TableHead>
+                      <TableHead className="text-right">CDR final</TableHead>
                       <TableHead>Actualizado</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
@@ -344,7 +376,17 @@ const Receta: React.FC = () => {
                       const rowColor = getRowColor(p);
                       const tieneCostoCero = !!zeroCostMap[p.codigo_producto];
                       const tieneCdrCero = !!cdrCeroMap[p.codigo_producto];
-                      
+                      const info = cdrInfoMap[p.codigo_producto];
+                      const baseCdr   = info?.base_cdr ?? null;
+                      const finalSinFlete = info?.base_cdr_final ?? baseCdr;
+                      const mantencion = finalSinFlete != null && baseCdr != null
+                        ? finalSinFlete - baseCdr
+                        : null;
+                      const flete     = info?.monto_flete ?? null;
+                      const cdrFinal  = info?.valor_cdr_final ?? finalSinFlete;
+                      const fmt = (n: number | null) =>
+                        n == null ? '-' : n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
                       return (
                         <TableRow
                           key={p.codigo_producto}
@@ -372,6 +414,12 @@ const Receta: React.FC = () => {
                               </Badge>
                             )}
                           </TableCell>
+                          <TableCell className="text-right font-mono text-sm">{fmt(baseCdr)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">{fmt(mantencion)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {flete != null && flete > 0 ? fmt(flete) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm font-semibold">{fmt(cdrFinal)}</TableCell>
                           <TableCell>
                             {p.updated_at
                               ? new Date(p.updated_at).toLocaleString()

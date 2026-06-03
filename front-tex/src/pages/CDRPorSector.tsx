@@ -14,6 +14,8 @@ interface ResultadoCDR {
   planta?: 'catamarca' | 'varela';
   base_cdr: number;
   base_cdr_final: number | null;
+  monto_flete?: number | null;
+  valor_cdr_final?: number | null;
 }
 
 interface SectorMantencion {
@@ -63,7 +65,9 @@ const CDRPorSector: React.FC = () => {
         const planta = item.planta ?? 'catamarca';
         const key = `${item.sector_productivo}__${planta}`;
         const actual = mapa.get(key) ?? { sector: item.sector_productivo, planta, total: 0, totalFinal: 0 };
-        const finalVal = item.base_cdr_final ?? item.base_cdr;
+        // valor_cdr_final = base_cdr_final + monto_flete (GENERATED en DB).
+        // Acumulamos ese para que el total incluya flete cuando corresponde.
+        const finalVal = item.valor_cdr_final ?? item.base_cdr_final ?? item.base_cdr;
         mapa.set(key, {
           sector: item.sector_productivo,
           planta,
