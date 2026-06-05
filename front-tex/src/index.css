@@ -1,94 +1,120 @@
+/* Geist Sans — Vercel's variable font */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design tokens.
+   Filosofía:
+     - Negro REAL (no slate, no blue tint) para texto y fondos dark.
+     - Blanco off-white para light (no #FFFFFF puro — un toque cálido).
+     - Bordes hairline (1px, baja opacidad) en lugar de grises sólidos.
+     - Acentos limitados: 1 azul de marca + estados (verde/rojo/amber).
+     - Liquid: variables para blur, alpha y elevación que reutilizan los layers.
+   ───────────────────────────────────────────────────────────────────────────── */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Surfaces — light */
+    --background: 0 0% 98.4%;            /* off-white #FBFBFB */
+    --foreground: 0 0% 6%;               /* near black #0F0F0F (real black, sin azul) */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 6%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 6%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Brand / primary — negro absoluto para botones primarios + alto contraste */
+    --primary: 0 0% 9%;                  /* #171717 */
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 95.5%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 0 0% 95.5%;
+    --accent-foreground: 0 0% 9%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Estados — usados con propósito, no decorativos */
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Borders & inputs — hairline, casi transparentes */
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 0 0% 12%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 24%;
+    --sidebar-primary: 0 0% 9%;
     --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 95.5%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 12%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    /* Acentos planta — usados solo como identificadores, no como protagonistas */
+    --planta-catamarca: 32 95% 52%;      /* ámbar cálido */
+    --planta-varela:    199 89% 48%;     /* cyan eléctrico */
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Liquid retina variables — más fuertes */
+    --glass-bg: 255 255 255;             /* RGB para usar con alpha */
+    --glass-alpha: 0.45;
+    --glass-border-alpha: 0.55;
+    --glass-blur: 40px;
+    --glass-saturation: 200%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Surfaces — dark, negro real (no #0a0e1a tipo blueish) */
+    --background: 0 0% 4%;               /* #0A0A0A negro real */
+    --foreground: 0 0% 96%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 6.5%;                   /* layer arriba del fondo */
+    --card-foreground: 0 0% 96%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 6.5%;
+    --popover-foreground: 0 0% 96%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 0 0% 9%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 62%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 13%;
+    --accent-foreground: 0 0% 96%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 0 0% 80%;
+
+    --sidebar-background: 0 0% 5.5%;
+    --sidebar-foreground: 0 0% 78%;
+    --sidebar-primary: 0 0% 96%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 0 0% 11%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 0 0% 80%;
+
+    --glass-bg: 12 12 12;
+    --glass-alpha: 0.4;
+    --glass-border-alpha: 0.5;
   }
 }
 
@@ -97,7 +123,267 @@
     @apply border-border;
   }
 
+  html, body, #root {
+    font-family: 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';     /* alt forms para look refinado */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-foreground;
+    /* Sutil "ambient" gradient para que no sea blanco plano — solo light theme */
+    background-image:
+      radial-gradient(at 20% 0%, hsl(0 0% 100%) 0%, transparent 50%),
+      radial-gradient(at 80% 100%, hsl(0 0% 96%) 0%, transparent 50%);
+    background-attachment: fixed;
   }
+
+  .dark body {
+    /* Dark: gradient muy sutil de negro a negro+un toque */
+    background-image:
+      radial-gradient(at 20% 0%, hsl(0 0% 7%) 0%, transparent 50%),
+      radial-gradient(at 80% 100%, hsl(0 0% 5%) 0%, transparent 50%);
+  }
+
+  code, pre, .font-mono {
+    font-family: 'Geist Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  }
+
+  /* Números tabulares en todo lo financiero — alinea decimales perfectos */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Liquid Retina utilities — glass effects pensados para overlays/nav.
+   IMPORTANTE: NO aplicar a contenedores de data (tablas, cards de KPIs).
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@layer utilities {
+  /* Glass fuerte — sidebars, modales, popovers, navbar.
+     Compuesto: blur fuerte + saturación + highlight en el borde superior + inner shadow */
+  .liquid {
+    position: relative;
+    background-color: rgb(var(--glass-bg) / var(--glass-alpha));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+    border: 1px solid rgb(var(--glass-bg) / var(--glass-border-alpha));
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.5),         /* highlight superior */
+      inset 0 0 0 1px rgb(255 255 255 / 0.05),
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 12px 32px -8px rgb(0 0 0 / 0.08);
+  }
+  .dark .liquid {
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.08),
+      inset 0 0 0 1px rgb(255 255 255 / 0.03),
+      0 1px 2px rgb(0 0 0 / 0.6),
+      0 16px 40px -8px rgb(0 0 0 / 0.5);
+  }
+
+  /* Glass sutil — chips/badges flotantes */
+  .liquid-soft {
+    background-color: rgb(var(--glass-bg) / 0.6);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.4),
+      0 1px 2px rgb(0 0 0 / 0.03);
+  }
+  .dark .liquid-soft {
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+      0 1px 2px rgb(0 0 0 / 0.4);
+  }
+
+  /* Glass card — para contenedores de data sin matar la legibilidad.
+     Más opaco que liquid pero sigue mostrando el ambiente atrás. */
+  .liquid-card {
+    background-color: rgb(var(--glass-bg) / 0.75);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgb(var(--glass-bg) / 0.5);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.3),
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 8px 24px -8px rgb(0 0 0 / 0.08);
+  }
+  .dark .liquid-card {
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.05),
+      0 1px 2px rgb(0 0 0 / 0.5),
+      0 8px 24px -8px rgb(0 0 0 / 0.4);
+  }
+
+  /* Sombras "liquid" — luz muy difusa, no oscuras */
+  .shadow-liquid {
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 8px 24px -8px rgb(0 0 0 / 0.08),
+      0 0 0 1px rgb(0 0 0 / 0.03);
+  }
+  .dark .shadow-liquid {
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.5),
+      0 8px 24px -8px rgb(0 0 0 / 0.4),
+      0 0 0 1px rgb(255 255 255 / 0.04);
+  }
+
+  .shadow-liquid-lg {
+    box-shadow:
+      0 4px 8px -2px rgb(0 0 0 / 0.06),
+      0 16px 48px -12px rgb(0 0 0 / 0.12),
+      0 0 0 1px rgb(0 0 0 / 0.04);
+  }
+  .dark .shadow-liquid-lg {
+    box-shadow:
+      0 4px 8px -2px rgb(0 0 0 / 0.6),
+      0 16px 48px -12px rgb(0 0 0 / 0.5),
+      0 0 0 1px rgb(255 255 255 / 0.06);
+  }
+
+  /* Hairline border — más sutil que border-border */
+  .border-hairline {
+    border-color: rgb(0 0 0 / 0.08);
+  }
+  .dark .border-hairline {
+    border-color: rgb(255 255 255 / 0.08);
+  }
+
+  /* Texto con jerarquía cromática */
+  .text-display {
+    @apply text-foreground font-semibold tracking-tight;
+    letter-spacing: -0.02em;
+  }
+  .text-headline {
+    @apply text-foreground font-medium tracking-tight;
+    letter-spacing: -0.015em;
+  }
+
+  /* ───── FUTURISMO ───── */
+
+  /* Borde gradient sutil que da efecto de luz en el borde */
+  .border-gradient {
+    position: relative;
+    isolation: isolate;
+  }
+  .border-gradient::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0.4) 0%,
+      rgb(255 255 255 / 0.05) 40%,
+      rgb(255 255 255 / 0) 60%,
+      rgb(255 255 255 / 0.15) 100%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .dark .border-gradient::before {
+    background: linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0.16) 0%,
+      rgb(255 255 255 / 0.02) 40%,
+      rgb(255 255 255 / 0) 60%,
+      rgb(255 255 255 / 0.08) 100%
+    );
+  }
+
+  /* Glow puntual — para elementos activos / focales */
+  .glow-foreground {
+    box-shadow:
+      0 0 0 1px rgb(var(--glass-bg) / 0.8),
+      0 0 24px -4px rgb(0 0 0 / 0.25),
+      0 1px 2px rgb(0 0 0 / 0.06);
+  }
+  .dark .glow-foreground {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.1),
+      0 0 32px -4px rgb(255 255 255 / 0.18),
+      0 1px 2px rgb(0 0 0 / 0.4);
+  }
+
+  /* Shimmer animado sutil — para placeholders/loading states */
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .shimmer {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--glass-bg) / 0.3),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2.5s linear infinite;
+  }
+
+  /* Grid pattern — fondo futurista para heroes/empty states */
+  .bg-grid {
+    background-image:
+      linear-gradient(currentColor 1px, transparent 1px),
+      linear-gradient(90deg, currentColor 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* Dot pattern — alternativa más sutil */
+  .bg-dots {
+    background-image: radial-gradient(currentColor 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Conic gradient suave — para halos decorativos */
+  .bg-aurora {
+    background-image: conic-gradient(
+      from 0deg at 50% 50%,
+      hsl(var(--planta-catamarca) / 0.15),
+      hsl(var(--planta-varela) / 0.15),
+      hsl(var(--planta-catamarca) / 0.15)
+    );
+  }
+
+  /* Pulse muy sutil para indicadores de estado live */
+  @keyframes status-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.6; transform: scale(1.15); }
+  }
+  .status-pulse { animation: status-pulse 2s ease-in-out infinite; }
+
+  /* Texto numérico grande tipo display */
+  .num-display {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    letter-spacing: -0.04em;
+    font-weight: 600;
+  }
+}
+
+/* Scrollbar — refinado, casi invisible hasta hover */
+@layer base {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(0 0 0 / 0.1);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background 0.2s;
+  }
+  ::-webkit-scrollbar-thumb:hover { background-clip: padding-box; background-color: rgb(0 0 0 / 0.2); }
+  .dark ::-webkit-scrollbar-thumb { background-color: rgb(255 255 255 / 0.1); background-clip: padding-box; }
+  .dark ::-webkit-scrollbar-thumb:hover { background-color: rgb(255 255 255 / 0.2); background-clip: padding-box; }
 }

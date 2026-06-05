@@ -250,7 +250,7 @@ const ImplosionVolumen: React.FC = () => {
         {/* Formato del Excel */}
         <Card className="border-l-4 border-l-teal-500">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-teal-800">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <FileSpreadsheet className="h-5 w-5" />
               Formato del Excel
             </CardTitle>
@@ -265,11 +265,11 @@ const ImplosionVolumen: React.FC = () => {
             <div>
               <p className="text-xs font-semibold text-teal-700 mb-1">Variante 1 — con descripción (opcional, se ignora):</p>
               <table className="text-sm border rounded-md w-auto">
-                <thead className="bg-teal-50">
+                <thead className="bg-muted/60">
                   <tr>
-                    <th className="px-4 py-2 border-r font-semibold text-teal-800">codigo_producto</th>
-                    <th className="px-4 py-2 border-r font-semibold text-teal-800">descripcion_producto</th>
-                    <th className="px-4 py-2 font-semibold text-teal-800">cantidad_producto_producida</th>
+                    <th className="px-4 py-2 border-r font-semibold text-foreground">codigo_producto</th>
+                    <th className="px-4 py-2 border-r font-semibold text-foreground">descripcion_producto</th>
+                    <th className="px-4 py-2 font-semibold text-foreground">cantidad_producto_producida</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -286,10 +286,10 @@ const ImplosionVolumen: React.FC = () => {
             <div>
               <p className="text-xs font-semibold text-teal-700 mb-1">Variante 2 — mínimo (sin descripción):</p>
               <table className="text-sm border rounded-md w-auto">
-                <thead className="bg-teal-50">
+                <thead className="bg-muted/60">
                   <tr>
-                    <th className="px-4 py-2 border-r font-semibold text-teal-800">codigo_producto</th>
-                    <th className="px-4 py-2 font-semibold text-teal-800">cantidad_producto_producida</th>
+                    <th className="px-4 py-2 border-r font-semibold text-foreground">codigo_producto</th>
+                    <th className="px-4 py-2 font-semibold text-foreground">cantidad_producto_producida</th>
                   </tr>
                 </thead>
                 <tbody>

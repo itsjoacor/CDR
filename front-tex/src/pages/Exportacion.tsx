@@ -280,7 +280,7 @@ const Exportacion: React.FC = () => {
                 {/* ── Implosión por mes ──────────────────────────────────── */}
                 <Card className="border-l-4 border-l-teal-500 bg-teal-50 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-teal-800 dark:text-teal-200">
+                        <CardTitle className="flex items-center gap-2 text-foreground dark:text-teal-200">
                             <BarChart2 className="h-5 w-5" />
                             Implosión Volumen — por mes
                         </CardTitle>
