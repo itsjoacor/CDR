@@ -44,6 +44,8 @@ interface Insumo {
   planta: 'catamarca' | 'varela';
   m3?: number | null;
   lleva_flete?: boolean | null;
+  monto_flete_insumo?: number | null; // calculado por trigger en DB
+  costo_final?: number | null;         // GENERATED en DB = costo + monto_flete_insumo
   updated_at?: string | null;
   estado?: "disponible" | "agotado" | "descontinuado";
   stock?: number;
@@ -306,6 +308,7 @@ const Insumos: React.FC = () => {
                     <TableHead>Costo</TableHead>
                     <TableHead className="text-right">M³</TableHead>
                     <TableHead className="text-center">Lleva flete</TableHead>
+                    <TableHead className="text-right">Flete</TableHead>
                     <TableHead className="text-right">Costo final</TableHead>
                     <TableHead>Actualización</TableHead>
                     {canEdit && <TableHead>Acciones</TableHead>}
@@ -315,8 +318,14 @@ const Insumos: React.FC = () => {
                   {filteredInsumos.map((insumo) => {
                     const m3 = Number(insumo.m3 ?? 0);
                     const lleva = !!insumo.lleva_flete;
-                    const flete = lleva ? m3 * valorFleteInsumo : 0;
-                    const costoFinal = Number(insumo.costo) + flete;
+                    // Preferimos los valores stored (computados por DB). Fallback al cálculo
+                    // local por si el backend aún no los devuelve (rollout incremental).
+                    const flete = insumo.monto_flete_insumo != null
+                      ? Number(insumo.monto_flete_insumo)
+                      : (lleva ? m3 * valorFleteInsumo : 0);
+                    const costoFinal = insumo.costo_final != null
+                      ? Number(insumo.costo_final)
+                      : Number(insumo.costo) + flete;
                     return (
                     <React.Fragment key={insumo.codigo}>
                       <TableRow>
@@ -339,6 +348,11 @@ const Insumos: React.FC = () => {
                           {lleva
                             ? <Badge className="bg-green-100 text-green-700 border-green-300">Sí</Badge>
                             : <Badge variant="outline" className="text-muted-foreground">No</Badge>}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {flete > 0
+                            ? `$${flete.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : '-'}
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm font-semibold">
                           ${costoFinal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -383,7 +397,7 @@ const Insumos: React.FC = () => {
 
                       {editingId === insumo.codigo && (
                         <TableRow className="bg-muted/30">
-                          <TableCell colSpan={canEdit ? 8 : 7}>
+                          <TableCell colSpan={canEdit ? 9 : 8}>
                             <Card className="w-full">
                               <CardHeader>
                                 <CardTitle className="text-lg">Editando: {insumo.detalle}</CardTitle>

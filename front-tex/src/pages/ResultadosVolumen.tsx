@@ -62,6 +62,15 @@ interface DetalleRow {
   cantidad_producida: number;
   costo_ingrediente: number;
   cdr_volumen: number;
+  flete_aporte?: number | null;
+  cdr_volumen_final?: number | null;
+}
+
+interface CdrInfo {
+  base_cdr: number;
+  base_cdr_final: number | null;
+  monto_flete: number | null;
+  valor_cdr_final: number | null;
 }
 
 interface CorridoRow {
@@ -86,105 +95,158 @@ const LINE_COLORS = [
 
 // ── ResumenCards ───────────────────────────────────────────────────────────
 
-const ResumenCards: React.FC<{ detalle: DetalleRow[]; label?: string }> = ({ detalle, label }) => {
-  const sum = (tipo: string) =>
+const ResumenCards: React.FC<{
+  detalle: DetalleRow[];
+  cdrInfoMap: Record<string, CdrInfo>;
+  label?: string;
+}> = ({ detalle, cdrInfoMap, label }) => {
+  // ─── 1) Por tipo de ingrediente: costo_ingrediente × cantidad_consumida.
+  //         NO incluye mantención del sector — esa se muestra aparte.
+  const totalConsumidoTipo = (tipo: string) =>
     detalle
       .filter(r => r.tipo_ingrediente === tipo)
-      .reduce((a, r) => a + Number(r.cdr_volumen), 0);
+      .reduce((a, r) => a + Number(r.costo_ingrediente) * Number(r.cantidad_producida), 0);
+  const cdrInsumo   = totalConsumidoTipo('insumo');
+  const cdrManoObra = totalConsumidoTipo('mano_obra');
+  const cdrEnergia  = totalConsumidoTipo('energia');
 
-  const cdrMano     = sum('mano_obra');
-  const cdrEnergia  = sum('energia');
-  const cdrInsumo   = sum('insumo');
-  const cdrProducto = sum('producto');
-
-  // By sector
-  const sectorMap: Record<string, number> = {};
+  // ─── 2) Volumen por producto (mismo valor en todas las filas de un producto) ──
+  const volPorProducto: Record<string, number> = {};
   for (const r of detalle) {
-    const s = r.sector_productivo || 'Sin sector';
-    sectorMap[s] = (sectorMap[s] ?? 0) + Number(r.cdr_volumen);
+    if (volPorProducto[r.codigo_producto] === undefined) {
+      volPorProducto[r.codigo_producto] = Number(r.volumen) || 0;
+    }
   }
-  const sectores = Object.entries(sectorMap).sort((a, b) => b[1] - a[1]);
 
-  const total = cdrMano + cdrEnergia + cdrInsumo + cdrProducto;
+  // ─── 3) Métricas agregadas a partir de resultados_cdr × volumen ───────────────
+  let cdrTotalProductos = 0;        // Σ valor_cdr_final × vol (con mantención + flete)
+  let mantencionTotal   = 0;        // Σ (base_cdr_final - base_cdr) × vol
+  let fleteTotal        = 0;        // Σ monto_flete × vol (= Σ flete_aporte)
+  for (const [cod, vol] of Object.entries(volPorProducto)) {
+    const info = cdrInfoMap[cod];
+    if (!info) continue;
+    const finalSinFlete = info.base_cdr_final ?? info.base_cdr;
+    const cdrFinal      = info.valor_cdr_final ?? finalSinFlete;
+    cdrTotalProductos  += vol * cdrFinal;
+    mantencionTotal    += vol * (finalSinFlete - info.base_cdr);
+    fleteTotal         += vol * (info.monto_flete ?? 0);
+  }
 
-  const sectorColors = [
-    'bg-teal-50 border-teal-300 text-teal-800',
-    'bg-cyan-50 border-cyan-300 text-cyan-800',
-    'bg-sky-50 border-sky-300 text-sky-800',
-    'bg-indigo-50 border-indigo-300 text-indigo-800',
-    'bg-violet-50 border-violet-300 text-violet-800',
-  ];
+  // Cuántos productos del periodo se encontraron en resultados_cdr.
+  // Si hay productos sin info, el total puede no cuadrar — útil para diagnóstico.
+  const productosEnPeriodo = Object.keys(volPorProducto).length;
+  const productosConCdrInfo = Object.keys(volPorProducto).filter(c => !!cdrInfoMap[c]).length;
+  const productosSinInfo = productosEnPeriodo - productosConCdrInfo;
 
   return (
     <div className="space-y-3">
-      {/* Row 1: por tipo de ingrediente (origen de tabla) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* TOP — CDR Total Productos (con mantenimiento + flete) */}
+      <Card className="bg-green-50 border-2 border-green-400">
+        <CardContent className="pt-5 pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-green-700 uppercase tracking-wide">
+                {label ?? 'CDR Total Productos'}
+              </p>
+              <p
+                className="text-xs text-green-600 mt-0.5 cursor-help"
+                title={`Σ (volumen producido × valor_cdr_final) sobre los ${productosConCdrInfo} producto(s) del periodo.
+valor_cdr_final ya viene completo desde la DB: incluye base_cdr + mantención + flete del producto.
+Es el costo directo de reposición total para los productos producidos.
+${productosSinInfo > 0 ? `\n⚠ ${productosSinInfo} producto(s) del periodo no tienen fila en resultados_cdr — su aporte NO se está contando.` : ''}`}
+              >
+                Σ volumen × valor_cdr_final (CDR completo del producto)
+                {productosSinInfo > 0 && <span className="ml-2 text-orange-600 font-semibold">⚠ {productosSinInfo} sin CDR</span>}
+              </p>
+            </div>
+            <p className="text-3xl font-bold text-green-800">${fmt(cdrTotalProductos)}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Breakdown — 5 cards: Insumos | Mano Obra | Energía | Flete | Mantenimiento */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <Card className="bg-purple-50 border border-purple-300">
+          <CardContent className="pt-4 pb-3">
+            <p
+              className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-1 cursor-help"
+              title={`Σ (costo_ingrediente × cantidad_consumida) para filas tipo='insumo'.
+costo_ingrediente ya incluye el flete propio del insumo (= costo + m³ × valor_flete_insumo).
+cantidad_consumida = volumen × cantidad_ingrediente de la receta.
+NO incluye mantención.`}
+            >
+              Insumos
+            </p>
+            <p className="text-xl font-bold text-purple-800">${fmt(cdrInsumo)}</p>
+            <p className="text-xs text-purple-600 mt-0.5">
+              {cdrTotalProductos > 0 ? ((cdrInsumo / cdrTotalProductos) * 100).toFixed(1) : 0}% del total
+            </p>
+          </CardContent>
+        </Card>
         <Card className="bg-orange-50 border border-orange-300">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Mano de Obra</p>
-            <p className="text-xl font-bold text-orange-800">${fmt(cdrMano)}</p>
-            <p className="text-xs text-orange-500 mt-0.5">
-              {total > 0 ? ((cdrMano / total) * 100).toFixed(1) : 0}%
+            <p
+              className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-1 cursor-help"
+              title={`Σ (costo_ingrediente × cantidad_consumida) para filas tipo='mano_obra'.
+costo_ingrediente = costo_mano_obra de la matriz para esa planta.
+NO incluye mantención.`}
+            >
+              Mano de Obra
+            </p>
+            <p className="text-xl font-bold text-orange-800">${fmt(cdrManoObra)}</p>
+            <p className="text-xs text-orange-600 mt-0.5">
+              {cdrTotalProductos > 0 ? ((cdrManoObra / cdrTotalProductos) * 100).toFixed(1) : 0}% del total
             </p>
           </CardContent>
         </Card>
         <Card className="bg-yellow-50 border border-yellow-300">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs font-semibold text-yellow-600 uppercase tracking-wide mb-1">Matriz Energía</p>
+            <p
+              className="text-xs font-semibold text-yellow-700 uppercase tracking-wide mb-1 cursor-help"
+              title={`Σ (costo_ingrediente × cantidad_consumida) para filas tipo='energia'.
+costo_ingrediente = costo_energia_unidad de la matriz para esa planta.
+NO incluye mantención.`}
+            >
+              Matriz Energética
+            </p>
             <p className="text-xl font-bold text-yellow-800">${fmt(cdrEnergia)}</p>
-            <p className="text-xs text-yellow-500 mt-0.5">
-              {total > 0 ? ((cdrEnergia / total) * 100).toFixed(1) : 0}%
+            <p className="text-xs text-yellow-600 mt-0.5">
+              {cdrTotalProductos > 0 ? ((cdrEnergia / cdrTotalProductos) * 100).toFixed(1) : 0}% del total
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-purple-50 border border-purple-300">
+        <Card className="bg-amber-50 border border-amber-300">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">Insumos</p>
-            <p className="text-xl font-bold text-purple-800">${fmt(cdrInsumo)}</p>
-            <p className="text-xs text-purple-500 mt-0.5">
-              {total > 0 ? ((cdrInsumo / total) * 100).toFixed(1) : 0}%
+            <p
+              className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1 cursor-help"
+              title={`Σ (volumen × monto_flete del producto) sobre los productos del periodo.
+monto_flete = m³ × valor_flete de la planta. Solo aplica a productos con lleva_flete=true.`}
+            >
+              🚚 Flete Total
+            </p>
+            <p className="text-xl font-bold text-amber-800">${fmt(fleteTotal)}</p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              {cdrTotalProductos > 0 ? ((fleteTotal / cdrTotalProductos) * 100).toFixed(1) : 0}% del total
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-blue-50 border border-blue-300">
+        <Card className="bg-rose-50 border border-rose-300">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Productos</p>
-            <p className="text-xl font-bold text-blue-800">${fmt(cdrProducto)}</p>
-            <p className="text-xs text-blue-500 mt-0.5">
-              {total > 0 ? ((cdrProducto / total) * 100).toFixed(1) : 0}%
+            <p
+              className="text-xs font-semibold text-rose-700 uppercase tracking-wide mb-1 cursor-help"
+              title={`Σ (volumen × (base_cdr_final - base_cdr)) sobre los productos del periodo.
+base_cdr_final - base_cdr = base_cdr × % mantención del sector.
+Es el monto que aporta el % de mantención al CDR final del producto.`}
+            >
+              Mantenimiento
+            </p>
+            <p className="text-xl font-bold text-rose-800">${fmt(mantencionTotal)}</p>
+            <p className="text-xs text-rose-600 mt-0.5">
+              {cdrTotalProductos > 0 ? ((mantencionTotal / cdrTotalProductos) * 100).toFixed(1) : 0}% del total
             </p>
           </CardContent>
         </Card>
       </div>
-
-      {/* Row 2: por sector productivo */}
-      {sectores.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {sectores.map(([sector, monto], i) => (
-            <Card key={sector} className={`border ${sectorColors[i % sectorColors.length]}`}>
-              <CardContent className="pt-4 pb-3">
-                <p className="text-xs font-semibold uppercase tracking-wide mb-1 truncate" title={sector}>
-                  {sector}
-                </p>
-                <p className="text-lg font-bold">${fmt(monto)}</p>
-                <p className="text-xs opacity-60 mt-0.5">
-                  {total > 0 ? ((monto / total) * 100).toFixed(1) : 0}% del total
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Total */}
-      <Card className="bg-green-50 border border-green-400">
-        <CardContent className="pt-4 pb-3 flex items-center justify-between">
-          <p className="text-sm font-bold text-green-700 uppercase tracking-wide">
-            {label ?? 'CDR Total del Periodo'}
-          </p>
-          <p className="text-3xl font-bold text-green-800">${fmt(total)}</p>
-        </CardContent>
-      </Card>
     </div>
   );
 };
@@ -203,6 +265,7 @@ const ResultadosVolumen: React.FC = () => {
   const [corrido, setCorrido] = useState<CorridoRow[]>([]);
   const [porSector, setPorSector] = useState<DetalleRow[]>([]);
   const [selectedSector, setSelectedSector] = useState<string>('');
+  const [cdrInfoMap, setCdrInfoMap] = useState<Record<string, CdrInfo>>({});
 
   const [loadingPeriodos, setLoadingPeriodos] = useState(true);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
@@ -247,6 +310,29 @@ const ResultadosVolumen: React.FC = () => {
       } finally {
         setLoadingCorrido(false);
       }
+    })();
+  }, [plantaParam]);
+
+  // Cargar resultados_cdr para poder calcular CDR total / mantención / flete
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API}/resultados-cdr?planta=${plantaParam}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const rows: any[] = await res.json();
+        const m: Record<string, CdrInfo> = {};
+        for (const r of rows) {
+          m[r.codigo_producto] = {
+            base_cdr:        Number(r.base_cdr ?? 0),
+            base_cdr_final:  r.base_cdr_final  != null ? Number(r.base_cdr_final)  : null,
+            monto_flete:     r.monto_flete     != null ? Number(r.monto_flete)     : null,
+            valor_cdr_final: r.valor_cdr_final != null ? Number(r.valor_cdr_final) : null,
+          };
+        }
+        setCdrInfoMap(m);
+      } catch { /* opcional */ }
     })();
   }, [plantaParam]);
 
@@ -595,26 +681,26 @@ const ResultadosVolumen: React.FC = () => {
                 </div>
 
                 {/* Summary cards */}
-                {detalle.length > 0 && <ResumenCards detalle={detalle} />}
+                {detalle.length > 0 && <ResumenCards detalle={detalle} cdrInfoMap={cdrInfoMap} />}
 
                 {/* Table */}
                 <Card>
                   <CardContent className="p-0">
                     <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-teal-50 sticky top-0 z-10">
+                        <thead className="bg-muted/60 backdrop-blur sticky top-0 z-10">
                           <tr>
-                            <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Cód. Producto</th>
-                            <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Nombre Producto</th>
-                            <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Sector</th>
-                            <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Tipo</th>
-                            <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Cód. Ingrediente</th>
-                            <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Nombre Ingrediente</th>
-                            <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Volumen</th>
-                            <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Cant. Ing.</th>
-                            <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Cant. Consumida</th>
-                            <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Costo Ing.</th>
-                            <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">CDR Volumen</th>
+                            <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Cód. Producto</th>
+                            <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Nombre Producto</th>
+                            <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Sector</th>
+                            <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Tipo</th>
+                            <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Cód. Ingrediente</th>
+                            <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Nombre Ingrediente</th>
+                            <th className="px-3 py-2 text-right font-semibold text-foreground border-b">Volumen</th>
+                            <th className="px-3 py-2 text-right font-semibold text-foreground border-b">Cant. Ing.</th>
+                            <th className="px-3 py-2 text-right font-semibold text-foreground border-b">Cant. Consumida</th>
+                            <th className="px-3 py-2 text-right font-semibold text-foreground border-b">Costo Ing.</th>
+                            <th className="px-3 py-2 text-right font-semibold text-foreground border-b">CDR Volumen</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -699,7 +785,7 @@ const ResultadosVolumen: React.FC = () => {
                 {/* Gráfico */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-teal-800">
+                    <CardTitle className="text-foreground">
                       {corridoView === 'total'
                         ? 'CDR Total por Mes'
                         : 'CDR por Mes y Sector Productivo'}
@@ -776,15 +862,15 @@ const ResultadosVolumen: React.FC = () => {
                     <CardContent className="p-0">
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                          <thead className="bg-teal-50">
+                          <thead className="bg-muted/60">
                             <tr>
-                              <th className="px-4 py-2 text-left font-semibold text-teal-800 border-b">Periodo</th>
+                              <th className="px-4 py-2 text-left font-semibold text-foreground border-b">Periodo</th>
                               {corridoView === 'sector' && sectors.map((s) => (
-                                <th key={s} className="px-4 py-2 text-right font-semibold text-teal-800 border-b">
+                                <th key={s} className="px-4 py-2 text-right font-semibold text-foreground border-b">
                                   {s}
                                 </th>
                               ))}
-                              <th className="px-4 py-2 text-right font-semibold text-teal-800 border-b">Total</th>
+                              <th className="px-4 py-2 text-right font-semibold text-foreground border-b">Total</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -835,7 +921,7 @@ const ResultadosVolumen: React.FC = () => {
                 {sectorAgg.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-teal-800">CDR por Sector — {selectedPeriodo}</CardTitle>
+                      <CardTitle className="text-foreground">CDR por Sector — {selectedPeriodo}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
@@ -859,12 +945,12 @@ const ResultadosVolumen: React.FC = () => {
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-teal-50">
+                        <thead className="bg-muted/60">
                           <tr>
-                            <th className="px-4 py-2 text-left font-semibold text-teal-800 border-b">Sector</th>
-                            <th className="px-4 py-2 text-right font-semibold text-teal-800 border-b">Productos</th>
-                            <th className="px-4 py-2 text-right font-semibold text-teal-800 border-b">Cant. Total Producida</th>
-                            <th className="px-4 py-2 text-right font-semibold text-teal-800 border-b">CDR Volumen</th>
+                            <th className="px-4 py-2 text-left font-semibold text-foreground border-b">Sector</th>
+                            <th className="px-4 py-2 text-right font-semibold text-foreground border-b">Productos</th>
+                            <th className="px-4 py-2 text-right font-semibold text-foreground border-b">Cant. Total Consumida</th>
+                            <th className="px-4 py-2 text-right font-semibold text-foreground border-b">CDR Volumen</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -952,6 +1038,7 @@ const ResultadosVolumen: React.FC = () => {
                 {selectedSector && detallePorSector.length > 0 && (
                   <ResumenCards
                     detalle={detallePorSector}
+                    cdrInfoMap={cdrInfoMap}
                     label={`CDR Total — ${selectedSector}`}
                   />
                 )}
@@ -962,17 +1049,17 @@ const ResultadosVolumen: React.FC = () => {
                     <CardContent className="p-0">
                       <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
                         <table className="w-full text-sm">
-                          <thead className="bg-teal-50 sticky top-0 z-10">
+                          <thead className="bg-muted/60 backdrop-blur sticky top-0 z-10">
                             <tr>
-                              <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Cód. Producto</th>
-                              <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Nombre Producto</th>
-                              <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Tipo</th>
-                              <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Cód. Ingrediente</th>
-                              <th className="px-3 py-2 text-left font-semibold text-teal-800 border-b">Nombre Ingrediente</th>
-                              <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Volumen</th>
-                              <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Cant. Consumida</th>
-                              <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">Costo Ing.</th>
-                              <th className="px-3 py-2 text-right font-semibold text-teal-800 border-b">CDR Volumen</th>
+                              <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Cód. Producto</th>
+                              <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Nombre Producto</th>
+                              <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Tipo</th>
+                              <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Cód. Ingrediente</th>
+                              <th className="px-3 py-2 text-left font-semibold text-foreground border-b">Nombre Ingrediente</th>
+                              <th className="px-3 py-2 text-right font-semibold text-foreground border-b">Volumen</th>
+                              <th className="px-3 py-2 text-right font-semibold text-foreground border-b">Cant. Consumida</th>
+                              <th className="px-3 py-2 text-right font-semibold text-foreground border-b">Costo Ing.</th>
+                              <th className="px-3 py-2 text-right font-semibold text-foreground border-b">CDR Volumen</th>
                             </tr>
                           </thead>
                           <tbody>

@@ -591,18 +591,35 @@ export class ImplosionService {
   // ─── POR SECTOR ────────────────────────────────────────────────────────────
 
   async getPorSector(periodo: string, planta: 'catamarca' | 'varela') {
+    // IMPORTANTE: Supabase/PostgREST tienen un default LIMIT de 1000 filas.
+    // Antes esta función hacía un single SELECT sin paginar, así que para
+    // periodos con > 1000 filas devolvía solo el principio truncado y los
+    // totales en el front salían MUY por debajo del valor real. Ahora
+    // paginamos igual que en getDetalle.
     const supabase = await this.getSupabase();
-    const { data, error } = await supabase
-      .from('implosion_detalle')
-      .select(
-        'sector_productivo, codigo_producto, nombre_producto, codigo_ingrediente, nombre_ingrediente, volumen, cantidad_producida, cdr_volumen, cdr_volumen_final, flete_aporte',
-      )
-      .eq('periodo', periodo)
-      .eq('planta', planta)
-      .order('sector_productivo', { ascending: true })
-      .order('codigo_producto', { ascending: true });
+    const PAGE = 1000;
+    let all: any[] = [];
+    let from = 0;
 
-    if (error) throw new Error(error.message);
-    return data ?? [];
+    while (true) {
+      const { data, error } = await supabase
+        .from('implosion_detalle')
+        .select(
+          'sector_productivo, codigo_producto, nombre_producto, codigo_ingrediente, nombre_ingrediente, volumen, cantidad_producida, cdr_volumen, cdr_volumen_final, flete_aporte',
+        )
+        .eq('periodo', periodo)
+        .eq('planta', planta)
+        .order('sector_productivo', { ascending: true })
+        .order('codigo_producto', { ascending: true })
+        .range(from, from + PAGE - 1);
+
+      if (error) throw new Error(error.message);
+      if (!data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+
+    return all;
   }
 }

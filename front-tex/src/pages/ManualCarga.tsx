@@ -72,13 +72,19 @@ const TABLAS: TablaInfo[] = [
       'Las recetas de cada planta usan únicamente el insumo de SU planta. Si una receta referencia un código que no existe en su planta, el costo queda en 0 / NULL.',
       'El costo acepta formato argentino: "1.234,56" → 1234.56. También "1234.56" o "1234,56".',
       'No borra insumos existentes — solo agrega o actualiza por (codigo, planta).',
+      'Si lleva_flete = SI y m³ > 0, la DB calcula automáticamente monto_flete_insumo = m³ × valor_flete_insumo de la planta, y costo_final = costo + monto_flete_insumo.',
+      'Cuando se llama al insumo desde una receta, el costo que se aplica es costo_final (con flete propio si corresponde). NO se le aplica mantención.',
     ],
     columnas: [
-      { nombre: 'grupo',   tipo: 'texto',   importable: 'requerido' },
-      { nombre: 'codigo',  tipo: 'texto',   importable: 'requerido', nota: 'Parte de la PK compuesta con planta' },
-      { nombre: 'detalle', tipo: 'texto',   importable: 'requerido', nota: 'Descripción' },
-      { nombre: 'costo',   tipo: 'decimal', importable: 'opcional',  nota: 'Si está vacío queda null' },
-      { nombre: 'planta',  tipo: 'texto',   importable: 'auto',      nota: 'Se asigna desde el selector global del header' },
+      { nombre: 'grupo',              tipo: 'texto',   importable: 'requerido' },
+      { nombre: 'codigo',             tipo: 'texto',   importable: 'requerido', nota: 'Parte de la PK compuesta con planta' },
+      { nombre: 'detalle',            tipo: 'texto',   importable: 'requerido', nota: 'Descripción' },
+      { nombre: 'costo',              tipo: 'decimal', importable: 'opcional',  nota: 'Si está vacío queda null' },
+      { nombre: 'm3',                 tipo: 'decimal', importable: 'opcional',  nota: 'Volumen del insumo en m³. Solo se usa si lleva_flete = SI' },
+      { nombre: 'lleva_flete',        tipo: 'SI/NO',   importable: 'opcional',  nota: 'Acepta SI/NO/TRUE/FALSE/1/0. Vacío = NO' },
+      { nombre: 'planta',             tipo: 'texto',   importable: 'auto',      nota: 'Se asigna desde el selector global del header' },
+      { nombre: 'monto_flete_insumo', tipo: 'decimal', importable: 'auto',      nota: 'Trigger: m³ × valor_flete_insumo de la planta' },
+      { nombre: 'costo_final',        tipo: 'decimal', importable: 'auto',      nota: 'GENERATED: costo + monto_flete_insumo' },
     ],
   },
   {
@@ -152,6 +158,8 @@ const TABLAS: TablaInfo[] = [
       'La importación masiva está en una sección aparte ("Zona Peligrosa") porque puede borrar recetas existentes.',
       'Solo importa 3 columnas: producto, ingrediente, cantidad. Todo lo demás (descripciones, costos, CDR) se busca/calcula en la DB.',
       'Las descripciones del CSV se IGNORAN — siempre se obtienen de las tablas productos / insumos / matriz_mano / matriz_energia.',
+      'El trigger resuelve costo_ingrediente en este orden: 1) insumo de la misma planta (usa costo_final = costo + flete propio del insumo), 2) producto global (usa valor_cdr_final con mantención + flete del producto), 3) MO de la misma planta, 4) energía de la misma planta.',
+      'Si el código existe en otra planta como insumo/MO/energía pero no en la planta de la receta, el INSERT/UPDATE se rechaza con error claro (los productos son globales así que no aplica).',
     ],
     columnas: [
       { nombre: 'codigo_producto',      tipo: 'texto',  importable: 'requerido' },
@@ -159,7 +167,7 @@ const TABLAS: TablaInfo[] = [
       { nombre: 'cantidad_ingrediente', tipo: 'decimal',importable: 'requerido' },
       { nombre: 'descripcion',          tipo: 'texto',  importable: 'ignorado',  nota: 'Variante 2 del CSV — se ignora, viene de productos' },
       { nombre: 'descripcion_ingrediente', tipo: 'texto', importable: 'ignorado', nota: 'Variante 2 — se ignora, viene de insumos/mano/energia' },
-      { nombre: 'costo_ingrediente',    tipo: 'decimal',importable: 'auto',      nota: 'La DB lo busca en tiempo real' },
+      { nombre: 'costo_ingrediente',    tipo: 'decimal',importable: 'auto',      nota: 'Trigger resuelve: insumo.costo_final / valor_cdr_final del producto / MO / energía según el código' },
       { nombre: 'costo_total',          tipo: 'decimal',importable: 'auto',      nota: 'GENERATED: cantidad × costo' },
       { nombre: 'valor_cdr',            tipo: 'decimal',importable: 'auto',      nota: 'Calculado por triggers' },
       { nombre: 'planta',               tipo: 'texto',  importable: 'auto' },
@@ -177,9 +185,11 @@ const TABLAS: TablaInfo[] = [
     conflictoUpsert: '—',
     notas: [
       'Esta tabla es 100% calculada. La fórmula es: valor_cdr_final = base_cdr_final + monto_flete.',
-      'base_cdr_final = base_cdr × (1 + % mantención del sector).',
-      'monto_flete = valor_flete (de la planta) × m³ (del producto), si lleva_flete = SI.',
-      'valor_cdr_final es una columna GENERATED — la DB la recalcula sola.',
+      'base_cdr = Σ valor_cdr de los ingredientes de la receta. Si un ingrediente es insumo con lleva_flete = SI, su costo ya viene con flete (costo + m³ × valor_flete_insumo de la planta). Si es sub-producto, se usa su valor_cdr_final completo.',
+      'base_cdr_final = base_cdr × (1 + % mantención del sector). Mantención NO aplica a insumos individualmente — solo al base_cdr total del producto.',
+      'monto_flete (del producto) = valor_flete (de la planta) × m³ (del producto), si lleva_flete = SI. Independiente del flete propio de los insumos.',
+      'valor_cdr_final es una columna GENERATED — la DB la recalcula sola cuando cambian base_cdr_final o monto_flete.',
+      'Cuando cambia un costo en insumos / MO / energía / plantas / sectores, un cascade de triggers re-calcula automáticamente todas las recetas afectadas en cualquier planta.',
     ],
     columnas: [
       { nombre: 'codigo_producto',      tipo: 'texto',   importable: 'auto',     nota: 'PK' },
@@ -215,20 +225,28 @@ const ManualCarga: React.FC = () => {
     <Layout title="Manual de Carga">
       <div className="space-y-6 max-w-6xl">
 
-        {/* Header */}
-        <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <BookOpen className="h-6 w-6" />
-              Manual de Carga
-            </CardTitle>
-            <CardDescription className="text-blue-50">
-              Referencia rápida de qué se puede exportar/importar, qué columnas son necesarias y cuáles
-              se ignoran o se calculan solas. Si una tabla está vacía, descargá su <strong>Molde</strong>
-              desde "Exportación" para obtener el formato exacto.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        {/* Header — glass hero */}
+        <div className="relative liquid shadow-liquid rounded-2xl px-6 sm:px-8 py-7 overflow-hidden">
+          <div
+            className="absolute -top-16 -right-16 h-48 w-48 rounded-full opacity-20 pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, hsl(210 89% 55% / 0.5), transparent 70%)',
+              filter: 'blur(40px)',
+            }}
+          />
+          <div className="relative flex items-start gap-4">
+            <div className="h-11 w-11 rounded-xl bg-foreground/5 border border-hairline flex items-center justify-center shrink-0">
+              <BookOpen className="h-5 w-5 text-foreground" strokeWidth={1.8} />
+            </div>
+            <div>
+              <h3 className="text-display text-[22px] leading-tight">Manual de Carga</h3>
+              <p className="text-[13px] text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
+                Referencia rápida de qué se puede exportar/importar, qué columnas son necesarias y cuáles
+                se ignoran o se calculan solas. Si una tabla está vacía, descargá su <span className="text-foreground font-medium">Molde</span> desde Exportación.
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Leyenda */}
         <Card>
@@ -368,6 +386,23 @@ const ManualCarga: React.FC = () => {
             <p>
               <strong>Round-trip:</strong> exportar → editar → re-importar es seguro. Las columnas
               "ignorado"/"auto" no rompen nada.
+            </p>
+            <p>
+              <strong>Configuración de flete (no se importa por CSV):</strong> cada planta tiene 2 valores
+              configurables desde el panel <em>Actualizar Flete</em> del dashboard:
+              <code className="ml-1">valor_flete</code> (afecta el flete del producto cuando lleva_flete=SI)
+              y <code className="ml-1">valor_flete_insumo</code> (afecta el flete del insumo cuando lleva_flete=SI).
+              Son <strong>independientes</strong> entre sí. Cambiarlos dispara un cascade que recalcula automáticamente
+              <code>monto_flete</code>, <code>monto_flete_insumo</code> y todas las recetas afectadas.
+            </p>
+            <p>
+              <strong>Resultados Volumen — qué cuentan los cards:</strong> <code>CDR Total Productos</code> = Σ
+              volumen × valor_cdr_final del producto (incluye mantención + flete). <code>Insumos / MO /
+              Energía</code> = Σ costo_ingrediente × cantidad_consumida para filas de ese tipo (cada uno
+              <em>sin</em> mantención — para no doble-contar). <code>Flete Total</code> = Σ volumen ×
+              monto_flete (solo el flete de los productos). <code>Mantenimiento</code> = Σ volumen ×
+              (base_cdr_final − base_cdr) (solo el porcentaje de mantención del sector).
+              Los 4 cards son KPIs independientes; <strong>no</strong> suman al total del CDR.
             </p>
           </CardContent>
         </Card>

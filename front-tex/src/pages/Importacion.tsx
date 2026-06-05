@@ -114,11 +114,18 @@ const Importacion: React.FC = () => {
       return Number.isFinite(n) ? n : null;
     })();
 
+    // Detectar si en el CSV vinieron las columnas opcionales m3 / lleva_flete.
+    // Si NO vinieron, no las mandamos en el upsert para no pisar valores existentes.
+    const tieneM3 = r.m3 !== undefined && String(r.m3 ?? '').trim() !== '';
+    const tieneLlevaFlete = r.lleva_flete !== undefined && String(r.lleva_flete ?? '').trim() !== '';
+
     return {
       grupo: (r.grupo ?? '').toString().trim(),
       codigo: (r.codigo ?? '').toString().trim(),
       detalle: (r.detalle ?? '').toString().trim(),
       costo: normCosto,
+      ...(tieneM3          ? { m3: parseDecimal(r.m3) }                : {}),
+      ...(tieneLlevaFlete  ? { lleva_flete: parseBoolLleva(r.lleva_flete) } : {}),
     };
   };
 
@@ -504,7 +511,10 @@ const Importacion: React.FC = () => {
       const rows = rawRows
         .map(normalizeRow)
         .filter((r) => r.codigo && r.costo !== null)
-        .map((r) => ({ ...r, planta: plantaParaEscritura })) as Array<{ grupo: string; codigo: string; detalle: string; costo: number; planta: string }>;
+        .map((r) => ({ ...r, planta: plantaParaEscritura })) as Array<{
+          grupo: string; codigo: string; detalle: string; costo: number;
+          planta: string; m3?: number; lleva_flete?: boolean;
+        }>;
 
       if (!rows.length) throw new Error('No se encontraron filas válidas con columnas: codigo, costo.');
 
@@ -589,7 +599,9 @@ const Importacion: React.FC = () => {
                 <div className="text-lg font-semibold">Importar Insumos</div>
               </CardTitle>
               <CardDescription className="text-xs">
-                CSV con <code>grupo,codigo,detalle,costo</code>. UPSERT por <code>(codigo, planta)</code>.
+                CSV con <code>grupo,codigo,detalle,costo</code> (opcionales: <code>m3</code>, <code>lleva_flete</code>).
+                UPSERT por <code>(codigo, planta)</code>. Las columnas <code>monto_flete_insumo</code> y <code>costo_final</code>
+                las calcula la DB sola (no las incluyas en el CSV).
                 El mismo código puede convivir en Catamarca y Varela como insumos distintos con costos distintos.
                 Cada importación afecta solo a la planta seleccionada en el header.
               </CardDescription>
