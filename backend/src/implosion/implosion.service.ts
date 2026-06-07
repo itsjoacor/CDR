@@ -622,4 +622,22 @@ export class ImplosionService {
 
     return all;
   }
+
+  // ─── RESUMEN CDR neto (mig 028) ────────────────────────────────────────────
+  /**
+   * Llama a la función SQL public.resumen_implosion(periodo, planta) y devuelve
+   * la fila única con cdr_total_bruto, cdr_consumo_interno, cdr_total_neto,
+   * kilos_desde_otra_planta y flete_inter_planta.
+   *
+   * Si la planta no produjo en el periodo, la función SQL devuelve igual una
+   * fila con todos los campos en 0 (NO null).
+   */
+  async getResumen(periodo: string, planta: 'catamarca' | 'varela') {
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
+      .rpc('resumen_implosion', { p_periodo: periodo, p_planta: planta });
+    if (error) throw new Error(`Error en resumen_implosion: ${error.message}`);
+    // rpc devuelve array de filas; nos queda 1 sola
+    return Array.isArray(data) ? (data[0] ?? null) : data;
+  }
 }

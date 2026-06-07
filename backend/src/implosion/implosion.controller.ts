@@ -128,6 +128,29 @@ export class ImplosionController {
     }
   }
 
+  /**
+   * GET /implosion/resumen/:periodo?planta=catamarca|varela
+   * Devuelve UNA fila con el CDR neto corregido + bruto + flete inter-planta + kilos.
+   * Llama a la función SQL resumen_implosion(periodo, planta) de migration 028.
+   */
+  @Get('resumen/:periodo')
+  async getResumen(
+    @Param('periodo') periodo: string,
+    @Query('planta') planta?: string,
+  ) {
+    let plantaNorm: 'catamarca' | 'varela';
+    try {
+      plantaNorm = validarPlantaEscritura(planta);
+    } catch (e: any) {
+      throw new BadRequestException(e.message);
+    }
+    try {
+      return await this.implosionService.getResumen(periodo, plantaNorm);
+    } catch (err: any) {
+      throw new HttpException(err?.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   /** GET /implosion/export/:periodo?planta=catamarca|varela → descarga XLSX */
   @Get('export/:periodo')
   async exportPeriodo(

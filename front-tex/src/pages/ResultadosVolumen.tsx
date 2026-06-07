@@ -73,6 +73,19 @@ interface CdrInfo {
   valor_cdr_final: number | null;
 }
 
+interface ResumenImplosion {
+  periodo: string;
+  planta: string;
+  volumen_total_producido: number;
+  cdr_total_bruto: number;
+  cdr_consumo_interno: number;
+  cdr_total_neto: number;
+  cdr_mantenimiento?: number;          // ← migration 029
+  cdr_flete_productos?: number;        // ← migration 029
+  kilos_desde_otra_planta: number;
+  flete_inter_planta: number;
+}
+
 interface CorridoRow {
   periodo: string;
   sector_productivo: string;
@@ -98,8 +111,13 @@ const LINE_COLORS = [
 const ResumenCards: React.FC<{
   detalle: DetalleRow[];
   cdrInfoMap: Record<string, CdrInfo>;
+  /** Si viene, el card "CDR Total Productos" muestra el NETO (sin doble conteo
+   *  + flete inter-planta) en vez del bruto. Lo proveemos solo en la vista
+   *  "Implosión Mensual" — en la vista por sector no aplica porque resumen es
+   *  a nivel planta. */
+  resumen?: ResumenImplosion | null;
   label?: string;
-}> = ({ detalle, cdrInfoMap, label }) => {
+}> = ({ detalle, cdrInfoMap, resumen, label }) => {
   // ─── 1) Por tipo de ingrediente: costo_ingrediente × cantidad_consumida.
   //         NO incluye mantención del sector — esa se muestra aparte.
   const totalConsumidoTipo = (tipo: string) =>
@@ -118,18 +136,29 @@ const ResumenCards: React.FC<{
     }
   }
 
-  // ─── 3) Métricas agregadas a partir de resultados_cdr × volumen ───────────────
-  let cdrTotalProductos = 0;        // Σ valor_cdr_final × vol (con mantención + flete)
-  let mantencionTotal   = 0;        // Σ (base_cdr_final - base_cdr) × vol
-  let fleteTotal        = 0;        // Σ monto_flete × vol (= Σ flete_aporte)
-  for (const [cod, vol] of Object.entries(volPorProducto)) {
-    const info = cdrInfoMap[cod];
-    if (!info) continue;
-    const finalSinFlete = info.base_cdr_final ?? info.base_cdr;
-    const cdrFinal      = info.valor_cdr_final ?? finalSinFlete;
-    cdrTotalProductos  += vol * cdrFinal;
-    mantencionTotal    += vol * (finalSinFlete - info.base_cdr);
-    fleteTotal         += vol * (info.monto_flete ?? 0);
+  // ─── 3) Métricas agregadas: si hay resumen del backend (mig 029) usamos sus
+  //         valores históricos (consistentes con los cards). Si no, fallback a
+  //         calcular desde resultados_cdr live (puede tener drift).
+  let cdrTotalProductos = 0;
+  let mantencionTotal   = 0;
+  let fleteTotal        = 0;
+
+  if (resumen && resumen.cdr_mantenimiento != null && resumen.cdr_flete_productos != null) {
+    // Modo histórico (mig 029): valores del snapshot de la implosión
+    cdrTotalProductos = Number(resumen.cdr_total_bruto);
+    mantencionTotal   = Number(resumen.cdr_mantenimiento);
+    fleteTotal        = Number(resumen.cdr_flete_productos);
+  } else {
+    // Fallback: cálculo live desde resultados_cdr (puede tener drift)
+    for (const [cod, vol] of Object.entries(volPorProducto)) {
+      const info = cdrInfoMap[cod];
+      if (!info) continue;
+      const finalSinFlete = info.base_cdr_final ?? info.base_cdr;
+      const cdrFinal      = info.valor_cdr_final ?? finalSinFlete;
+      cdrTotalProductos  += vol * cdrFinal;
+      mantencionTotal    += vol * (finalSinFlete - info.base_cdr);
+      fleteTotal         += vol * (info.monto_flete ?? 0);
+    }
   }
 
   // Cuántos productos del periodo se encontraron en resultados_cdr.
@@ -138,29 +167,76 @@ const ResumenCards: React.FC<{
   const productosConCdrInfo = Object.keys(volPorProducto).filter(c => !!cdrInfoMap[c]).length;
   const productosSinInfo = productosEnPeriodo - productosConCdrInfo;
 
+  // Si hay resumen del backend (función SQL resumen_implosion), priorizamos eso:
+  // muestra el CDR neto sin doble conteo + flete inter-planta. Si no hay
+  // resumen (ej. vista por sector), fallback al cálculo bruto client-side.
+  const usarNeto = !!resumen;
+  const cdrParaMostrar = usarNeto ? Number(resumen!.cdr_total_neto) : cdrTotalProductos;
+  const fleteInterPlanta = usarNeto ? Number(resumen!.flete_inter_planta) : 0;
+  const consumoInterno   = usarNeto ? Number(resumen!.cdr_consumo_interno) : 0;
+  const cdrBrutoServer   = usarNeto ? Number(resumen!.cdr_total_bruto) : cdrTotalProductos;
+  const kilosInterPlanta = usarNeto ? Number(resumen!.kilos_desde_otra_planta) : 0;
+  const kilosProducidos  = usarNeto ? Number(resumen!.volumen_total_producido) : 0;
+
   return (
     <div className="space-y-3">
-      {/* TOP — CDR Total Productos (con mantenimiento + flete) */}
+      {/* TOP — CDR Total Productos (NETO si hay resumen del backend) */}
       <Card className="bg-green-50 border-2 border-green-400">
         <CardContent className="pt-5 pb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <p className="text-sm font-bold text-green-700 uppercase tracking-wide">
-                {label ?? 'CDR Total Productos'}
+                {label ?? (usarNeto ? 'Producción Total' : 'CDR Total Productos')}
               </p>
               <p
                 className="text-xs text-green-600 mt-0.5 cursor-help"
-                title={`Σ (volumen producido × valor_cdr_final) sobre los ${productosConCdrInfo} producto(s) del periodo.
+                title={usarNeto
+                  ? `Producción Total = bruto − sub-productos consumidos
+= Σ (Insumos + MO + Energía + Mantenimiento + Flete propio)
+
+bruto histórico    = $${fmt(cdrBrutoServer)}  (Σ cdr_volumen_final del periodo)
+− sub-productos   = $${fmt(consumoInterno)}  (ya están contabilizados en sus primarios)
+= Producción Total = $${fmt(cdrParaMostrar)}
+
+NOTA: el flete inter-planta ($${fmt(fleteInterPlanta)}) NO se suma — ya viene
+embebido en el valor_cdr_final de cada producto origen y por lo tanto está
+en consumo_interno. Se muestra como dato informativo abajo.`
+                  : `Σ (volumen producido × valor_cdr_final) sobre los ${productosConCdrInfo} producto(s) del periodo.
 valor_cdr_final ya viene completo desde la DB: incluye base_cdr + mantención + flete del producto.
-Es el costo directo de reposición total para los productos producidos.
 ${productosSinInfo > 0 ? `\n⚠ ${productosSinInfo} producto(s) del periodo no tienen fila en resultados_cdr — su aporte NO se está contando.` : ''}`}
               >
-                Σ volumen × valor_cdr_final (CDR completo del producto)
-                {productosSinInfo > 0 && <span className="ml-2 text-orange-600 font-semibold">⚠ {productosSinInfo} sin CDR</span>}
+                {usarNeto
+                  ? `Σ (Insumos + MO + Energía + Mantenimiento + Flete) — sin doble conteo de sub-productos`
+                  : 'Σ volumen × valor_cdr_final (CDR completo del producto)'}
+                {!usarNeto && productosSinInfo > 0 && <span className="ml-2 text-orange-600 font-semibold">⚠ {productosSinInfo} sin CDR</span>}
               </p>
             </div>
-            <p className="text-3xl font-bold text-green-800">${fmt(cdrTotalProductos)}</p>
+            <p className="text-3xl font-bold text-green-800">${fmt(cdrParaMostrar)}</p>
           </div>
+          {usarNeto && (kilosProducidos > 0 || kilosInterPlanta > 0) && (
+            <div className="mt-3 pt-3 border-t border-green-200 flex flex-wrap gap-x-6 gap-y-1 text-xs text-green-700">
+              <span className="text-[10px] uppercase tracking-wider text-green-600/70 font-semibold mr-1">Informativo:</span>
+              {kilosProducidos > 0 && (
+                <span>
+                  <span className="text-green-600">Kilos producidos:</span>{' '}
+                  <span className="font-semibold">{fmt(kilosProducidos)} kg</span>
+                </span>
+              )}
+              {kilosInterPlanta > 0 && (
+                <>
+                  <span>
+                    <span className="text-green-600">Kilos desde otra planta:</span>{' '}
+                    <span className="font-semibold">{fmt(kilosInterPlanta)} kg</span>
+                  </span>
+                  <span>
+                    <span className="text-green-600">Flete inter-planta:</span>{' '}
+                    <span className="font-semibold">${fmt(fleteInterPlanta)}</span>
+                    <span className="text-green-600/70 ml-1">(ya incluido en sub-productos)</span>
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -266,6 +342,7 @@ const ResultadosVolumen: React.FC = () => {
   const [porSector, setPorSector] = useState<DetalleRow[]>([]);
   const [selectedSector, setSelectedSector] = useState<string>('');
   const [cdrInfoMap, setCdrInfoMap] = useState<Record<string, CdrInfo>>({});
+  const [resumen, setResumen] = useState<ResumenImplosion | null>(null);
 
   const [loadingPeriodos, setLoadingPeriodos] = useState(true);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
@@ -343,6 +420,29 @@ const ResultadosVolumen: React.FC = () => {
     if (activeTab === 'mensual' || activeTab === 'detalle-sector') fetchDetalle(selectedPeriodo);
     if (activeTab === 'sector') fetchPorSector(selectedPeriodo);
   }, [selectedPeriodo, activeTab, plantaParam]);
+
+  // ── Fetch resumen (CDR neto del backend) — solo aplica con planta puntual
+  useEffect(() => {
+    if (!selectedPeriodo || !plantaParaEscritura) {
+      setResumen(null);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch(
+          `${API}/implosion/resumen/${selectedPeriodo}?planta=${plantaParaEscritura}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) {
+          setResumen(null);
+          return;
+        }
+        setResumen(await res.json());
+      } catch {
+        setResumen(null);
+      }
+    })();
+  }, [selectedPeriodo, plantaParaEscritura, token]);
 
   // Auto-select first sector when detalle loads
   useEffect(() => {
@@ -681,7 +781,7 @@ const ResultadosVolumen: React.FC = () => {
                 </div>
 
                 {/* Summary cards */}
-                {detalle.length > 0 && <ResumenCards detalle={detalle} cdrInfoMap={cdrInfoMap} />}
+                {detalle.length > 0 && <ResumenCards detalle={detalle} cdrInfoMap={cdrInfoMap} resumen={resumen} />}
 
                 {/* Table */}
                 <Card>
