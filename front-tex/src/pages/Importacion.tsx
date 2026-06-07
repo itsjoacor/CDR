@@ -520,10 +520,18 @@ const Importacion: React.FC = () => {
 
       setUploadProgress(70);
 
-      // 3) UPSERT por PK compuesta (codigo, planta) — mismo código puede existir en ambas plantas como filas distintas
+      // 3) UPSERT por PK compuesta (codigo, planta) — mismo código puede existir en ambas plantas como filas distintas.
+      //    defaultToNull: false → columnas que no vienen en el CSV usan el DEFAULT de la DB
+      //    (m3=0, lleva_flete=false, monto_flete_insumo=0). Sin este flag Supabase manda null
+      //    para columnas ausentes y rompe contra el NOT NULL de m3/lleva_flete.
       const { error: upsertError, count } = await supabase
         .from('insumos')
-        .upsert(rows, { onConflict: 'codigo,planta', ignoreDuplicates: false, count: 'exact' });
+        .upsert(rows, {
+          onConflict: 'codigo,planta',
+          ignoreDuplicates: false,
+          count: 'exact',
+          defaultToNull: false,
+        });
 
       if (upsertError) throw new Error(upsertError.message);
 
