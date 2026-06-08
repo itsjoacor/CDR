@@ -11,11 +11,26 @@ export type InsumoCsvRow = {
 export function parseCsvBuffer(buffer: Buffer): InsumoCsvRow[] {
   const text = buffer.toString('utf8');
 
+  // Auto-detectar delimitador mirando la primera línea (Excel en español usa ';'
+  // porque ',' es decimal; archivos exportados de otras herramientas pueden usar
+  // ',' o tab). Detectamos cuál aparece más veces en la cabecera.
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
+  const counts = {
+    ',':  (firstLine.match(/,/g)  || []).length,
+    ';':  (firstLine.match(/;/g)  || []).length,
+    '\t': (firstLine.match(/\t/g) || []).length,
+  };
+  const delimiter = (Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0]) ?? ',';
+
   // Parseamos con cabecera
   const records: any[] = parse(text, {
     columns: true,
     skip_empty_lines: true,
     trim: true,
+    delimiter,
+    relax_quotes: true,            // tolera comillas mal cerradas
+    relax_column_count: false,     // sigue fallando si una fila tiene cols extra/de menos
+                                   // (mejor avisar que silenciar bugs del CSV)
   });
 
   // Normalizamos/validamos

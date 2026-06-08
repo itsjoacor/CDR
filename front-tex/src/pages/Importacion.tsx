@@ -30,6 +30,7 @@ const Importacion: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { plantaParaEscritura } = usePlanta();
+  const token = Cookies.get('token') || '';
 
   // Insumos
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -95,6 +96,8 @@ const Importacion: React.FC = () => {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        // Auto-detectar delimitador (Excel español usa ';', CSV estándar ',', etc.)
+        delimitersToGuess: [',', ';', '\t', '|'],
         transformHeader: (h) => String(h).toLowerCase().trim(),
         complete: (r) => {
           if (r.errors?.length) return reject(r.errors[0]);
@@ -520,32 +523,33 @@ const Importacion: React.FC = () => {
 
       setUploadProgress(70);
 
-      // 3) UPSERT por PK compuesta (codigo, planta) — mismo código puede existir en ambas plantas como filas distintas.
-      //    defaultToNull: false → columnas que no vienen en el CSV usan el DEFAULT de la DB
-      //    (m3=0, lleva_flete=false, monto_flete_insumo=0). Sin este flag Supabase manda null
-      //    para columnas ausentes y rompe contra el NOT NULL de m3/lleva_flete.
-      const { error: upsertError, count } = await supabase
-        .from('insumos')
-        .upsert(rows, {
-          onConflict: 'codigo,planta',
-          ignoreDuplicates: false,
-          count: 'exact',
-          defaultToNull: false,
-        });
+      // 3) RPC bulk_upsert_insumos (mig 032). Es una función Postgres que:
+      //    - SET LOCAL statement_timeout = 0 (sin límite para esta transacción)
+      //    - DESACTIVA el cascade trigger durante el bulk upsert (muchísimo más rápido)
+      //    - Hace UPSERT en una sola operación
+      //    - REACTIVA el trigger
+      //    - Hace UN solo recalc batch para las recetas afectadas (no row-by-row)
+      //    Resultado: una sola HTTP call, sin timeout, soporta CSVs de cualquier tamaño.
+      const { data: rpcData, error: rpcError } = await supabase.rpc('bulk_upsert_insumos', {
+        p_planta: plantaParaEscritura,
+        p_rows: rows,
+      });
 
-      if (upsertError) throw new Error(upsertError.message);
+      if (rpcError) throw new Error(rpcError.message);
+
+      const ret = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+      const insertedOrUpdated = (ret?.inserted_count ?? 0) + (ret?.updated_count ?? 0);
 
       setUploadProgress(100);
-      const insertedOrUpdated = count ?? rows.length;
 
-      const res: ImportSummary = {
+      const summary: ImportSummary = {
         mode: 'upsert',
         total_rows: rows.length,
         inserted_or_updated: insertedOrUpdated,
-        message: `UPSERT completado: ${insertedOrUpdated} registros insertados/actualizados.`,
+        message: `UPSERT completado: ${ret?.inserted_count ?? 0} nuevos + ${ret?.updated_count ?? 0} actualizados. Se recalcularon ${ret?.recalc_recetas ?? 0} recetas afectadas.`,
       };
-      setResult(res);
-      toast({ title: 'Importación completada', description: res.message });
+      setResult(summary);
+      toast({ title: 'Importación completada', description: summary.message });
       setSelectedFile(null);
     } catch (err: any) {
       const msg = err?.message || 'Error importando CSV';

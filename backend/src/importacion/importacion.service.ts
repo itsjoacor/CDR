@@ -44,14 +44,22 @@ export class ImportacionService {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+        // ⬇ Sin esto, las importaciones grandes mueren por statement_timeout (~8s)
+        // cuando el cascade de triggers (calcular_costos_y_cdr → resultados_cdr → otras recetas)
+        // tarda mucho. Lo desactivamos solo para esta transacción.
+        await client.query(`SET LOCAL statement_timeout = 0`);
 
         // Detectar columnas opcionales presentes en el CSV
+        const hasGrupo       = 'grupo'       in rows[0];
+        const hasDetalle     = 'detalle'     in rows[0];
         const hasM3          = 'm3'          in rows[0];
         const hasLlevaFlete  = 'lleva_flete' in rows[0];
 
         await client.query(`
           CREATE TEMP TABLE temp_insumos_import (
             codigo      text,
+            grupo       text,
+            detalle     text,
             costo       numeric,
             m3          numeric,
             lleva_flete boolean
@@ -59,14 +67,30 @@ export class ImportacionService {
         `);
 
         const codigos: string[] = [];
-        const costos: number[] = [];
-        const m3s: (number | null)[] = [];
-        const lleva: (boolean | null)[] = [];
+        const grupos:  (string | null)[] = [];
+        const detalles:(string | null)[] = [];
+        const costos:  number[] = [];
+        const m3s:     (number | null)[] = [];
+        const lleva:   (boolean | null)[] = [];
         for (const r of rows) {
           if (!r.codigo || typeof r.costo !== 'number') continue;
           codigos.push(r.codigo.trim());
+          grupos.push(hasGrupo   && (r as any).grupo   != null && String((r as any).grupo).trim()   !== '' ? String((r as any).grupo).trim()   : null);
+          detalles.push(hasDetalle && (r as any).detalle != null && String((r as any).detalle).trim() !== '' ? String((r as any).detalle).trim() : null);
           costos.push(r.costo);
-          m3s.push(hasM3 && (r as any).m3 != null ? Number((r as any).m3) : null);
+          // m3 puede venir con coma decimal estilo es-AR ("0,000000180") o punto.
+          // Si tiene ambos, el punto es separador de miles ("1.234,56" → 1234.56).
+          const m3Raw = (r as any).m3;
+          if (!hasM3 || m3Raw == null || String(m3Raw).trim() === '') {
+            m3s.push(null);
+          } else {
+            const m3Str = String(m3Raw).trim();
+            const normalized = m3Str.includes(',')
+              ? m3Str.replace(/\./g, '').replace(',', '.')
+              : m3Str;
+            const m3Num = Number(normalized);
+            m3s.push(Number.isFinite(m3Num) ? m3Num : null);
+          }
           // Acepta true/false, "true"/"false", "si"/"no", 1/0
           const lf = (r as any).lleva_flete;
           if (!hasLlevaFlete || lf == null || lf === '') {
@@ -83,22 +107,39 @@ export class ImportacionService {
 
         await client.query(
           `
-          INSERT INTO temp_insumos_import (codigo, costo, m3, lleva_flete)
-          SELECT * FROM UNNEST ($1::text[], $2::numeric[], $3::numeric[], $4::boolean[]);
+          INSERT INTO temp_insumos_import (codigo, grupo, detalle, costo, m3, lleva_flete)
+          SELECT * FROM UNNEST (
+            $1::text[], $2::text[], $3::text[], $4::numeric[], $5::numeric[], $6::boolean[]
+          );
         `,
-          [codigos, costos, m3s, lleva]
+          [codigos, grupos, detalles, costos, m3s, lleva]
         );
 
-        // Update: siempre actualiza costo. m3 y lleva_flete solo si vinieron.
-        const updateResult = await client.query(
+        // UPSERT real: INSERT nuevos + UPDATE existentes en una sola operación.
+        // - Para INSERT necesitamos grupo y detalle (sino fallan los NOT NULL si los tienen).
+        // - Para UPDATE de existentes, COALESCE para no pisar valores ya cargados
+        //   cuando la columna no vino en el CSV.
+        const upsertResult = await client.query(
           `
-          UPDATE insumos i
-          SET costo       = t.costo,
-              m3          = COALESCE(t.m3,          i.m3),
-              lleva_flete = COALESCE(t.lleva_flete, i.lleva_flete)
+          INSERT INTO public.insumos (codigo, planta, grupo, detalle, costo, m3, lleva_flete)
+          SELECT
+            t.codigo,
+            $1::text                                     AS planta,
+            COALESCE(t.grupo,   '')                      AS grupo,
+            COALESCE(t.detalle, '')                      AS detalle,
+            t.costo,
+            COALESCE(t.m3, 0)                            AS m3,
+            COALESCE(t.lleva_flete, false)               AS lleva_flete
           FROM temp_insumos_import t
-          WHERE i.codigo = t.codigo AND i.planta = $1;
-        `,
+          ON CONFLICT (codigo, planta) DO UPDATE
+          SET costo       = EXCLUDED.costo,
+              grupo       = COALESCE(NULLIF(EXCLUDED.grupo,   ''), insumos.grupo),
+              detalle     = COALESCE(NULLIF(EXCLUDED.detalle, ''), insumos.detalle),
+              m3          = CASE WHEN EXCLUDED.m3          IS NOT NULL THEN EXCLUDED.m3
+                                 ELSE insumos.m3 END,
+              lleva_flete = CASE WHEN EXCLUDED.lleva_flete IS NOT NULL THEN EXCLUDED.lleva_flete
+                                 ELSE insumos.lleva_flete END
+        ;`,
           [planta],
         );
 
@@ -107,9 +148,9 @@ export class ImportacionService {
         return {
           table,
           mode,
-          updated_rows: updateResult.rowCount ?? 0,
+          updated_rows: upsertResult.rowCount ?? 0,
           total_rows: rows.length,
-          message: `Actualización completada para ${updateResult.rowCount ?? 0} registros`,
+          message: `Importación completada: ${upsertResult.rowCount ?? 0} insumos procesados (insertados + actualizados).`,
         };
       } catch (err) {
         await client.query('ROLLBACK');
